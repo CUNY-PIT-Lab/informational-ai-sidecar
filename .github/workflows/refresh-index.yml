@@ -1,0 +1,47 @@
+name: Refresh public site index for staff review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 13 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "fortune-site-index-review"
+  cancel-in-progress: false
+
+jobs:
+  refresh-for-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the reviewed baseline
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Preserve the reviewed baseline
+        run: cp site-index.json baseline-site-index.json
+
+      - name: Crawl the public Wix sitemap
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/rebuild_site_index.py
+
+      - name: Validate the refreshed inventory
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/build_pages.py --check-index
+
+      - name: Upload staff-review artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: fortune-site-index-review-${{ github.run_number }}
+          path: |
+            baseline-site-index.json
+            site-index.json
+          if-no-files-found: error
+          retention-days: 14

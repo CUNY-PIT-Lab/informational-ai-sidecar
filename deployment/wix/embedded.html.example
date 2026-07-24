@@ -1,0 +1,15 @@
+<!--
+  Example BODY_END fragment for a generated Wix embedded-script extension.
+  Replace the public URLs during app packaging. Neither value is a secret.
+  Keep OLLAMA_API_KEY in Wix Secrets Manager and call it through the backend.
+-->
+<fortune-digital-equity-guide
+  api-base-url="REPLACE_WITH_PUBLIC_BACKEND_BASE_URL"
+  contact-url="https://www.fortunedigitalequity.org/contact"
+  home-url="https://www.fortunedigitalequity.org/"
+></fortune-digital-equity-guide>
+
+<script
+  type="module"
+  src="REPLACE_WITH_WIX_HOSTED_ASSET_URL/fortune-guide-element.js"
+></script>

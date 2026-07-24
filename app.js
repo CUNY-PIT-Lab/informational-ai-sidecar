@@ -1,0 +1,312 @@
+(() => {
+  "use strict";
+
+  const Core = window.FortuneGuideCore;
+  if (!Core) throw new Error("FortuneGuideCore must load before app.js");
+  const panel = document.querySelector("#guide-panel");
+  const toggle = document.querySelector("#guide-toggle");
+  const closeButton = document.querySelector("#guide-close");
+  const title = document.querySelector("#guide-title");
+  const transcript = document.querySelector("#chat-transcript");
+  const suggestions = document.querySelector("#chat-suggestions");
+  const form = document.querySelector("#question-form");
+  const questionField = document.querySelector("#question");
+  const submitButton = form.querySelector('button[type="submit"]');
+  const modelStatus = document.querySelector("#model-status");
+  const API_BASE = String(window.FORTUNE_GUIDE_CONFIG?.apiBaseUrl || "").replace(/\/$/, "");
+  const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
+  const TRAININGS_URL = "https://www.fortunedigitalequity.org/trainings";
+
+  let history = [];
+  let modelReady = false;
+  let answering = false;
+  let activePageId = "";
+
+  function apiUrl(path) {
+    return `${API_BASE}${path}`;
+  }
+
+  function cleanText(value) {
+    return Core.cleanText(value);
+  }
+
+  function personalInformationDetected(value) {
+    return Core.personalInformationDetected(value);
+  }
+
+  function redactSixDigitValues(value) {
+    return Core.redactSixDigitValues(value);
+  }
+
+  function currentPage() {
+    return window.FortuneMockSite?.getCurrentPage?.() || null;
+  }
+
+  function pageContext() {
+    const page = currentPage();
+    return {
+      url: page?.url || "",
+      path: page?.url ? new URL(page.url).pathname : "",
+      title: window.FortuneMockSite?.cleanTitle?.(page?.title) || "Digital Equity",
+    };
+  }
+
+  function openGuide() {
+    panel.hidden = false;
+    panel.setAttribute("aria-hidden", "false");
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.hidden = true;
+  }
+
+  function closeGuide() {
+    panel.hidden = true;
+    panel.setAttribute("aria-hidden", "true");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.hidden = false;
+    toggle.focus();
+  }
+
+  function scrollConversation() {
+    requestAnimationFrame(() => transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" }));
+  }
+
+  function appendMessage(role, message, options = {}) {
+    const article = document.createElement("article");
+    article.className = `chat-message ${role}`;
+    const label = document.createElement("p");
+    label.className = "chat-speaker";
+    label.textContent = role === "user" ? "You" : "Digital Equity guide";
+    const body = document.createElement("p");
+    body.className = "chat-copy";
+    body.textContent = redactSixDigitValues(cleanText(message));
+    article.append(label, body);
+
+    if (Array.isArray(options.choices) && options.choices.length) {
+      const choiceList = document.createElement("div");
+      choiceList.className = "answer-choices";
+      options.choices.slice(0, 3).forEach(choice => {
+        if (!choice?.label || !choice?.prompt) return;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.prompt = choice.prompt;
+        button.textContent = choice.label;
+        choiceList.append(button);
+      });
+      article.append(choiceList);
+    }
+
+    if (options.destination?.url) {
+      const action = document.createElement("a");
+      action.className = "chat-destination";
+      action.dataset.mockUrl = options.destination.url;
+      const baseHref = window.FortuneMockSite.hrefFor(options.destination.url);
+      const connector = String(baseHref).includes("?") ? "&" : "?";
+      action.href = `${baseHref}${connector}open=1`;
+      action.textContent = options.destination.title || "Go to the next page";
+      article.append(action);
+    }
+
+    const sourceRows = Array.isArray(options.sources) ? options.sources.filter(source => source?.url && source?.title) : [];
+    if (sourceRows.length) {
+      const details = document.createElement("details");
+      details.className = "chat-sources";
+      const summary = document.createElement("summary");
+      const scope = options.scope === "page"
+        ? "Source on this page"
+        : options.scope === "staff"
+          ? "Staff route"
+          : "Website sources";
+      summary.textContent = sourceRows.length === 1 ? scope : `${scope} (${sourceRows.length})`;
+      const list = document.createElement("ul");
+      sourceRows.slice(0, 3).forEach(source => {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.dataset.mockUrl = source.url;
+        link.href = window.FortuneMockSite.hrefFor(source.url);
+        link.textContent = source.title;
+        item.append(link);
+        list.append(item);
+      });
+      details.append(summary, list);
+      article.append(details);
+    }
+
+    transcript.append(article);
+    scrollConversation();
+    return article;
+  }
+
+  function distinctDestination(data) {
+    const currentUrl = window.FortuneMockSite.canonicalUrl(currentPage()?.url);
+    const sourceRows = Array.isArray(data?.sources) ? data.sources : [];
+    const relatedRows = Array.isArray(data?.related) ? data.related : [];
+    const rows = ["site", "staff"].includes(data?.retrieval_scope)
+      ? [...sourceRows, ...relatedRows]
+      : [...relatedRows, ...sourceRows];
+    const found = rows.find(row => row?.url && window.FortuneMockSite.canonicalUrl(row.url) !== currentUrl && window.FortuneMockSite.isKnown(row.url));
+    if (found) {
+      const title = Core.destinationLabel(found.title);
+      return { url: found.url, title };
+    }
+    const fallback = currentUrl === CONTACT_URL ? TRAININGS_URL : CONTACT_URL;
+    return { url: fallback, title: currentUrl === CONTACT_URL ? "Go to current trainings" : "Contact Digital Equity staff" };
+  }
+
+  function renderSuggestions(starter) {
+    suggestions.replaceChildren();
+    (starter?.suggestions || []).slice(0, 2).forEach(prompt => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.prompt = prompt;
+      button.textContent = prompt;
+      suggestions.append(button);
+    });
+  }
+
+  function resetForPage(page, starter) {
+    if (!page) return;
+    activePageId = page.id;
+    history = [];
+    transcript.replaceChildren();
+    title.textContent = starter.heading;
+    questionField.placeholder = starter.placeholder;
+    renderSuggestions(starter);
+    const pageTitle = window.FortuneMockSite.cleanTitle(page.title);
+    let greeting = `You’re on ${pageTitle}. Ask about this page, or tell me what you’re trying to do and I’ll take you to the right section.`;
+    if (starter.family === "archive") greeting = `This is a historical page. Tell me what current information you need and I’ll take you to the right section.`;
+    if (starter.family === "excluded") greeting = `This route is not reproduced in the public demo. Tell me what current information you need and I’ll take you to a public section.`;
+    appendMessage("assistant", greeting);
+  }
+
+  function setBusy(value) {
+    answering = value;
+    submitButton.disabled = value;
+    questionField.disabled = value;
+    panel.setAttribute("aria-busy", String(value));
+    submitButton.textContent = value ? "Checking…" : "Ask";
+  }
+
+  function privacyHold() {
+    suggestions.replaceChildren();
+    appendMessage("user", "[Personal information removed]");
+    appendMessage(
+      "assistant",
+      "We removed that entry before it left this browser. Please ask again without your six-digit Fortune ID, name, contact details, case information, health information, or other personally identifiable information.",
+      {
+        destination: distinctDestination({ related: [{ title: "Contact Digital Equity staff", url: CONTACT_URL }] }),
+        scope: "staff",
+      },
+    );
+    history = [];
+  }
+
+  async function remoteAnswer(question) {
+    const response = await fetch(apiUrl("/api/chat"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question, history, page_context: pageContext() }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || "The live model could not answer.");
+    return data;
+  }
+
+  function showAnswer(data) {
+    suggestions.replaceChildren();
+    const destination = distinctDestination(data);
+    appendMessage("assistant", data.message || "The website does not contain an approved answer. Please contact Digital Equity staff.", {
+      choices: data.choices,
+      destination,
+      sources: data.sources,
+      scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
+    });
+  }
+
+  async function ask(question) {
+    const value = cleanText(question);
+    if (!value || answering) return;
+    questionField.value = "";
+
+    if (personalInformationDetected(value)) {
+      privacyHold();
+      return;
+    }
+
+    const safeQuestion = redactSixDigitValues(value);
+    appendMessage("user", safeQuestion);
+    suggestions.replaceChildren();
+    setBusy(true);
+    try {
+      let data;
+      if (modelReady) {
+        try {
+          data = await remoteAnswer(safeQuestion);
+        } catch {
+          data = window.FortuneMockSite.staticAnswer(safeQuestion, currentPage());
+          modelStatus.textContent = "Source guide · live model unavailable";
+          modelReady = false;
+        }
+      } else {
+        data = window.FortuneMockSite.staticAnswer(safeQuestion, currentPage());
+      }
+      history.push({ role: "user", content: safeQuestion }, { role: "assistant", content: redactSixDigitValues(data.message || "") });
+      history = history.slice(-6);
+      showAnswer(data);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkHealth() {
+    try {
+      const response = await fetch(apiUrl("/health"), { cache: "no-store" });
+      if (!response.ok || !String(response.headers.get("content-type") || "").includes("application/json")) throw new Error("No model backend");
+      const data = await response.json();
+      modelReady = Boolean(data.model_enabled);
+      const pages = Number(data.indexed_pages) || Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
+      modelStatus.textContent = modelReady ? `Live ${data.model || "model"} · page-first` : `Source guide · ${pages} public pages`;
+      modelStatus.classList.toggle("model-ready", modelReady);
+    } catch {
+      const pages = Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
+      modelReady = false;
+      modelStatus.textContent = `Source guide · ${pages} public pages`;
+      modelStatus.classList.remove("model-ready");
+    }
+  }
+
+  toggle.addEventListener("click", openGuide);
+  closeButton.addEventListener("click", closeGuide);
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    ask(questionField.value);
+  });
+  suggestions.addEventListener("click", event => {
+    const button = event.target.closest("[data-prompt]");
+    if (button) ask(button.dataset.prompt);
+  });
+  transcript.addEventListener("click", event => {
+    const button = event.target.closest("[data-prompt]");
+    if (button) ask(button.dataset.prompt);
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !panel.hidden) closeGuide();
+  });
+  window.addEventListener("fortune:pagechange", event => {
+    if (event.detail?.page?.id === activePageId) return;
+    resetForPage(event.detail.page, event.detail.starter);
+  });
+
+  window.FortuneMockSite.ready.then(page => {
+    if (page.id !== activePageId) resetForPage(page, window.FortuneMockSite.getStarter(page));
+    checkHealth();
+    if (new URLSearchParams(window.location.search).get("open") === "1") openGuide();
+  });
+
+  window.FortuneGuide = Object.freeze({
+    ask,
+    open: openGuide,
+    close: closeGuide,
+    privacyDetected: personalInformationDetected,
+    state: () => ({ modelReady, activePageId, answering, historyLength: history.length }),
+  });
+})();

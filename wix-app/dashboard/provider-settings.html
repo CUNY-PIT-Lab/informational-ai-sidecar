@@ -1,0 +1,27 @@
+<section class="provider-settings" aria-labelledby="provider-settings-title">
+  <h1 id="provider-settings-title">Digital Equity guide provider</h1>
+  <p>
+    Add the Ollama Cloud key that this site will use for source selection.
+    Wix stores the key in Secrets Manager, and site visitors never receive it.
+  </p>
+
+  <form id="provider-key-form">
+    <label for="provider-key">Ollama Cloud API key</label>
+    <input
+      id="provider-key"
+      name="provider-key"
+      type="password"
+      autocomplete="new-password"
+      minlength="12"
+      maxlength="3500"
+      required
+    >
+    <button type="submit">Save key securely</button>
+  </form>
+
+  <p id="provider-key-status" role="status" aria-live="polite">
+    Checking this site's configuration…
+  </p>
+</section>
+
+<script type="module" src="./provider-settings.js"></script>

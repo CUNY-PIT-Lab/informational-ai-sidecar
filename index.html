@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://guide-api-production-a1a1.up.railway.app; img-src 'self' data:; style-src 'self'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="description" content="Public meeting mockup of The Fortune Society Digital Equity website with a page-aware source guide.">
+  <title>Fortune Digital Equity · guide demonstration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#page-content">Skip to page information</a>
+  <div class="demo-notice" role="note">Demonstration of a proposed Digital Equity guide · Public website information only</div>
+
+  <header class="site-header">
+    <a class="site-brand" href="?page=%2F" data-site-url="https://www.fortunedigitalequity.org/">
+      <span class="site-brand-name">The Fortune Society</span>
+      <span class="site-brand-program">Digital Equity</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="?page=%2F" data-site-url="https://www.fortunedigitalequity.org/">Home</a>
+      <a href="?page=%2Fabout" data-site-url="https://www.fortunedigitalequity.org/about">About</a>
+      <a href="?page=%2Ftrainings" data-site-url="https://www.fortunedigitalequity.org/trainings">Trainings</a>
+      <a href="?page=%2Fpractice" data-site-url="https://www.fortunedigitalequity.org/practice">Resources</a>
+      <a href="?page=%2Fcalendar" data-site-url="https://www.fortunedigitalequity.org/calendar">Calendar</a>
+      <a href="?page=%2Fcontact" data-site-url="https://www.fortunedigitalequity.org/contact">Contact</a>
+    </nav>
+  </header>
+
+  <section class="page-title" aria-labelledby="page-heading">
+    <h1 id="page-heading">Loading Digital Equity information…</h1>
+  </section>
+
+  <main class="page-content" id="page-content">
+    <div class="page-loading" id="page-loading" role="status">Loading the public page record…</div>
+    <article class="page-document" id="page-document" hidden>
+      <p class="page-summary" id="page-summary"></p>
+      <div class="page-blocks" id="page-blocks"></div>
+      <div class="page-actions">
+        <a class="primary-link" id="live-page-link" href="https://www.fortunedigitalequity.org/" target="_blank" rel="noreferrer">Open the current Fortune page</a>
+        <a id="page-contact-link" href="?page=%2Fcontact" data-site-url="https://www.fortunedigitalequity.org/contact">Contact Digital Equity</a>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div>
+      <p class="footer-name">The Fortune Society Digital Equity Program</p>
+      <p><a href="tel:+12126917554">(212) 691-7554</a> · <a href="mailto:FSTrain@FortuneSociety.org">FSTrain@FortuneSociety.org</a></p>
+    </div>
+    <p class="reference-note">This mock site is generated from the public Digital Equity sitemap. The live Fortune pages remain authoritative.</p>
+  </footer>
+
+  <aside class="guide" aria-label="Digital Equity guide">
+    <section class="guide-panel" id="guide-panel" role="dialog" aria-modal="false" aria-labelledby="guide-title" aria-hidden="true" hidden>
+      <header class="guide-header">
+        <div>
+          <p class="guide-kicker">Digital Equity guide</p>
+          <h2 id="guide-title">Ask about this page</h2>
+        </div>
+        <button class="icon-button" id="guide-close" type="button" aria-label="Close Digital Equity guide">Close</button>
+      </header>
+
+      <div class="chat-transcript" id="chat-transcript" aria-live="polite" aria-label="Guide conversation"></div>
+      <div class="chat-suggestions" id="chat-suggestions" aria-label="Questions about this page"></div>
+
+      <form class="chat-form" id="question-form">
+        <label for="question">Ask about this page</label>
+        <div class="chat-input-row">
+          <textarea id="question" name="question" maxlength="600" required rows="2" placeholder="What would you like to know?"></textarea>
+          <button type="submit">Ask</button>
+        </div>
+        <p class="privacy-copy"><strong>Do not enter personally identifiable information (PII).</strong> This includes your six-digit Fortune ID, name, contact details, case information, or health information.</p>
+      </form>
+
+      <footer class="guide-footer">
+        <span id="model-status">Loading the page guide…</span>
+        <a href="?page=%2Fcontact" data-site-url="https://www.fortunedigitalequity.org/contact">Contact staff</a>
+      </footer>
+    </section>
+    <button class="guide-toggle" id="guide-toggle" type="button" aria-controls="guide-panel" aria-expanded="false">
+      <span>Digital Equity guide</span>
+      <span aria-hidden="true">↑</span>
+    </button>
+  </aside>
+
+  <!-- ROUTE_CONFIG -->
+  <script src="config.js"></script>
+  <script src="guide-core.js"></script>
+  <script src="site.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
