@@ -2,7 +2,7 @@
 
 This demonstration builds a mock route for every public URL in the Fortune Digital Equity Wix sitemap. The July 20 index contains 184 routes. Each route uses the page title, public source text, authority state, and related links from `site-index.json`. The sidecar opens with a question about the current page and can direct the visitor to another relevant section.
 
-The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits.
+The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits. The server preloads GLM-5.2 at startup. The Pages and Wix clients repeat the same empty warm-up request when the guide loads, while a server-side cooldown collapses visitors into one provider call and keeps the model ready for 30 minutes.
 
 ## Source limits
 
@@ -23,13 +23,14 @@ The generated mock site uses the canonical path for each indexed URL. Opening th
 
 After a question:
 
-1. The browser sends the question, a short in-memory history, and the canonical current-page URL, path, and title.
-2. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
-3. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
-4. The server checks the approved record for the current page. When that record contains matching evidence, it is the only factual record sent to the model.
-5. When the current page cannot answer, retrieval searches the wider approved public index. When that search finds no matching evidence, the model is not called and the guide sends the visitor to staff.
-6. GLM-5.2 on Ollama Cloud selects from the supplied source IDs. The server validates that choice and builds the visible factual answer from sentences in the selected website record. Model-written factual prose is never shown.
-7. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
+1. The browser starts a credential-free warm-up request while the visitor reads the page. The backend sends Ollama's documented empty preload request and keeps the model loaded for the configured period.
+2. The browser sends the question, a short in-memory history, and the canonical current-page URL, path, and title.
+3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
+4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
+5. The server checks the approved record for the current page. When that record contains matching evidence, it is the only factual record sent to the model.
+6. When the current page cannot answer, retrieval searches the wider approved public index. When that search finds no matching evidence, the model is not called and the guide sends the visitor to staff.
+7. GLM-5.2 on Ollama Cloud selects from the supplied source IDs. The server validates that choice and builds the visible factual answer from sentences in the selected website record. Model-written factual prose is never shown.
+8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
 Archive, navigation, and excluded routes still receive a tailored guide. Their page text cannot become factual answer authority. The guide moves the visitor to a current operational page.
 
@@ -50,7 +51,7 @@ Run the key-free tests and check that the index can produce all route shells:
 python3 scripts/build_pages.py --check-index
 ```
 
-The test launcher runs 67 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, and Wix secret handling. It then runs 11 browser-core unit tests for page families, prompts, staged evidence, route generation, and client-side redaction.
+The test launcher runs 71 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, and Wix secret handling. It then runs 11 browser-core unit tests for page families, prompts, staged evidence, route generation, and client-side redaction.
 
 Build the static GitHub Pages output:
 

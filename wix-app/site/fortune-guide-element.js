@@ -24,6 +24,7 @@
       if (this.shadowRoot) return;
 
       this.history = [];
+      this.warmupPromise = null;
       const root = this.attachShadow({ mode: "open" });
       root.innerHTML = `
         <style>
@@ -165,12 +166,14 @@
       root.addEventListener("keydown", (event) => {
         if (event.key === "Escape") this.close();
       });
+      this.warmModel();
     }
 
     open() {
       this.panel.hidden = false;
       this.toggleButton.hidden = true;
       this.toggleButton.setAttribute("aria-expanded", "true");
+      this.warmModel();
       // Deliberately avoid autofocus. Some mobile browsers zoom focused inputs.
     }
 
@@ -206,6 +209,7 @@
       this.result.hidden = true;
 
       try {
+        if (this.warmupPromise) await this.warmupPromise;
         const response = await fetch(this.apiUrl("/api/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -236,6 +240,24 @@
       } finally {
         this.sendButton.disabled = false;
       }
+    }
+
+    warmModel() {
+      if (this.warmupPromise) return this.warmupPromise;
+      this.warmupPromise = fetch(this.apiUrl("/api/warmup"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}"
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error("Model warm-up failed.");
+          return response.json();
+        })
+        .catch(() => null)
+        .finally(() => {
+          this.warmupPromise = null;
+        });
+      return this.warmupPromise;
     }
 
     addText(tagName, text, className) {

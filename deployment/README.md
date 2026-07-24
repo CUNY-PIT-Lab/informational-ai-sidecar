@@ -2,6 +2,8 @@
 
 This directory separates the public guide from the service that calls the model. Browser code receives an API base URL. The Ollama key stays in Wix Secrets Manager or in the environment of an external backend. The maintained Wix implementation subset now lives at [`../wix-app/`](../wix-app/); the files under `deployment/wix/` preserve the earlier portability examples and roadmap.
 
+The shared backend also accepts `POST /api/warmup` from approved origins. The request has no user content and no credential. It asks Ollama to preload the configured model, applies a global cooldown, and keeps the model loaded for the configured duration. The server performs the same warm-up after startup. `FORTUNE_MODEL_WARMUP_COOLDOWN` defaults to 900 seconds and `FORTUNE_MODEL_KEEP_ALIVE` defaults to `30m`.
+
 ## Paths
 
 - `wix/ROADMAP.md` describes a private Wix app that installs the guide across Fortune's site.

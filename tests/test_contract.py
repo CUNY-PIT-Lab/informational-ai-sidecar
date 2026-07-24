@@ -446,6 +446,48 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         now[0] += 86400
         self.assertTrue(budget.claim("client-a"))
 
+    def test_model_warmup_loads_once_per_cooldown(self):
+        now = [100.0]
+        warmer = server.ModelWarmup(60, clock=lambda: now[0])
+        calls = []
+        self.assertTrue(warmer.ensure(lambda: calls.append("load")))
+        self.assertFalse(warmer.ensure(lambda: calls.append("load")))
+        self.assertEqual(calls, ["load"])
+        self.assertEqual(warmer.status(), "ready")
+        now[0] += 61
+        self.assertTrue(warmer.ensure(lambda: calls.append("load")))
+        self.assertEqual(calls, ["load", "load"])
+        now[0] += 59
+        warmer.mark_ready()
+        now[0] += 59
+        self.assertFalse(warmer.ensure(lambda: calls.append("load")))
+
+    def test_preload_uses_an_empty_request_and_keep_alive(self):
+        payloads = []
+        original_request = server.ollama_request
+        server.ollama_request = lambda payload: payloads.append(payload) or {}
+        try:
+            server.preload_model()
+        finally:
+            server.ollama_request = original_request
+        self.assertEqual(payloads, [{
+            "model": server.MODEL,
+            "stream": False,
+            "keep_alive": server.MODEL_KEEP_ALIVE,
+        }])
+
+    def test_warmup_endpoint_requires_an_allowed_origin(self):
+        handler = server.Handler.__new__(server.Handler)
+        handler.path = "/api/warmup"
+        handler.headers = {
+            "Origin": "https://unapproved.example",
+            "Host": "127.0.0.1:8790",
+        }
+        captured = {}
+        handler._json = lambda status, value: captured.update(status=status, payload=value)
+        handler.do_POST()
+        self.assertEqual(captured["status"], 403)
+
     def test_health_and_public_runtime_never_expose_the_provider_key(self):
         server_source = (DEMO / "server.py").read_text(encoding="utf-8")
         config_source = (DEMO / "config.js").read_text(encoding="utf-8")
@@ -472,6 +514,15 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("data.choices", app)
         self.assertIn("data.related", app)
         self.assertIn("page_context: pageContext()", app)
+
+    def test_pages_and_wix_preload_the_model_without_a_provider_key(self):
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        self.assertIn('apiUrl("/api/warmup")', app)
+        self.assertLess(app.index("warmupPromise = warmModel"), app.index("window.FortuneGuide ="))
+        self.assertIn('this.apiUrl("/api/warmup")', wix)
+        self.assertNotIn("OLLAMA_API_KEY", app)
+        self.assertNotIn("OLLAMA_API_KEY", wix)
 
     def test_static_fallback_is_staged_and_never_ends_without_a_route(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
@@ -543,6 +594,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertEqual(manifest["deploy"]["healthcheckPath"], "/health")
         env_template = (DEMO / ".env.example").read_text(encoding="utf-8")
         self.assertIn("OLLAMA_API_KEY=", env_template)
+        self.assertIn("FORTUNE_MODEL_WARMUP_COOLDOWN=900", env_template)
+        self.assertIn("FORTUNE_MODEL_KEEP_ALIVE=30m", env_template)
         self.assertNotRegex(env_template, r"OLLAMA_API_KEY=.+")
 
 

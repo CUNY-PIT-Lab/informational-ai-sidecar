@@ -21,6 +21,7 @@
   let modelReady = false;
   let answering = false;
   let activePageId = "";
+  let warmupPromise = null;
 
   function apiUrl(path) {
     return `${API_BASE}${path}`;
@@ -201,6 +202,13 @@
   }
 
   async function remoteAnswer(question) {
+    if (warmupPromise) {
+      try {
+        await warmupPromise;
+      } catch {
+        // The chat request can still succeed when a preload attempt fails.
+      }
+    }
     const response = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -209,6 +217,27 @@
     const data = await response.json();
     if (!response.ok || data.error) throw new Error(data.error || "The live model could not answer.");
     return data;
+  }
+
+  async function warmModel(modelName, pages) {
+    try {
+      const response = await fetch(apiUrl("/api/warmup"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!response.ok) throw new Error("Model warm-up failed");
+      const data = await response.json();
+      if (data.status !== "ready") throw new Error("Model warm-up unavailable");
+      modelStatus.textContent = `Live ${data.model || modelName || "model"} · ready`;
+      modelStatus.classList.add("model-ready");
+      return data;
+    } catch {
+      modelStatus.textContent = modelReady
+        ? `Live ${modelName || "model"} · page-first`
+        : `Source guide · ${pages} public pages`;
+      return null;
+    }
   }
 
   function showAnswer(data) {
@@ -264,8 +293,9 @@
       const data = await response.json();
       modelReady = Boolean(data.model_enabled);
       const pages = Number(data.indexed_pages) || Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
-      modelStatus.textContent = modelReady ? `Live ${data.model || "model"} · page-first` : `Source guide · ${pages} public pages`;
+      modelStatus.textContent = modelReady ? `Preparing ${data.model || "live model"}…` : `Source guide · ${pages} public pages`;
       modelStatus.classList.toggle("model-ready", modelReady);
+      if (modelReady) warmupPromise = warmModel(data.model, pages);
     } catch {
       const pages = Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
       modelReady = false;

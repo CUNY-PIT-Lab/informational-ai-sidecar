@@ -59,6 +59,13 @@ MODEL_CALLS_PER_DAY = bounded_env_int(
     minimum=1,
     maximum=5000,
 )
+MODEL_WARMUP_COOLDOWN = bounded_env_int(
+    "FORTUNE_MODEL_WARMUP_COOLDOWN",
+    default=900,
+    minimum=60,
+    maximum=3600,
+)
+MODEL_KEEP_ALIVE = os.environ.get("FORTUNE_MODEL_KEEP_ALIVE", "30m").strip() or "30m"
 
 CONTACT_URL = "https://www.fortunedigitalequity.org/contact"
 CALENDAR_URL = "https://www.fortunedigitalequity.org/calendar"
@@ -135,6 +142,101 @@ class ModelCallBudget:
 
 
 MODEL_CALL_BUDGET = ModelCallBudget(MODEL_CALLS_PER_HOUR, MODEL_CALLS_PER_DAY)
+
+
+class ModelWarmup:
+    """Load the model once per cooldown and collapse concurrent warm-up calls."""
+
+    def __init__(self, cooldown, clock=time.monotonic, wait_timeout=120):
+        self.cooldown = cooldown
+        self.clock = clock
+        self.wait_timeout = wait_timeout
+        self._lock = threading.Lock()
+        self._event = threading.Event()
+        self._last_ready = None
+        self._in_flight = False
+
+    def status(self):
+        with self._lock:
+            if self._in_flight:
+                return "warming"
+            if self._last_ready is not None and self.clock() - self._last_ready < self.cooldown:
+                return "ready"
+            return "idle"
+
+    def mark_ready(self):
+        with self._lock:
+            self._last_ready = self.clock()
+
+    def ensure(self, loader):
+        with self._lock:
+            if self._last_ready is not None and self.clock() - self._last_ready < self.cooldown:
+                return False
+            if self._in_flight:
+                event = self._event
+                owns_load = False
+            else:
+                self._in_flight = True
+                self._event = threading.Event()
+                event = self._event
+                owns_load = True
+
+        if owns_load:
+            try:
+                loader()
+            except Exception:
+                with self._lock:
+                    self._in_flight = False
+                    event.set()
+                raise
+            with self._lock:
+                self._last_ready = self.clock()
+                self._in_flight = False
+                event.set()
+            return True
+
+        if not event.wait(self.wait_timeout):
+            raise RuntimeError("Model warm-up timed out")
+        with self._lock:
+            if self._last_ready is None or self.clock() - self._last_ready >= self.cooldown:
+                raise RuntimeError("Model warm-up did not finish")
+        return False
+
+
+MODEL_WARMUP = ModelWarmup(MODEL_WARMUP_COOLDOWN)
+
+
+def ollama_request(payload):
+    request = urllib.request.Request(
+        "https://ollama.com/api/chat",
+        data=json.dumps(payload).encode(),
+        headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        error.read()
+        raise RuntimeError("Ollama Cloud returned an error") from error
+
+
+def preload_model():
+    """Send Ollama's documented empty request and retain the loaded model."""
+
+    ollama_request({
+        "model": MODEL,
+        "stream": False,
+        "keep_alive": MODEL_KEEP_ALIVE,
+    })
+
+
+def warm_model_quietly():
+    if not KEY:
+        return
+    try:
+        MODEL_WARMUP.ensure(preload_model)
+    except Exception:
+        pass
 
 
 def build_sources():
@@ -847,6 +949,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "per_client_hour": MODEL_CALLS_PER_HOUR,
                     "shared_day": MODEL_CALLS_PER_DAY,
                 },
+                "model_warmup": {
+                    "status": MODEL_WARMUP.status(),
+                    "cooldown_seconds": MODEL_WARMUP_COOLDOWN,
+                    "keep_alive": MODEL_KEEP_ALIVE,
+                },
             })
             return
         if parsed.path == "/api/sources":
@@ -878,11 +985,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if urllib.parse.urlsplit(self.path).path != "/api/chat":
+        path = urllib.parse.urlsplit(self.path).path
+        if path not in {"/api/chat", "/api/warmup"}:
             self.send_error(404)
             return
         if not origin_is_allowed(self.headers.get("Origin", ""), self.headers.get("Host", "")):
             self._json(403, {"error": "This browser origin is not allowed."})
+            return
+        if path == "/api/warmup":
+            if not KEY:
+                self._json(200, {"status": "disabled", "model": MODEL})
+                return
+            try:
+                warmed = MODEL_WARMUP.ensure(preload_model)
+                self._json(200, {
+                    "status": "ready",
+                    "model": MODEL,
+                    "warmed": warmed,
+                })
+            except Exception:
+                self._json(503, {
+                    "status": "unavailable",
+                    "model": MODEL,
+                })
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -958,25 +1083,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             ))
 
     def _ollama(self, messages):
-        payload = json.dumps({
+        data = ollama_request({
             "model": MODEL,
             "messages": messages,
             "stream": False,
             "think": False,
             "format": "json",
-        }).encode()
-        request = urllib.request.Request(
-            "https://ollama.com/api/chat",
-            data=payload,
-            headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                data = json.load(response)
-            return data.get("message", {}).get("content") or ""
-        except urllib.error.HTTPError as error:
-            error.read()
-            raise RuntimeError("Ollama Cloud returned an error") from error
+            "keep_alive": MODEL_KEEP_ALIVE,
+        })
+        MODEL_WARMUP.mark_ready()
+        return data.get("message", {}).get("content") or ""
 
     def _client_identifier(self):
         forwarded = self.headers.get("X-Forwarded-For", "")
@@ -1028,4 +1144,9 @@ if __name__ == "__main__":
         len(ANSWER_SOURCES),
     ))
     with ThreadingServer((HOST, PORT), Handler) as server:
+        threading.Thread(
+            target=warm_model_quietly,
+            name="fortune-model-warmup",
+            daemon=True,
+        ).start()
         server.serve_forever()
