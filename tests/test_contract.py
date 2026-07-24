@@ -522,6 +522,31 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn('.panel.expanded', wix)
         self.assertIn("this.revealResult()", wix)
 
+    def test_frontend_styles_preserve_responsive_and_accessibility_states(self):
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        dashboard = (DEMO / "wix-app" / "dashboard" / "provider-settings.html").read_text(encoding="utf-8")
+        for expected in (
+            "content-visibility: auto",
+            "contain: layout paint",
+            "scrollbar-gutter: stable",
+            "flex-wrap: nowrap",
+            "@media (prefers-reduced-motion: reduce)",
+            "@media (forced-colors: active)",
+        ):
+            self.assertIn(expected, styles)
+        self.assertIn("height: calc(100dvh - 16px)", styles)
+        self.assertIn("height: calc(100dvh - 16px)", wix)
+        self.assertIn(":focus-visible", wix)
+        self.assertIn(":focus-visible", dashboard)
+
+    def test_pages_prepare_the_live_backend_connection_before_loading_css(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        self.assertIn('rel="preconnect"', html)
+        self.assertIn('rel="dns-prefetch"', html)
+        self.assertLess(html.index('rel="preconnect"'), html.index('rel="stylesheet"'))
+        self.assertNotIn("OLLAMA_API_KEY", html)
+
     def test_member_access_appears_once_at_the_top_and_supports_profile_state(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
