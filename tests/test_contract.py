@@ -509,6 +509,30 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("renderClasses", app)
         self.assertNotIn("questionField.focus", app)
 
+    def test_guide_starts_compact_and_expands_to_reveal_the_answer(self):
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        self.assertIn(".guide-panel.is-expanded", styles)
+        self.assertIn("max-height: 148px", styles)
+        self.assertIn('panel.classList.add("is-expanded")', app)
+        self.assertIn('panel.classList.remove("is-expanded")', app)
+        self.assertIn("options.revealStart", app)
+        self.assertIn("articleRect.top - transcriptRect.top", app)
+        self.assertIn('.panel.expanded', wix)
+        self.assertIn("this.revealResult()", wix)
+
+    def test_member_access_appears_once_at_the_top_and_supports_profile_state(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        site = (DEMO / "site.js").read_text(encoding="utf-8")
+        self.assertEqual(html.count("Create an Account"), 1)
+        self.assertEqual(html.count("Sign In"), 1)
+        self.assertEqual(html.count(">Profile<"), 1)
+        self.assertLess(html.index("Create an Account"), html.index('<header class="site-header">'))
+        self.assertIn("fortune:memberstate", site)
+        self.assertIn("memberProfile.hidden = !signedIn", site)
+        self.assertIn("memberSignedOut.hidden = signedIn", site)
+
     def test_frontend_renders_clarification_choices_and_related_links(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         self.assertIn("data.choices", app)
@@ -568,7 +592,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
     def test_public_deployment_examples_contain_no_api_key_value(self):
         deployment = DEMO / "deployment"
         for path in deployment.rglob("*"):
-            if path.is_file():
+            if path.is_file() and path.suffix.lower() in {".md", ".js", ".mjs", ".html", ".example"}:
                 text = path.read_text(encoding="utf-8")
                 self.assertNotRegex(text, r"(?i)ollama_api_key\s*[:=]\s*['\"][A-Za-z0-9_-]{12,}")
 

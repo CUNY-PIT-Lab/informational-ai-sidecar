@@ -71,6 +71,16 @@
     requestAnimationFrame(() => transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" }));
   }
 
+  function revealResponse(article) {
+    panel.classList.add("is-expanded");
+    requestAnimationFrame(() => {
+      const articleRect = article.getBoundingClientRect();
+      const transcriptRect = transcript.getBoundingClientRect();
+      const top = transcript.scrollTop + articleRect.top - transcriptRect.top;
+      transcript.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+    });
+  }
+
   function appendMessage(role, message, options = {}) {
     const article = document.createElement("article");
     article.className = `chat-message ${role}`;
@@ -133,7 +143,8 @@
     }
 
     transcript.append(article);
-    scrollConversation();
+    if (options.revealStart) revealResponse(article);
+    else scrollConversation();
     return article;
   }
 
@@ -168,6 +179,7 @@
     if (!page) return;
     activePageId = page.id;
     history = [];
+    panel.classList.remove("is-expanded");
     transcript.replaceChildren();
     title.textContent = starter.heading;
     questionField.placeholder = starter.placeholder;
@@ -181,6 +193,7 @@
 
   function setBusy(value) {
     answering = value;
+    if (value) panel.classList.add("is-expanded");
     submitButton.disabled = value;
     questionField.disabled = value;
     panel.setAttribute("aria-busy", String(value));
@@ -196,6 +209,7 @@
       {
         destination: distinctDestination({ related: [{ title: "Contact Digital Equity staff", url: CONTACT_URL }] }),
         scope: "staff",
+        revealStart: true,
       },
     );
     history = [];
@@ -248,6 +262,7 @@
       destination,
       sources: data.sources,
       scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
+      revealStart: true,
     });
   }
 

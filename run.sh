@@ -16,6 +16,7 @@ if [[ "${1:-}" == "test" ]]; then
   "$NODE_EXE" --check "$DEMO_DIR/site.js"
   "$NODE_EXE" --check "$DEMO_DIR/app.js"
   "$NODE_EXE" --check "$DEMO_DIR/wix-app/site/fortune-guide-element.js"
+  "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/site/member-access.js"
   "$NODE_EXE" --check "$DEMO_DIR/wix-app/dashboard/provider-settings.js"
   "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/velo-backend/provider-config.web.js"
   "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/velo-backend/provider-secret.js"

@@ -21,6 +21,7 @@ wix-app/
 │   └── provider-settings.js
 ├── site/
 │   ├── embed.html
+│   ├── member-access.js
 │   └── fortune-guide-element.js
 └── velo-backend/
     ├── provider-config.web.js
@@ -29,6 +30,7 @@ wix-app/
 
 - `dashboard/` is the administrator-only key setup surface. A generated Wix dashboard extension supplies `window.FortuneWixAdmin` with `status()` and `saveProviderKey(value)` functions backed by `provider-config.web.js`.
 - `site/` contains the visitor-facing custom element and the `BODY_END` fragment for an embedded script extension.
+- `site/member-access.js` is a Wix master-page recipe for one top member control. Signed-out visitors see **Create an Account | Sign In**. Signed-in members see **Profile**. Remove any lower duplicate from the Wix editor.
 - `velo-backend/provider-config.web.js` uses `Permissions.Admin`, Wix Secrets API v2, and elevated calls to create or update the site secret.
 - `velo-backend/provider-secret.js` is backend-only. Chat code imports it and uses the returned value in the provider request. It must never be re-exported through a web method.
 
@@ -38,8 +40,9 @@ wix-app/
 2. Request the **Manage Secrets** app permission. Wix currently requires Members Area before code can create or manage a site secret. Secret retrieval does not require Members Area.
 3. Copy the dashboard and backend modules into the generated project. Bind the generated dashboard page to `provider-settings.html` and supply its adapter with the two administrator-only web methods.
 4. Add `site/embed.html` to the embedded script extension at `BODY_END`. Host `fortune-guide-element.js` through the generated app or another approved HTTPS asset host.
-5. Connect the visitor element to a Wix backend chat endpoint that imports `getProviderKey()` from `provider-secret.js`, runs the same privacy and source checks as `server.py`, and returns only the bounded response contract.
-6. Build and release the app version, install it through its direct install URL, then verify the dashboard setup page and a published test site before attaching it to Fortune's production site.
+5. Add the four top-header elements described in `site/member-access.js` to the Wix master page, copy the recipe into its page code, and remove the second account control from the page body.
+6. Connect the visitor element to a Wix backend chat endpoint that imports `getProviderKey()` from `provider-secret.js`, runs the same privacy and source checks as `server.py`, and returns only the bounded response contract.
+7. Build and release the app version, install it through its direct install URL, then verify the dashboard setup page and a published test site before attaching it to Fortune's production site.
 
 The repository omits Wix-generated app, component, and extension IDs because they belong to the app created in the owner's Wix account.
 

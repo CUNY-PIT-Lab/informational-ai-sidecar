@@ -20,6 +20,8 @@
     byUrl: new Map(),
     current: null,
   };
+  const memberSignedOut = document.querySelector("#member-signed-out");
+  const memberProfile = document.querySelector("#member-profile");
 
   const BOILERPLATE = [
     /double click on the text box/i,
@@ -31,6 +33,23 @@
 
   function canonicalUrl(value) {
     return Core.canonicalUrl(value);
+  }
+
+  function safeMemberUrl(value, fallback = `${SITE_ORIGIN}/members`) {
+    try {
+      const url = new URL(String(value || fallback), SITE_ORIGIN);
+      if (url.protocol !== "https:" || !/^(?:www\.)?fortunedigitalequity\.org$/i.test(url.hostname)) return fallback;
+      return url.href;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function setMemberState(context = {}) {
+    const signedIn = Boolean(context?.signedIn);
+    memberSignedOut.hidden = signedIn;
+    memberProfile.hidden = !signedIn;
+    if (signedIn) memberProfile.href = safeMemberUrl(context.profileUrl);
   }
 
   function pathFor(value) {
@@ -354,6 +373,8 @@
     const page = state.byUrl.get(selectedUrl()) || state.byUrl.get(`${SITE_ORIGIN}/`);
     if (page) renderPage(page);
   });
+  window.addEventListener("fortune:memberstate", event => setMemberState(event.detail));
+  setMemberState(window.FORTUNE_MEMBER_CONTEXT);
 
   const ready = initialize().catch(error => {
     const loading = document.querySelector("#page-loading");
@@ -371,6 +392,7 @@
     hrefFor,
     isKnown: value => state.byUrl.has(canonicalUrl(value)),
     navigate,
+    setMemberState,
     staticAnswer,
   });
 })();

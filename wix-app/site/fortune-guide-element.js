@@ -54,14 +54,18 @@
           }
           .panel {
             width: min(420px, calc(100vw - 24px));
-            max-height: min(720px, calc(100vh - 24px));
-            overflow: auto;
+            max-height: min(520px, calc(100dvh - 24px));
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
             border: 1px solid #8293a2;
             border-radius: 14px;
             background: #fff;
             color: var(--guide-ink);
             box-shadow: 0 12px 34px rgba(23, 39, 52, .24);
+            transition: height .16s ease, max-height .16s ease;
           }
+          .panel.expanded { height: min(760px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); }
           .panel[hidden] { display: none; }
           .head {
             display: flex;
@@ -87,7 +91,7 @@
             text-decoration: underline;
             cursor: pointer;
           }
-          .body { padding: 20px; }
+          .body { min-height: 0; overflow: auto; padding: 16px 20px 20px; }
           label { display: block; margin-bottom: 8px; font-size: 18px; font-weight: 700; }
           .row { display: flex; gap: 8px; }
           input {
@@ -150,6 +154,7 @@
 
       this.toggleButton = root.querySelector(".toggle");
       this.panel = root.querySelector(".panel");
+      this.body = root.querySelector(".body");
       this.closeButton = root.querySelector(".close");
       this.form = root.querySelector("form");
       this.input = root.querySelector("input");
@@ -205,6 +210,7 @@
       }
 
       this.sendButton.disabled = true;
+      this.panel.classList.add("expanded");
       this.status.textContent = "Checking Fortune's approved pages…";
       this.result.hidden = true;
 
@@ -231,6 +237,7 @@
           this.history = this.history.slice(-6);
         }
         this.render(payload);
+        this.revealResult();
         this.status.textContent = payload.model_called
           ? `Answer ready from ${payload.model || "the live model"}.`
           : "Showing approved source navigation without a model call.";
@@ -240,6 +247,15 @@
       } finally {
         this.sendButton.disabled = false;
       }
+    }
+
+    revealResult() {
+      requestAnimationFrame(() => {
+        const resultRect = this.result.getBoundingClientRect();
+        const bodyRect = this.body.getBoundingClientRect();
+        const top = this.body.scrollTop + resultRect.top - bodyRect.top;
+        this.body.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+      });
     }
 
     warmModel() {
@@ -293,6 +309,7 @@
     render(payload) {
       this.result.replaceChildren();
       this.result.hidden = false;
+      this.panel.classList.add("expanded");
 
       if (payload.kind === "clarify") {
         this.addText("p", payload.message || "Which kind of help do you mean?", "answer");
@@ -377,6 +394,7 @@
     renderError(message) {
       this.result.replaceChildren();
       this.result.hidden = false;
+      this.panel.classList.add("expanded");
       this.addText("p", message, "answer");
       this.addLinks("Keep going", [{
         title: "Digital Equity home",
@@ -386,6 +404,7 @@
         label: "Ask the live guide",
         available: true
       });
+      this.revealResult();
     }
   }
 
