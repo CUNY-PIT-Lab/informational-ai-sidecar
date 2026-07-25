@@ -114,8 +114,8 @@ def render_shell(template: str, route: dict[str, str]) -> str:
     depth = 0 if route["path"] == "/" else len(route["path"].strip("/").split("/"))
     prefix = "../" * depth
     shell = template.replace(ROUTE_MARKER, route_script(route, prefix), 1)
-    for asset in ("styles.css", "config.js", "guide-core.js", "site.js", "app.js"):
-        shell = shell.replace(f'href="{asset}"', f'href="{prefix}{asset}"')
+    shell = shell.replace('href="styles.css', f'href="{prefix}styles.css')
+    for asset in ("config.js", "guide-core.js", "site.js", "app.js"):
         shell = shell.replace(f'src="{asset}"', f'src="{prefix}{asset}"')
     return shell
 

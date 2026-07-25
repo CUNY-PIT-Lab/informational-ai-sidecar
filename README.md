@@ -51,7 +51,7 @@ Run the key-free tests and check that the index can produce all route shells:
 python3 scripts/build_pages.py --check-index
 ```
 
-The test launcher runs 75 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 11 browser-core unit tests for page families, prompts, staged evidence, route generation, and client-side redaction.
+The test launcher runs 76 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 11 browser-core unit tests for page families, prompts, staged evidence, route generation, and client-side redaction.
 
 Build the static GitHub Pages output:
 

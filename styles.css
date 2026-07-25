@@ -469,13 +469,21 @@ a:hover { text-decoration-thickness: 2px; }
   .page-summary { font-size: 22px; }
   .site-footer { flex-direction: column; padding-bottom: 104px; }
   .guide { right: 8px; bottom: 8px; width: calc(100vw - 16px); }
-  .guide-panel { max-height: min(520px, calc(100dvh - 72px)); }
+  .guide-panel { max-height: min(600px, calc(100dvh - 16px)); }
   .guide-panel.is-expanded { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
-  .chat-transcript { max-height: min(148px, 24dvh); }
-  .guide-panel.is-expanded .chat-transcript { max-height: none; }
+  .chat-transcript {
+    min-height: 138px;
+    max-height: min(180px, 28dvh);
+    flex: 0 0 auto;
+  }
+  .guide-panel.is-expanded .chat-transcript {
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 auto;
+  }
 }
 
-@media (max-width: 430px) {
+@media (max-width: 520px) {
   .site-brand-name { font-size: 21px; }
   .page-title { min-height: 128px; padding-block: 30px; }
   .page-title h1 { font-size: 36px; }
@@ -485,9 +493,25 @@ a:hover { text-decoration-thickness: 2px; }
   .guide-header, .chat-transcript, .chat-form, .guide-footer { padding-inline: 16px; }
   .chat-suggestions { padding-inline: 16px; }
   .guide-header h2 { font-size: 20px; }
-  .chat-input-row { grid-template-columns: 1fr; }
-  .chat-input-row button { min-height: 46px; }
-  .privacy-copy { font-size: 13px; }
+  .guide-panel:not(.is-expanded) .chat-transcript { min-height: 145px; }
+  .chat-input-row { grid-template-columns: minmax(0, 1fr) 72px; }
+  .chat-input-row textarea {
+    min-height: 52px;
+    max-height: 72px;
+    resize: none;
+  }
+  .chat-input-row button { min-height: 52px; }
+  .privacy-copy { font-size: 12px; line-height: 1.35; }
+  .guide-panel.is-expanded .guide-header { padding-block: 10px 9px; }
+  .guide-panel.is-expanded .chat-transcript { padding-block: 12px 16px; }
+  .guide-panel.is-expanded .chat-form { gap: 6px; padding-block: 8px; }
+  .guide-panel.is-expanded .chat-input-row textarea {
+    min-height: 48px;
+    max-height: 56px;
+  }
+  .guide-panel.is-expanded .chat-input-row button { min-height: 48px; }
+  .guide-panel.is-expanded .privacy-copy { font-size: 11.5px; line-height: 1.3; }
+  .guide-panel.is-expanded .guide-footer { min-height: 44px; padding-block: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

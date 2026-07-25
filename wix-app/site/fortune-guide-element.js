@@ -59,7 +59,7 @@
           .toggle:hover { border-color: var(--guide-blue); box-shadow: 0 7px 22px rgba(23, 39, 52, .2); transform: translateY(-1px); }
           .panel {
             width: min(440px, calc(100vw - 24px));
-            max-height: min(520px, calc(100dvh - 24px));
+            max-height: min(600px, calc(100dvh - 24px));
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -145,7 +145,10 @@
             :host { inset: auto 8px 8px 8px; }
             .panel { width: 100%; max-height: calc(100dvh - 16px); }
             .panel.expanded { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
-            .row { flex-direction: column; }
+            .row { align-items: stretch; }
+            .send { width: 72px; padding-inline: 8px; }
+            .panel.expanded .head { padding-block: 10px 9px; }
+            .panel.expanded .body { padding-block: 12px 16px; }
           }
           @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {

@@ -540,6 +540,17 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn(":focus-visible", wix)
         self.assertIn(":focus-visible", dashboard)
 
+    def test_mobile_guide_prioritizes_model_text_over_composer_height(self):
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        self.assertIn("@media (max-width: 520px)", styles)
+        self.assertIn(".guide-panel:not(.is-expanded) .chat-transcript { min-height: 145px; }", styles)
+        self.assertIn("grid-template-columns: minmax(0, 1fr) 72px", styles)
+        self.assertIn(".guide-panel.is-expanded .chat-transcript", styles)
+        self.assertIn(".guide-panel.is-expanded .privacy-copy", styles)
+        self.assertNotIn(".chat-input-row { grid-template-columns: 1fr; }", styles)
+        self.assertIn(".send { width: 72px;", wix)
+
     def test_pages_prepare_the_live_backend_connection_before_loading_css(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         self.assertIn('rel="preconnect"', html)
