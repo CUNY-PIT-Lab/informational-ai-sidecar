@@ -7,6 +7,7 @@
   const toggle = document.querySelector("#guide-toggle");
   const closeButton = document.querySelector("#guide-close");
   const title = document.querySelector("#guide-title");
+  const guideBody = document.querySelector("#guide-body");
   const transcript = document.querySelector("#chat-transcript");
   const suggestions = document.querySelector("#chat-suggestions");
   const form = document.querySelector("#question-form");
@@ -68,16 +69,16 @@
   }
 
   function scrollConversation() {
-    requestAnimationFrame(() => transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" }));
+    requestAnimationFrame(() => guideBody.scrollTo({ top: guideBody.scrollHeight, behavior: "smooth" }));
   }
 
   function revealResponse(article) {
     panel.classList.add("is-expanded");
     requestAnimationFrame(() => {
       const articleRect = article.getBoundingClientRect();
-      const transcriptRect = transcript.getBoundingClientRect();
-      const top = transcript.scrollTop + articleRect.top - transcriptRect.top;
-      transcript.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
+      const bodyRect = guideBody.getBoundingClientRect();
+      const top = guideBody.scrollTop + articleRect.top - bodyRect.top;
+      guideBody.scrollTo({ top: Math.max(0, top - 8), behavior: "smooth" });
     });
   }
 
@@ -144,6 +145,9 @@
 
     transcript.append(article);
     if (options.revealStart) revealResponse(article);
+    else if (options.preserveTop) {
+      requestAnimationFrame(() => guideBody.scrollTo({ top: 0, behavior: "auto" }));
+    }
     else scrollConversation();
     return article;
   }
@@ -188,7 +192,7 @@
     let greeting = `You’re on ${pageTitle}. Ask about this page, or tell me what you’re trying to do and I’ll take you to the right section.`;
     if (starter.family === "archive") greeting = `This is a historical page. Tell me what current information you need and I’ll take you to the right section.`;
     if (starter.family === "excluded") greeting = `This route is not reproduced in the public demo. Tell me what current information you need and I’ll take you to a public section.`;
-    appendMessage("assistant", greeting);
+    appendMessage("assistant", greeting, { preserveTop: true });
   }
 
   function setBusy(value) {
