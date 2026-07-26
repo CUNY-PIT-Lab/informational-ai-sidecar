@@ -385,8 +385,24 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources("computer class")
         raw = '{"kind":"answer","message":"' + "word " * 120 + '","reason":"' + "why " * 50 + '","source_ids":["trainings"]}'
         result = server.parse_model_json(raw, "computer class", retrieved)
-        self.assertLessEqual(len(result["message"].split()), 90)
-        self.assertLessEqual(len(result["reason"].split()), 30)
+        self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
+        self.assertLessEqual(len(result["reason"].split()), server.MAX_REASON_WORDS)
+
+    def test_grounded_answers_use_short_source_extracts(self):
+        for question in (
+            "What does the program offer?",
+            "Can I get a free laptop?",
+            "When is the next Excel class?",
+        ):
+            retrieved = server.retrieve_sources(question)
+            raw = json.dumps({
+                "kind": "answer",
+                "message": "Model prose is not shown.",
+                "reason": "Use the sources.",
+                "source_ids": [source["id"] for source in retrieved[:2]],
+            })
+            result = server.parse_model_json(raw, question, retrieved)
+            self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 
     def test_long_answers_prefer_a_complete_sentence_boundary(self):
         text = ("A useful first sentence has enough words to carry a complete participant-facing instruction clearly. "
@@ -514,11 +530,13 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn(".guide-panel.is-expanded", styles)
-        self.assertIn("max-height: 148px", styles)
+        self.assertIn("grid-template-rows: auto minmax(0, 1fr) auto auto", styles)
+        self.assertIn(".guide-body", styles)
+        self.assertIn("overflow-y: auto", styles)
         self.assertIn('panel.classList.add("is-expanded")', app)
         self.assertIn('panel.classList.remove("is-expanded")', app)
         self.assertIn("options.revealStart", app)
-        self.assertIn("articleRect.top - transcriptRect.top", app)
+        self.assertIn("articleRect.top - bodyRect.top", app)
         self.assertIn('.panel.expanded', wix)
         self.assertIn("this.revealResult()", wix)
 
@@ -544,9 +562,11 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn("@media (max-width: 520px)", styles)
-        self.assertIn(".guide-panel:not(.is-expanded) .chat-transcript { min-height: 145px; }", styles)
+        self.assertIn("height: min(620px, calc(100dvh - 16px))", styles)
+        self.assertIn(".guide-panel.is-expanded", styles)
+        self.assertIn(".guide-header, .guide-body, .chat-form, .guide-footer", styles)
         self.assertIn("grid-template-columns: minmax(0, 1fr) 72px", styles)
-        self.assertIn(".guide-panel.is-expanded .chat-transcript", styles)
+        self.assertIn(".guide-panel.is-expanded .guide-body", styles)
         self.assertIn(".guide-panel.is-expanded .privacy-copy", styles)
         self.assertNotIn(".chat-input-row { grid-template-columns: 1fr; }", styles)
         self.assertIn(".send { width: 72px;", wix)
@@ -596,6 +616,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("related:", fallback)
         self.assertIn("handoff_url:", fallback)
         self.assertIn("model_called: false", fallback)
+        self.assertIn("const BOT_MESSAGE_WORD_LIMIT = 48", site)
+        self.assertIn("message: clipWords(message, BOT_MESSAGE_WORD_LIMIT)", fallback)
         self.assertIn("distinctDestination(data)", app)
 
     def test_page_families_supply_specific_chat_prompts(self):

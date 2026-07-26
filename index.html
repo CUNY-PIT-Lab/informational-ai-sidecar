@@ -10,7 +10,7 @@
   <title>Fortune Digital Equity · guide demonstration</title>
   <link rel="preconnect" href="https://guide-api-production-a1a1.up.railway.app" crossorigin>
   <link rel="dns-prefetch" href="//guide-api-production-a1a1.up.railway.app">
-  <link rel="stylesheet" href="styles.css?v=20260725-mobile-reading">
+  <link rel="stylesheet" href="styles.css?v=20260726-readable-panel">
 </head>
 <body>
   <a class="skip-link" href="#page-content">Skip to page information</a>
@@ -76,8 +76,10 @@
         <button class="icon-button" id="guide-close" type="button" aria-label="Close Digital Equity guide">Close</button>
       </header>
 
-      <div class="chat-transcript" id="chat-transcript" aria-live="polite" aria-label="Guide conversation"></div>
-      <div class="chat-suggestions" id="chat-suggestions" aria-label="Questions about this page"></div>
+      <div class="guide-body" id="guide-body">
+        <div class="chat-transcript" id="chat-transcript" aria-live="polite" aria-label="Guide conversation"></div>
+        <div class="chat-suggestions" id="chat-suggestions" aria-label="Questions about this page"></div>
+      </div>
 
       <form class="chat-form" id="question-form">
         <label for="question">Ask about this page</label>
@@ -85,7 +87,7 @@
           <textarea id="question" name="question" maxlength="600" required rows="2" placeholder="What would you like to know?"></textarea>
           <button type="submit">Ask</button>
         </div>
-        <p class="privacy-copy"><strong>Do not enter personally identifiable information (PII).</strong> This includes your six-digit Fortune ID, name, contact details, case information, or health information.</p>
+        <p class="privacy-copy"><strong>Keep personally identifiable information (PII) private.</strong> Never enter your six-digit Fortune ID, name, contact, case, or health details.</p>
       </form>
 
       <footer class="guide-footer">

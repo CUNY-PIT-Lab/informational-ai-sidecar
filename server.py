@@ -37,6 +37,10 @@ ALLOWED_ORIGINS = {
 MAX_BODY = 64 * 1024
 MAX_HISTORY = 6
 MAX_RETRIEVED = 7
+MAX_MESSAGE_WORDS = 48
+MAX_REASON_WORDS = 18
+MAX_EVIDENCE_WORDS = 32
+MAX_EVIDENCE_SENTENCES = 2
 
 
 def bounded_env_int(name, default, minimum, maximum):
@@ -486,7 +490,7 @@ def source_excerpt(source, query, limit=4200):
     return "\n".join(selected)
 
 
-def grounded_evidence_sentences(source, query, limit=74):
+def grounded_evidence_sentences(source, query, limit=MAX_EVIDENCE_WORDS):
     """Select short factual sentences that already exist in an approved record."""
     query_terms = set(tokens(query))
     rows = []
@@ -564,7 +568,7 @@ def grounded_evidence_sentences(source, query, limit=74):
             continue
         selected.append(sentence)
         word_count += len(words)
-        if len(selected) == 3 or word_count >= limit:
+        if len(selected) == MAX_EVIDENCE_SENTENCES or word_count >= limit:
             break
     return " ".join(selected)
 
@@ -581,7 +585,7 @@ def grounded_answer_message(question, sources, retrieval_scope):
     prefix = "On this page: " if retrieval_scope == "page" else f"The {title} page says: "
     message = prefix + evidence
     if source.get("volatile"):
-        message += " Use the live page or Digital Equity staff to confirm current dates, eligibility, locations, inventory, and availability."
+        message += " Confirm dates, eligibility, location, inventory, and availability on the live page or with staff."
     return message
 
 
@@ -773,8 +777,8 @@ def response_contract(
         retrieval_scope = "staff" if kind in {"privacy", "handoff"} else "site"
     return {
         "kind": kind,
-        "message": clip_words(message, 90),
-        "reason": clip_words(reason, 30),
+        "message": clip_words(message, MAX_MESSAGE_WORDS),
+        "reason": clip_words(reason, MAX_REASON_WORDS),
         "sources": source_payload(sources[:3]),
         "related": related_links(question, sources),
         "choices": choices or [],
@@ -789,8 +793,8 @@ def response_contract(
 def privacy_response(question=""):
     return response_contract(
         kind="privacy",
-        message="Never enter personally identifiable information (PII) in this chat, including your six-digit Fortune ID, name, contact information, case information, or health information. Remove those details and use an approved staff channel instead.",
-        reason="This Ollama Cloud demonstration is for public or made-up questions only.",
+        message="Remove personally identifiable information (PII), including your six-digit Fortune ID, name, contact information, case information, or health information. Use an approved staff channel.",
+        reason="This demonstration accepts public or made-up questions only.",
         sources=[SOURCE_BY_ID["contact"]],
         question=question or "contact Digital Equity staff",
         model_called=False,
@@ -800,8 +804,8 @@ def privacy_response(question=""):
 def human_handoff_response(question=""):
     return response_contract(
         kind="handoff",
-        message="This public Digital Equity guide does not have an approved answer for that request. Please use Fortune's official staff route, and do not include case, health, or other personal details here.",
-        reason="A person should handle sensitive, case-specific, or urgent needs through an approved channel.",
+        message="This guide cannot answer that request. Use Fortune's official staff route without including case, health, or other personal details.",
+        reason="A person should handle sensitive or urgent needs.",
         sources=[SOURCE_BY_ID["contact"]],
         question=question or "contact Fortune staff",
         model_called=False,
@@ -818,7 +822,7 @@ When a request is vague, ask exactly one short clarifying question. When it is c
 
 For legal, parole, case-specific, housing, health, benefits, emotional-crisis, or emergency questions, do not offer advice. Give a brief privacy reminder and route to a person. This source pack has no Fortune-approved emergency protocol.
 
-Keep the tone patient, practical, and non-evaluative. Respond in the user's language when possible. Do not use em dashes. Keep the participant-facing message under 90 words and the reason under 30 words.
+Keep the tone patient, practical, and non-evaluative. Respond in the user's language when possible. Do not use em dashes. Keep the participant-facing message under 48 words and the reason under 18 words. Prefer one or two short sentences.
 
 Return only a JSON object with this exact shape:
 {"kind":"clarify|answer|handoff","message":"participant-facing text","reason":"short reason or empty string","source_ids":["one to three IDs exactly as supplied"]}
