@@ -385,8 +385,24 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources("computer class")
         raw = '{"kind":"answer","message":"' + "word " * 120 + '","reason":"' + "why " * 50 + '","source_ids":["trainings"]}'
         result = server.parse_model_json(raw, "computer class", retrieved)
-        self.assertLessEqual(len(result["message"].split()), 90)
-        self.assertLessEqual(len(result["reason"].split()), 30)
+        self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
+        self.assertLessEqual(len(result["reason"].split()), server.MAX_REASON_WORDS)
+
+    def test_grounded_answers_use_short_source_extracts(self):
+        for question in (
+            "What does the program offer?",
+            "Can I get a free laptop?",
+            "When is the next Excel class?",
+        ):
+            retrieved = server.retrieve_sources(question)
+            raw = json.dumps({
+                "kind": "answer",
+                "message": "Model prose is not shown.",
+                "reason": "Use the sources.",
+                "source_ids": [source["id"] for source in retrieved[:2]],
+            })
+            result = server.parse_model_json(raw, question, retrieved)
+            self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 
     def test_long_answers_prefer_a_complete_sentence_boundary(self):
         text = ("A useful first sentence has enough words to carry a complete participant-facing instruction clearly. "
@@ -600,6 +616,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("related:", fallback)
         self.assertIn("handoff_url:", fallback)
         self.assertIn("model_called: false", fallback)
+        self.assertIn("const BOT_MESSAGE_WORD_LIMIT = 48", site)
+        self.assertIn("message: clipWords(message, BOT_MESSAGE_WORD_LIMIT)", fallback)
         self.assertIn("distinctDestination(data)", app)
 
     def test_page_families_supply_specific_chat_prompts(self):

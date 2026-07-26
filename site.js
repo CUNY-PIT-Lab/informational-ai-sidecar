@@ -13,6 +13,7 @@
   const RESERVE_URL = `${SITE_ORIGIN}/reserve`;
   const ASSET_BASE = String(window.FORTUNE_ASSET_BASE || "");
   const STATIC_ROUTES = Boolean(window.FORTUNE_STATIC_ROUTES);
+  const BOT_MESSAGE_WORD_LIMIT = 48;
 
   const state = {
     index: null,
@@ -224,16 +225,16 @@
     const best = localEvidence ? current : ranked[0].page;
     const blocks = usefulBlocks(best);
     const selectedBlock = blockForQuestion(best, question);
-    const excerpt = clipWords(selectedBlock || best?.description || "The public Digital Equity pages list program information, classes, resources, and contact routes.", 46);
+    const excerpt = clipWords(selectedBlock || best?.description || "The public Digital Equity pages list program information, classes, resources, and contact routes.", 28);
     const bestTitle = cleanTitle(best?.title);
     const onCurrentPage = scope === "page";
     let message = onCurrentPage ? `This page says: ${excerpt}` : `${bestTitle} is the closest public page. ${excerpt}`;
 
     const statusBlock = blocks.find(block => /\b(?:on hold|not available|ended|coming soon)\b/i.test(block));
-    if (statusBlock && statusBlock !== selectedBlock) message += ` ${clipWords(statusBlock, 18)}`;
+    if (statusBlock && statusBlock !== selectedBlock) message += ` ${clipWords(statusBlock, 12)}`;
 
     const volatile = Boolean(best?.volatile) || /date|time|schedule|available|availability|eligible|eligibility|inventory|location|register|session/i.test(question);
-    if (volatile) message += " Use the current page or staff contact to confirm dates, eligibility, locations, and availability.";
+    if (volatile) message += " Confirm current dates and availability on the live page or with staff.";
 
     let destination = ranked.map(row => row.page.url).find(url => canonicalUrl(url) !== canonicalUrl(current?.url));
     if (!destination) destination = fallbackDestination(question, current);
@@ -245,7 +246,7 @@
       .slice(0, 3);
     return {
       kind: "answer",
-      message: clipWords(message, 96),
+      message: clipWords(message, BOT_MESSAGE_WORD_LIMIT),
       reason: "The answer uses the current public site index for this page.",
       choices: [],
       sources: sourcePages.map(page => linkRecord(page.url)),
