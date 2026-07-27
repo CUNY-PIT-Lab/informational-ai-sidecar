@@ -94,6 +94,7 @@ The refresh check has read-only repository permission. It does not commit, push,
 The [deployment overview](deployment/README.md) carries the shared API contract.
 
 - [Wix app subset](wix-app/README.md) contains the administrator key form, Admin-only Wix Secrets Manager methods, backend-only secret reader, embedded-script fragment, and site guide element. [The earlier roadmap](deployment/wix/ROADMAP.md) retains the extension-selection history.
+- [Copilot Studio bridge](deployment/wix/copilot-studio-bridge/README.md) is an optional, separately hosted Direct Line embed for evaluating Fortune's Microsoft agent on Wix without exposing its channel secret. It is limited to approved public information and does not replace the guide's pre-provider privacy and source-authority checks.
 - [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 184-route public mock, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
 
 The Pages publication workflow is [`.github/workflows/pages.yml`](.github/workflows/pages.yml). It builds the allowlisted `_site/` directory and deploys that artifact after changes reach `main` or an authorized manual run begins.
