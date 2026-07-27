@@ -21,6 +21,8 @@ Every index record carries its canonical URL, authority state, content hash, pro
 
 The generated mock site uses the canonical path for each indexed URL. Opening the guide on a class, device, support, calendar, event, program, news, or archive page changes the guide heading, suggested questions, and page context. The interface keeps the initial state small: one question field, an explicit privacy notice, and a few prompts drawn from the current page.
 
+First-time visitors receive a five-step walkthrough of the informational sidecar. It shows that the current page establishes the first retrieval boundary, asks the visitor to try one of the page-specific suggested questions, opens the answer's source disclosure, and explains the short per-tab context window. The walkthrough can be skipped, is not repeated after dismissal or completion, and remains available through **How this works** in the guide footer. Add `?tour=1` to a demonstration URL to force the walkthrough for review.
+
 After a question:
 
 1. The browser starts a credential-free warm-up request while the visitor reads the page. The backend sends Ollama's documented empty preload request and keeps the model loaded for the configured period.
@@ -38,7 +40,7 @@ Archive, navigation, and excluded routes still receive a tailored guide. Their p
 
 The guide tells visitors: **Do not enter your six-digit Fortune ID, name, phone number, email, address, case details, or other personal information.** The browser replaces a message containing a likely six-digit Fortune ID with a privacy notice before adding it to chat history or making a network request. The backend applies the same hold before retrieval or a model call. Names, contact details, case information, health information, passwords, and similar details follow the same pre-model route.
 
-The local server writes no query log and has no chat database. Browser history exists only in memory for the current tab and is capped at six turns. Open-ended questions sent to the active model must use public or invented information.
+The local server writes no query log and has no chat database. Browser history exists only in memory for the current tab and is capped at three recent exchanges (six messages). Moving to another mock page clears that history. Open-ended questions sent to the active model must use public or invented information.
 
 Internal Drive notes and meeting transcripts may shape navigation, ambiguity, transparency, and handoff tests. They are not participant-facing factual sources. A statement enters the public answer index only after Fortune assigns a source URL, owner, approval date, and next review date. See [deployment/TRANSCRIPT-INGESTION.md](deployment/TRANSCRIPT-INGESTION.md).
 
@@ -104,9 +106,10 @@ The demonstration has a dedicated public repository at [zmuhls/fortune-digital-e
 
 ## Suggested meeting path
 
-1. Open two different mock routes and show that the sidecar title and prompts follow the current page.
-2. Ask a page-specific question and follow the related route to another mock page.
-3. Enter `device` to show one clarifying question.
-4. Ask about an Excel topic to show retrieval of a specific class page.
-5. Enter `123456` to show the pre-model Fortune ID privacy hold.
-6. Stop the backend and show that the static page context and source links remain available.
+1. Open a route with `?tour=1` and complete the first-visit walkthrough, including one suggested page question.
+2. Open a second mock route and show that the sidecar title, prompts, and context counter reset with the page.
+3. Ask a page-specific question and follow the related route to another mock page.
+4. Enter `device` to show one clarifying question.
+5. Ask about an Excel topic to show retrieval of a specific class page.
+6. Enter `123456` to show the pre-model Fortune ID privacy hold.
+7. Stop the backend and show that the static page context and source links remain available.

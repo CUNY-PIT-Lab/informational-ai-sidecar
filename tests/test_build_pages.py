@@ -81,10 +81,10 @@ class RouteShellTests(unittest.TestCase):
         shell = build_pages.render_shell(self.template, route)
 
         self.assertNotIn(build_pages.ROUTE_MARKER, shell)
-        self.assertIn('href="../../styles.css?v=20260726-readable-panel"', shell)
-        self.assertIn('src="../../config.js"', shell)
-        self.assertIn('src="../../site.js"', shell)
-        self.assertIn('src="../../app.js"', shell)
+        self.assertIn('href="../../styles.css?v=20260727-sidecar-tour-2"', shell)
+        self.assertIn('src="../../app.js?v=20260727-sidecar-tour-2"', shell)
+        self.assertIn('src="../../config.js?v=20260727-sidecar-tour-2"', shell)
+        self.assertIn('src="../../site.js?v=20260727-sidecar-tour-2"', shell)
         self.assertIn('window.FORTUNE_ASSET_BASE = "../../"', shell)
         self.assertIn("window.FORTUNE_STATIC_ROUTES = true", shell)
         self.assertIn(
@@ -106,8 +106,9 @@ class RouteShellTests(unittest.TestCase):
         }
         shell = build_pages.render_shell(self.template, route)
 
-        self.assertIn('href="styles.css?v=20260726-readable-panel"', shell)
-        self.assertIn('src="site.js"', shell)
+        self.assertIn('href="styles.css?v=20260727-sidecar-tour-2"', shell)
+        self.assertIn('src="app.js?v=20260727-sidecar-tour-2"', shell)
+        self.assertIn('src="site.js?v=20260727-sidecar-tour-2"', shell)
         self.assertIn('window.FORTUNE_ASSET_BASE = ""', shell)
         self.assertNotIn('href="../styles.css"', shell)
 
