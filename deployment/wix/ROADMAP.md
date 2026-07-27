@@ -33,6 +33,12 @@ The browser sends the visitor's question, up to six recent in-memory messages, a
 
 The backend resolves `page_context` against the approved site index and never treats browser-supplied text as a factual source. It sanitizes `history`, checks the current page first, and sends only that page record to the model when it can answer the question. It searches the broader approved index only when the current page lacks the required information. If neither scope contains evidence, it skips the model call and returns a staff route.
 
+## Optional Copilot Studio evaluation
+
+[`copilot-studio-bridge/`](copilot-studio-bridge/README.md) provides a separately hosted Wix iframe and Direct Line token broker for evaluating the agent already provisioned in Microsoft Copilot Studio. The Direct Line secret remains in the server environment, while the browser receives one short-lived conversation token.
+
+This bridge does not run the source-first retrieval ladder or privacy hold implemented by `server.py`. Use it only with a Copilot agent restricted to reviewed public information. Do not treat it as the production replacement for the shared guide until equivalent pre-provider privacy, authority, source, and handoff checks are demonstrated.
+
 ## Initial private-app setup
 
 1. Create a private app with the current unified Wix CLI and generate an embedded-script extension. Keep the generated extension ID and manifest files from Wix; this scaffold does not invent them.

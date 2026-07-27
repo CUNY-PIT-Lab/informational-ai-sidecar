@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="widget-bootstrap" content="__BOOTSTRAP__">
+    <title>__WIDGET_TITLE__</title>
+    <link rel="stylesheet" href="/static/widget.css">
+    <script
+      crossorigin="anonymous"
+      src="https://cdn.botframework.com/botframework-webchat/__WEBCHAT_VERSION__/webchat.js"
+      defer
+    ></script>
+    <script src="/static/widget.js" defer></script>
+  </head>
+  <body>
+    <main class="widget-shell">
+      <header class="widget-header">
+        <div>
+          <h1>__WIDGET_TITLE__</h1>
+          <p>__WIDGET_DESCRIPTION__</p>
+        </div>
+        <a class="contact-link" href="__CONTACT_URL__" target="_blank" rel="noopener noreferrer">
+          __CONTACT_LABEL__
+        </a>
+      </header>
+
+      <p class="privacy-boundary">
+        Please do not enter names, case details, identifying information, or private documents.
+      </p>
+
+      <div id="connection-status" class="connection-status" role="status" aria-live="polite">
+        Connecting to the information guide...
+      </div>
+
+      <section id="webchat" class="webchat" role="region" aria-label="Information guide conversation"></section>
+
+      <div id="fallback" class="fallback" hidden>
+        <p>The information guide is unavailable right now.</p>
+        <a href="__CONTACT_URL__" target="_blank" rel="noopener noreferrer">__CONTACT_LABEL__</a>
+      </div>
+    </main>
+  </body>
+</html>
