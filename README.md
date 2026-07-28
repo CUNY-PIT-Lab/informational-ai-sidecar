@@ -1,5 +1,13 @@
 # Fortune Digital Equity page-aware guide
 
+<div align="center">
+
+**[▶ Live deployment — zmuhls.github.io/fortune-digital-equity-guide-demo](https://zmuhls.github.io/fortune-digital-equity-guide-demo/)**
+
+Built and deployed by [@zmuhls](https://github.com/zmuhls) · [CUNY AI Lab](https://github.com/CUNY-AI-Lab)
+
+</div>
+
 This demonstration builds a mock route for every public URL in the Fortune Digital Equity Wix sitemap. The July 20 index contains 184 routes. Each route uses the page title, public source text, authority state, and related links from `site-index.json`. The sidecar opens with a question about the current page and can direct the visitor to another relevant section.
 
 The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits. The server preloads GLM-5.2 at startup. The Pages and Wix clients repeat the same empty warm-up request when the guide loads, while a server-side cooldown collapses visitors into one provider call and keeps the model ready for 30 minutes.
