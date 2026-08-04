@@ -17,14 +17,14 @@ import server
 class SiteIndexTests(unittest.TestCase):
     def test_complete_public_sitemap_inventory_is_present(self):
         self.assertTrue(server.SITE_INDEX_PATH.exists())
-        self.assertEqual(server.SITE_INDEX["unique_urls"], 184)
-        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 185)
-        self.assertEqual(len(server.SITE_INDEX["pages"]), 184)
+        self.assertEqual(server.SITE_INDEX["unique_urls"], 199)
+        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 212)
+        self.assertEqual(len(server.SITE_INDEX["pages"]), 199)
 
     def test_authority_boundary_is_explicit(self):
         self.assertEqual(
             server.SITE_INDEX["authority_counts"],
-            {"answer": 147, "excluded": 17, "archive": 13, "navigation": 7},
+            {"answer": 145, "excluded": 24, "archive": 21, "navigation": 9},
         )
         self.assertGreaterEqual(len(server.ANSWER_SOURCES), 140)
         self.assertTrue(all(source["authority"] == "answer" for source in server.ANSWER_SOURCES))
@@ -135,7 +135,7 @@ class StagedRetrievalTests(unittest.TestCase):
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") == "answer" and page.get("status") == 200
         ]
-        self.assertEqual(len(complete_pages), 144)
+        self.assertEqual(len(complete_pages), 145)
         for page in complete_pages:
             question = f"What does this page say about {page.get('title') or page['id']}?"
             with self.subTest(url=page["url"]):
@@ -151,10 +151,10 @@ class StagedRetrievalTests(unittest.TestCase):
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") != "answer" or page.get("status") != 200
         ]
-        self.assertEqual(len(blocked_pages), 40)
+        self.assertEqual(len(blocked_pages), 54)
         self.assertEqual(
             {page.get("authority") for page in blocked_pages},
-            {"answer", "archive", "excluded", "navigation"},
+            {"archive", "excluded", "navigation"},
         )
         for page in blocked_pages:
             question = f"What does this page say about {page.get('title') or page['id']}?"
@@ -186,7 +186,8 @@ class StagedRetrievalTests(unittest.TestCase):
         )
         records = self.retrieval_records(model_calls)
         self.assertEqual(captured["payload"]["retrieval_scope"], "site")
-        self.assertEqual([record["id"] for record in records], ["devices"])
+        self.assertEqual(records[0]["id"], "devices")
+        self.assertTrue(all(record["id"] in server.SOURCE_BY_ID for record in records))
         self.assertNotIn("trainings", [record["id"] for record in records])
 
     def test_page_reference_uses_only_the_current_page(self):

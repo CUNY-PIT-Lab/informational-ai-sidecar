@@ -1,6 +1,6 @@
 # Fortune Digital Equity page-aware guide
 
-This demonstration builds a mock route for every public URL in the Fortune Digital Equity Wix sitemap. The July 20 index contains 184 routes. Each route uses the page title, public source text, authority state, and related links from `site-index.json`. The sidecar opens with a question about the current page and can direct the visitor to another relevant section.
+This repository publishes an inert replica of the public Fortune Digital Equity site with its informational sidecar. The August 3 inventory contains 199 public HTML routes drawn from the Wix sitemaps, blog feed, pagination links, and public member links. Each route preserves the rendered public page while removing Wix scripts, forms, tokens, trackers, and authenticated services. Internal links stay inside the GitHub Pages replica; booking, form, upload, and member actions lead to the live Fortune site.
 
 The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits. The server preloads GLM-5.2 at startup. The Pages and Wix clients repeat the same empty warm-up request when the guide loads, while a server-side cooldown collapses visitors into one provider call and keeps the model ready for 30 minutes.
 
@@ -8,10 +8,10 @@ The page remains readable when the model service is unavailable. In that state, 
 
 The index is a public-site inventory, not a claim that every URL can support an answer. The current crawl contains:
 
-- 147 current operational candidates. Three service pages returned partial responses and cannot support answers, leaving 144 content-complete answer sources in the running demo.
-- 17 excluded pages, including test, member, upload, duplicate, sample, and outdated pages.
-- 13 archived pages retained for provenance and historical navigation.
-- 7 navigation records that can lead to another page but cannot establish current service facts.
+- 145 current operational pages that may support answers.
+- 24 excluded pages, including test, member, upload, duplicate, and staging pages.
+- 21 archived pages retained for provenance and historical navigation.
+- 9 navigation records that can lead to another page but cannot establish current service facts.
 
 Old posts, category archives, past Tech Fair pages, member surfaces, test pages, duplicate services, and archive-labelled classes do not support participant answers. Dates, locations, registration, availability, eligibility, and inventory can change. The guide sends visitors to the current Fortune page or staff for confirmation.
 
@@ -53,7 +53,7 @@ Run the key-free tests and check that the index can produce all route shells:
 python3 scripts/build_pages.py --check-index
 ```
 
-The test launcher runs 76 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 11 browser-core unit tests for page families, prompts, staged evidence, route generation, and client-side redaction.
+The test launcher runs 85 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 13 browser-core and bridge tests plus 13 snapshot-capture safety tests.
 
 Build the static GitHub Pages output:
 
@@ -62,7 +62,7 @@ python3 scripts/build_pages.py
 python3 -m http.server 8791 --directory _site
 ```
 
-The build writes 184 `index.html` route shells under `_site/`, including the root route. Six shared browser and index files remain at the build root. The complete artifact contains 190 files.
+The build writes 199 `index.html` route snapshots under `_site/`, including the root route, and copies only the shared files that the replica and sidecar require.
 
 Run the live local model demo:
 
@@ -95,7 +95,7 @@ The [deployment overview](deployment/README.md) carries the shared API contract.
 
 - [Wix app subset](wix-app/README.md) contains the administrator key form, Admin-only Wix Secrets Manager methods, backend-only secret reader, embedded-script fragment, and site guide element. [The earlier roadmap](deployment/wix/ROADMAP.md) retains the extension-selection history.
 - [Copilot Studio bridge](deployment/wix/copilot-studio-bridge/README.md) is an optional, separately hosted Direct Line embed for evaluating Fortune's Microsoft agent on Wix without exposing its channel secret. It is limited to approved public information and does not replace the guide's pre-provider privacy and source-authority checks.
-- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 184-route public mock, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
+- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 199-route public replica, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
 
 The Pages publication workflow is [`.github/workflows/pages.yml`](.github/workflows/pages.yml). It builds the allowlisted `_site/` directory and deploys that artifact after changes reach `main` or an authorized manual run begins.
 

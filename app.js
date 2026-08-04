@@ -542,12 +542,12 @@
       if (!response.ok || !String(response.headers.get("content-type") || "").includes("application/json")) throw new Error("No model backend");
       const data = await response.json();
       modelReady = Boolean(data.model_enabled);
-      const pages = Number(data.indexed_pages) || Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
+      const pages = Number(data.indexed_pages) || Number(window.FortuneMockSite.getIndex()?.unique_urls) || 199;
       modelStatus.textContent = modelReady ? `Preparing ${data.model || "live model"}…` : `Source guide · ${pages} pages`;
       modelStatus.classList.toggle("model-ready", modelReady);
       if (modelReady) warmupPromise = warmModel(data.model, pages);
     } catch {
-      const pages = Number(window.FortuneMockSite.getIndex()?.unique_urls) || 184;
+      const pages = Number(window.FortuneMockSite.getIndex()?.unique_urls) || 199;
       modelReady = false;
       modelStatus.textContent = `Source guide · ${pages} pages`;
       modelStatus.classList.remove("model-ready");

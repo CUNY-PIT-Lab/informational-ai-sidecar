@@ -53,6 +53,10 @@ class CanonicalizationTests(NoNetworkTestCase):
             with self.subTest(value=value):
                 self.assertEqual(crawler.canonical_url(value), "")
 
+    def test_unicode_service_path_keeps_its_canonical_public_url(self):
+        value = "https://www.fortunedigitalequity.org/service-page/alfabetización-digital-básica-en-español"
+        self.assertEqual(crawler.canonical_url(value), value)
+
 
 class AuthorityTests(NoNetworkTestCase):
     def test_current_pages_and_active_services_are_answer_sources(self):
@@ -79,6 +83,12 @@ class AuthorityTests(NoNetworkTestCase):
             with self.subTest(record=record):
                 self.assertEqual(crawler.authority_for(record)[0], "navigation")
 
+    def test_public_author_profiles_are_excluded(self):
+        self.assertEqual(
+            crawler.authority_for(row("/profile/jschwartz/profile", "profiles"))[0],
+            "excluded",
+        )
+
     def test_test_member_duplicate_and_sample_routes_are_excluded(self):
         fixtures = (
             row("/test"),
@@ -89,6 +99,40 @@ class AuthorityTests(NoNetworkTestCase):
         for record in fixtures:
             with self.subTest(record=record):
                 self.assertEqual(crawler.authority_for(record)[0], "excluded")
+
+    def test_refresh_retains_recorded_authority_for_existing_url(self):
+        record = row("/news")
+        previous = {
+            "authority": "archive",
+            "authority_reason": "news index; posts are historical and date-bound",
+        }
+
+        self.assertEqual(
+            crawler.reviewed_authority(record, previous),
+            (
+                "archive",
+                "news index; posts are historical and date-bound",
+            ),
+        )
+
+    def test_new_sitemap_url_is_held_out_of_answers_pending_review(self):
+        self.assertEqual(
+            crawler.reviewed_authority(row("/calendar/test")),
+            (
+                "excluded",
+                "new public URL pending Fortune staff source review",
+            ),
+        )
+
+    def test_new_blog_and_pagination_routes_receive_non_answer_classifications(self):
+        self.assertEqual(
+            crawler.reviewed_authority(row("/post/older-update", "blog-posts"))[0],
+            "archive",
+        )
+        self.assertEqual(
+            crawler.reviewed_authority(row("/news/page/2", "blog-categories"))[0],
+            "navigation",
+        )
 
 
 class RecordUtilityTests(NoNetworkTestCase):

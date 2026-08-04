@@ -21,6 +21,29 @@
   color: var(--ink);
 }
 
+html.sidecar-embed,
+html.sidecar-embed body {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+html.sidecar-embed body > :not(.guide):not(.walkthrough):not(script) {
+  display: none !important;
+}
+
+html.sidecar-embed .guide {
+  right: 8px;
+  bottom: 8px;
+  width: min(440px, calc(100vw - 16px));
+}
+
+html.sidecar-embed .walkthrough-card {
+  max-width: calc(100vw - 24px);
+}
+
 * { box-sizing: border-box; }
 html {
   min-width: 320px;

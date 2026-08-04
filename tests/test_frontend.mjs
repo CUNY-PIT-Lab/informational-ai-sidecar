@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 
 const require = createRequire(import.meta.url);
 const TESTS = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +14,52 @@ const index = JSON.parse(readFileSync(join(DEMO, "site-index.json"), "utf8"));
 const pages = index.pages;
 const byPath = new Map(pages.map(page => [new URL(page.url).pathname, page]));
 
+function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
+  const messages = [];
+  let clickHandler = null;
+  const panel = { hidden: panelHidden };
+  const walkthrough = { hidden: true };
+  const parent = {
+    postMessage(message, origin) { messages.push({ message, origin }); },
+  };
+  const location = {
+    search: "?embed=1",
+    origin: "https://zmuhls.github.io",
+    href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?embed=1",
+  };
+  const window = {
+    parent,
+    location,
+    addEventListener() {},
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector === "#guide-panel") return panel;
+      if (selector === "#walkthrough") return walkthrough;
+      return null;
+    },
+    addEventListener(type, handler) {
+      if (type === "click") clickHandler = handler;
+    },
+  };
+  class MutationObserver {
+    constructor() {}
+    observe() {}
+  }
+  runInNewContext(
+    readFileSync(join(DEMO, "embed-frame.js"), "utf8"),
+    { window, document, MutationObserver, URL, URLSearchParams },
+  );
+  if (anchor && clickHandler) {
+    clickHandler({
+      target: { closest: () => anchor },
+      preventDefault() {},
+      stopImmediatePropagation() {},
+    });
+  }
+  return messages;
+}
+
 test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.canonicalUrl("https://fortunedigitalequity.org/devices/?x=1#top"), "https://www.fortunedigitalequity.org/devices");
   assert.equal(Core.canonicalUrl("/about/"), "https://www.fortunedigitalequity.org/about");
@@ -20,7 +67,7 @@ test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.pathFor("https://www.fortunedigitalequity.org/"), "/");
 });
 
-test("all 184 routes receive one of the reviewed page families", () => {
+test("all 199 routes receive one of the reviewed page families", () => {
   const counts = {};
   for (const page of pages) {
     const family = Core.pageFamily(page);
@@ -28,16 +75,16 @@ test("all 184 routes receive one of the reviewed page families", () => {
   }
   assert.deepEqual(counts, {
     program: 4,
-    excluded: 17,
+    excluded: 24,
     action: 6,
     directory: 8,
     support: 2,
-    event: 7,
-    archive: 13,
-    news: 7,
-    service: 120,
+    event: 6,
+    archive: 21,
+    news: 9,
+    service: 119,
   });
-  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 184);
+  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 199);
 });
 
 test("every page has a tailored heading, placeholder, and exactly two prompts", () => {
@@ -123,4 +170,29 @@ test("destination labels stay grammatical", () => {
 test("public text cleanup removes duplicated sentences and source-title suffixes", () => {
   assert.equal(Core.cleanText("Great , start here.  Great , start here."), "Great, start here.");
   assert.equal(Core.cleanTitle("Devices | FS Digital Equity"), "Devices");
+});
+
+test("embedded guide reports an open panel before an answer expands it", () => {
+  const messages = runEmbedBridge({ panelHidden: false });
+  assert.equal(messages[0].message.type, "fortune-sidecar-state");
+  assert.equal(messages[0].message.expanded, true);
+  assert.equal(messages[0].origin, "https://zmuhls.github.io");
+});
+
+test("embedded guide sends source and query-based destinations to its parent", () => {
+  const declared = runEmbedBridge({
+    anchor: {
+      href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?page=%2Fabout&open=1",
+      dataset: { mockUrl: "https://www.fortunedigitalequity.org/about" },
+    },
+  });
+  assert.equal(declared.at(-1).message.url, "https://www.fortunedigitalequity.org/about?open=1");
+
+  const queryFallback = runEmbedBridge({
+    anchor: {
+      href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?page=%2Fcalendar",
+      dataset: {},
+    },
+  });
+  assert.equal(queryFallback.at(-1).message.url, "https://www.fortunedigitalequity.org/calendar");
 });
