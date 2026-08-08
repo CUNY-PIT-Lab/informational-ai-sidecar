@@ -666,7 +666,7 @@
     checkHealth();
     const search = new URLSearchParams(window.location.search);
     if (search.get("open") === "1") openGuide();
-    if (search.get("tour") === "1" || !walkthroughWasSeen()) {
+    if (search.get("tour") === "1") {
       window.setTimeout(startWalkthrough, 420);
     }
   });

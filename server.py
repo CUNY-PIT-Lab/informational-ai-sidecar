@@ -10,8 +10,10 @@ never reaches a terminal FAQ card.
 
 import collections
 import http.server
+import http.cookies
 import json
 import math
+import mimetypes
 import os
 import pathlib
 import re
@@ -22,6 +24,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 from conversation_store import (
     CaptureUnavailable,
@@ -31,9 +34,20 @@ from conversation_store import (
     SCHEMA_VERSION,
     response_with_ids,
 )
+from evaluation_store import (
+    AuthenticationFailed,
+    COOKIE_NAME,
+    EVALUATION_SCHEMA_VERSION,
+    EvaluationConflict,
+    EvaluationForbidden,
+    EvaluationStore,
+    EvaluationUnavailable,
+    EvaluationValidation,
+)
 
 
 HERE = pathlib.Path(__file__).parent
+PUBLIC_SITE_ROOT = HERE / "_site"
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8790"))
 MODEL = os.environ.get("FORTUNE_MODEL", os.environ.get("TOOLKIT_MODEL", "glm-5.2"))
@@ -92,6 +106,14 @@ MODEL_WARMUP_COOLDOWN = bounded_env_int(
 )
 MODEL_KEEP_ALIVE = os.environ.get("FORTUNE_MODEL_KEEP_ALIVE", "30m").strip() or "30m"
 CONVERSATION_RECORDER = ConversationRecorder()
+EVALUATION_STORE = EvaluationStore()
+EVALUATION_ASSETS = {
+    "/evaluation": HERE / "evaluation.html",
+    "/evaluation/": HERE / "evaluation.html",
+    "/evaluation/index.html": HERE / "evaluation.html",
+    "/evaluation/assets/evaluation.css": HERE / "evaluation.css",
+    "/evaluation/assets/evaluation.js": HERE / "evaluation.js",
+}
 
 CONTACT_URL = "https://www.fortunedigitalequity.org/contact"
 CALENDAR_URL = "https://www.fortunedigitalequity.org/calendar"
@@ -169,6 +191,7 @@ class ModelCallBudget:
 
 MODEL_CALL_BUDGET = ModelCallBudget(MODEL_CALLS_PER_HOUR, MODEL_CALLS_PER_DAY)
 CHAT_REQUEST_BUDGET = ModelCallBudget(CHAT_REQUESTS_PER_HOUR, CHAT_REQUESTS_PER_DAY)
+LOGIN_REQUEST_BUDGET = ModelCallBudget(20, 500)
 
 
 class ModelWarmup:
@@ -962,7 +985,13 @@ def sanitize_history(history):
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(HERE), **kwargs)
+        self._request_started = time.monotonic()
+        self._request_id = str(uuid.uuid4())
+        super().__init__(*args, directory=str(PUBLIC_SITE_ROOT), **kwargs)
+
+    def list_directory(self, path):
+        self.send_error(404)
+        return None
 
     def do_OPTIONS(self):
         origin = self.headers.get("Origin", "").rstrip("/")
@@ -978,9 +1007,79 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urllib.parse.urlsplit(self.path)
+        if parsed.path == "/favicon.ico":
+            self.send_response(204)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if parsed.path in EVALUATION_ASSETS:
+            self._serve_evaluation_asset(parsed.path)
+            return
+        if parsed.path == "/api/evaluation/status":
+            self._json(200, EVALUATION_STORE.public_status())
+            return
+        if parsed.path == "/api/evaluation/session":
+            account, token = self._evaluation_account()
+            if not account:
+                self._json(401, {"error": "Sign in to continue."})
+                return
+            self._json(200, {
+                "account": account,
+                "csrf_token": EVALUATION_STORE.csrf_token(token),
+            })
+            return
+        if parsed.path == "/api/evaluation/buckets":
+            account, _ = self._require_evaluation_account()
+            if not account:
+                return
+            self._json(200, {
+                "buckets": EVALUATION_STORE.list_buckets(account["slot_key"]),
+            })
+            return
+        if parsed.path == "/api/evaluation/conversations":
+            account, _ = self._require_evaluation_account()
+            if not account:
+                return
+            query = urllib.parse.parse_qs(parsed.query)
+            try:
+                limit = int(query.get("limit", ["100"])[0])
+            except ValueError:
+                limit = 100
+            self._json(200, {
+                "conversations": EVALUATION_STORE.list_conversations(
+                    account["slot_key"], limit
+                ),
+            })
+            return
+        conversation_match = re.fullmatch(
+            r"/api/evaluation/conversations/([0-9a-fA-F-]{36})",
+            parsed.path,
+        )
+        if conversation_match:
+            account, _ = self._require_evaluation_account()
+            if not account:
+                return
+            try:
+                conversation = EVALUATION_STORE.get_conversation(
+                    account["slot_key"], conversation_match.group(1)
+                )
+                self._json(200, {"conversation": conversation})
+            except (EvaluationForbidden, EvaluationValidation) as error:
+                self._json(404, {"error": str(error)})
+            return
+        if parsed.path == "/api/evaluation/admin/accounts":
+            account, _ = self._require_evaluation_account(role="admin")
+            if not account:
+                return
+            self._json(200, {"accounts": EVALUATION_STORE.list_accounts()})
+            return
         if parsed.path == "/health":
             capture_ready = CONVERSATION_RECORDER.check()
-            service_ready = not CONVERSATION_RECORDER.required or capture_ready
+            evaluation_ready = EVALUATION_STORE.check()
+            service_ready = (
+                (not CONVERSATION_RECORDER.required or capture_ready)
+                and (not EVALUATION_STORE.enabled or evaluation_ready)
+            )
             self._json(200 if service_ready else 503, {
                 "status": "ok" if service_ready else "unavailable",
                 "model": MODEL,
@@ -1012,6 +1111,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "enabled": CONVERSATION_RECORDER.enabled,
                     "retention_days": CONVERSATION_RECORDER.retention_days,
                     "schema_version": SCHEMA_VERSION,
+                },
+                "evaluation": {
+                    **EVALUATION_STORE.public_status(),
+                    "schema_version": EVALUATION_SCHEMA_VERSION,
                 },
             })
             return
@@ -1045,6 +1148,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlsplit(self.path).path
+        if path.startswith("/api/evaluation/"):
+            self._evaluation_post(path)
+            return
         if path not in {"/api/chat", "/api/warmup"}:
             self.send_error(404)
             return
@@ -1236,6 +1342,237 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         "error": "The guide could not safely record this question. Please try again shortly."
                     })
 
+    def do_PUT(self):
+        path = urllib.parse.urlsplit(self.path).path
+        placement_match = re.fullmatch(
+            r"/api/evaluation/conversations/([0-9a-fA-F-]{36})/placement",
+            path,
+        )
+        if not placement_match:
+            self.send_error(404)
+            return
+        account, _ = self._require_evaluation_account(mutation=True)
+        if not account:
+            return
+        try:
+            request = self._read_json()
+            evaluation = EVALUATION_STORE.move_conversation(
+                account["slot_key"],
+                placement_match.group(1),
+                request.get("bucket_id"),
+                request.get("expected_version"),
+                request.get("expected_transcript_version"),
+                request.get("operation_id"),
+            )
+            self._json(200, {"evaluation": evaluation})
+        except EvaluationConflict as error:
+            self._json(409, {"error": str(error), "current": error.current})
+        except EvaluationForbidden as error:
+            self._json(404, {"error": str(error)})
+        except (EvaluationValidation, ValueError, json.JSONDecodeError) as error:
+            self._json(400, {"error": str(error) or "The request could not be read."})
+        except EvaluationUnavailable:
+            self._json(503, {"error": "Evaluation access is unavailable."})
+
+    def _evaluation_post(self, path):
+        if not self._evaluation_origin_allowed():
+            self._json(403, {"error": "This browser request is not allowed."})
+            return
+        try:
+            if path == "/api/evaluation/auth/login":
+                if not LOGIN_REQUEST_BUDGET.claim(self._client_identifier()):
+                    self._json(
+                        429,
+                        {"error": "Too many sign-in attempts. Try again later."},
+                        headers={"Retry-After": "60"},
+                    )
+                    return
+                request = self._read_json()
+                result = EVALUATION_STORE.login(
+                    request.get("email"), request.get("password")
+                )
+                token = result.pop("session_token")
+                self._json(
+                    200,
+                    result,
+                    headers={"Set-Cookie": self._session_cookie(token)},
+                )
+                return
+            if path == "/api/evaluation/invitations/claim":
+                request = self._read_json()
+                result = EVALUATION_STORE.claim_invitation(
+                    request.get("token"),
+                    request.get("email"),
+                    request.get("display_name"),
+                    request.get("password"),
+                )
+                token = result.pop("session_token")
+                self._json(
+                    200,
+                    result,
+                    headers={"Set-Cookie": self._session_cookie(token)},
+                )
+                return
+            if path == "/api/evaluation/auth/logout":
+                account, token = self._require_evaluation_account(mutation=True)
+                if not account:
+                    return
+                EVALUATION_STORE.logout(token)
+                self._json(
+                    200,
+                    {"status": "signed_out"},
+                    headers={"Set-Cookie": self._expired_session_cookie()},
+                )
+                return
+            if path == "/api/evaluation/buckets":
+                account, _ = self._require_evaluation_account(mutation=True)
+                if not account:
+                    return
+                request = self._read_json()
+                bucket = EVALUATION_STORE.create_bucket(
+                    account["slot_key"],
+                    request.get("label"),
+                    request.get("color_key"),
+                    request.get("operation_id"),
+                )
+                self._json(201, {"bucket": bucket})
+                return
+            invitation_match = re.fullmatch(
+                r"/api/evaluation/admin/accounts/(admin|editor-[123])/invitation",
+                path,
+            )
+            if invitation_match:
+                account, _ = self._require_evaluation_account(
+                    mutation=True, role="admin"
+                )
+                if not account:
+                    return
+                request = self._read_json()
+                token = EVALUATION_STORE.issue_invitation(
+                    invitation_match.group(1),
+                    email=request.get("email"),
+                    actor_slot=account["slot_key"],
+                    operation_id=request.get("operation_id"),
+                )
+                self._json(201, {"invitation_token": token})
+                return
+            self.send_error(404)
+        except AuthenticationFailed as error:
+            self._json(401, {"error": str(error)})
+        except EvaluationConflict as error:
+            self._json(409, {"error": str(error), "current": error.current})
+        except EvaluationForbidden as error:
+            self._json(403, {"error": str(error)})
+        except (EvaluationValidation, ValueError, json.JSONDecodeError) as error:
+            self._json(400, {"error": str(error) or "The request could not be read."})
+        except EvaluationUnavailable:
+            self._json(503, {"error": "Evaluation access is unavailable."})
+
+    def _read_json(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as error:
+            raise EvaluationValidation("Request size is invalid.") from error
+        if length < 1 or length > MAX_BODY:
+            raise EvaluationValidation("Request size is invalid.")
+        value = json.loads(self.rfile.read(length))
+        if not isinstance(value, dict):
+            raise EvaluationValidation("The request must be a JSON object.")
+        return value
+
+    def _evaluation_origin_allowed(self):
+        origin = self.headers.get("Origin", "").rstrip("/")
+        fetch_site = self.headers.get("Sec-Fetch-Site", "")
+        if not origin or fetch_site not in {"", "none", "same-origin"}:
+            return False
+        try:
+            parsed = urllib.parse.urlsplit(origin)
+        except ValueError:
+            return False
+        host = self.headers.get("Host", "").strip().lower()
+        return (
+            parsed.scheme in {"http", "https"}
+            and parsed.netloc.lower() == host
+            and not parsed.username
+            and not parsed.password
+        )
+
+    def _session_token(self):
+        cookie_header = self.headers.get("Cookie", "")
+        if not cookie_header:
+            return ""
+        try:
+            cookies = http.cookies.SimpleCookie()
+            cookies.load(cookie_header)
+            morsel = cookies.get(COOKIE_NAME)
+            return morsel.value if morsel else ""
+        except http.cookies.CookieError:
+            return ""
+
+    def _evaluation_account(self):
+        token = self._session_token()
+        return EVALUATION_STORE.authenticate(token), token
+
+    def _require_evaluation_account(self, *, mutation=False, role=None):
+        account, token = self._evaluation_account()
+        if not account:
+            self._json(401, {"error": "Sign in to continue."})
+            return None, ""
+        if role and account.get("role") != role:
+            self._json(403, {"error": "This account cannot use that action."})
+            return None, ""
+        if mutation:
+            if not self._evaluation_origin_allowed():
+                self._json(403, {"error": "This browser request is not allowed."})
+                return None, ""
+            if not EVALUATION_STORE.csrf_matches(
+                token, self.headers.get("X-CSRF-Token", "")
+            ):
+                self._json(403, {"error": "Refresh the page and try again."})
+                return None, ""
+        return account, token
+
+    def _session_cookie(self, token):
+        return (
+            f"{COOKIE_NAME}={token}; Path=/; "
+            f"Max-Age={EVALUATION_STORE.absolute_seconds}; "
+            "Secure; HttpOnly; SameSite=Strict"
+        )
+
+    @staticmethod
+    def _expired_session_cookie():
+        return (
+            f"{COOKIE_NAME}=; Path=/; Max-Age=0; "
+            "Secure; HttpOnly; SameSite=Strict"
+        )
+
+    def _serve_evaluation_asset(self, path):
+        asset = EVALUATION_ASSETS[path]
+        try:
+            body = asset.read_bytes()
+        except OSError:
+            self.send_error(404)
+            return
+        content_type = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
+        if content_type.startswith("text/") or content_type in {
+            "application/javascript", "text/javascript"
+        }:
+            content_type += "; charset=utf-8"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'none'; connect-src 'self'; "
+            "font-src 'self'; form-action 'self'; frame-ancestors 'none'; "
+            "img-src 'self' https://static.wixstatic.com; object-src 'none'; "
+            "script-src 'self'; style-src 'self'",
+        )
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _chat_json(
         self,
         status,
@@ -1309,10 +1646,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        self.send_header("X-Request-ID", self._request_id)
         super().end_headers()
 
-    def log_message(self, *args):
-        pass
+    def log_message(self, _format, *args):
+        if not str(_format).startswith('"%s"'):
+            return
+        try:
+            status = int(args[1]) if len(args) > 1 else None
+        except (TypeError, ValueError):
+            status = None
+        path = urllib.parse.urlsplit(getattr(self, "path", "")).path
+        path = re.sub(
+            r"/[0-9a-fA-F]{8}-[0-9a-fA-F-]{27,}",
+            "/:id",
+            path,
+        )
+        print(json.dumps({
+            "event": "http_request",
+            "request_id": self._request_id,
+            "method": getattr(self, "command", ""),
+            "path": path[:160],
+            "status": status,
+            "duration_ms": round((time.monotonic() - self._request_started) * 1000),
+        }, separators=(",", ":")), flush=True)
 
 
 class ThreadingServer(socketserver.ThreadingTCPServer):
@@ -1322,6 +1680,7 @@ class ThreadingServer(socketserver.ThreadingTCPServer):
 
 if __name__ == "__main__":
     CONVERSATION_RECORDER.open()
+    EVALUATION_STORE.open()
     print("Fortune Digital Equity model demo")
     print("  http://%s:%d" % (HOST, PORT))
     print("  model=%s  key=%s  indexed_pages=%d  answer_sources=%d" % (
@@ -1339,4 +1698,5 @@ if __name__ == "__main__":
             ).start()
             server.serve_forever()
     finally:
+        EVALUATION_STORE.close()
         CONVERSATION_RECORDER.close()

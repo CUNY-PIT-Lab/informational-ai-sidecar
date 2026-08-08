@@ -1,6 +1,6 @@
 # Fortune Digital Equity page-aware guide
 
-This repository publishes an inert replica of the public Fortune Digital Equity site with its informational sidecar. The August 3 inventory contains 199 public HTML routes drawn from the Wix sitemaps, blog feed, pagination links, and public member links. Each route preserves the rendered public page while removing Wix scripts, forms, tokens, trackers, and authenticated services. Internal links stay inside the GitHub Pages replica; booking, form, upload, and member actions lead to the live Fortune site.
+This repository publishes an inert replica of the public Fortune Digital Equity site with its informational sidecar. The August 8 inventory contains 200 public HTML routes drawn from the Wix sitemaps, blog feed, pagination links, and public member links. Each route preserves the rendered public page while removing Wix scripts, forms, tokens, trackers, and authenticated services. Internal links stay inside the replica; booking, form, upload, and member actions lead to the live Fortune site.
 
 The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits. The server preloads GLM-5.2 at startup. The Pages and Wix clients repeat the same empty warm-up request when the guide loads, while a server-side cooldown collapses visitors into one provider call and keeps the model ready for 30 minutes.
 
@@ -8,8 +8,8 @@ The page remains readable when the model service is unavailable. In that state, 
 
 The index is a public-site inventory, not a claim that every URL can support an answer. The current crawl contains:
 
-- 145 current operational pages that may support answers.
-- 24 excluded pages, including test, member, upload, duplicate, and staging pages.
+- 143 current operational pages that may support answers.
+- 27 excluded pages, including new routes awaiting review, test, member, upload, duplicate, and staging pages.
 - 21 archived pages retained for provenance and historical navigation.
 - 9 navigation records that can lead to another page but cannot establish current service facts.
 
@@ -46,6 +46,12 @@ An isolated evaluation deployment may select `metadata` or `transcript` capture 
 
 Internal Drive notes and meeting transcripts may shape navigation, ambiguity, transparency, and handoff tests. They are not participant-facing factual sources. A statement enters the public answer index only after Fortune assigns a source URL, owner, approval date, and next review date. See [deployment/TRANSCRIPT-INGESTION.md](deployment/TRANSCRIPT-INGESTION.md).
 
+## Evaluation workspace
+
+Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Each reviewer receives an independent bucket set with **Success**, **Needs work**, and **Handoff**, plus the virtual **Unsorted** area and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event.
+
+The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. It never copies transcript text into bucket or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
+
 ## Local commands
 
 Run the key-free tests and check that the index can produce all route shells:
@@ -64,7 +70,7 @@ python3 scripts/build_pages.py
 python3 -m http.server 8791 --directory _site
 ```
 
-The build writes 199 `index.html` route snapshots under `_site/`, including the root route, and copies only the shared files that the replica and sidecar require.
+The build writes 200 `index.html` route snapshots under `_site/`, including the root route, and copies only the shared files that the replica and sidecar require.
 
 Run the live local model demo:
 
@@ -97,7 +103,7 @@ The [deployment overview](deployment/README.md) carries the shared API contract.
 
 - [Wix app subset](wix-app/README.md) contains the administrator key form, Admin-only Wix Secrets Manager methods, backend-only secret reader, embedded-script fragment, and site guide element. [The earlier roadmap](deployment/wix/ROADMAP.md) retains the extension-selection history.
 - [Copilot Studio bridge](deployment/wix/copilot-studio-bridge/README.md) is an optional, separately hosted Direct Line embed for evaluating Fortune's Microsoft agent on Wix without exposing its channel secret. It is limited to approved public information and does not replace the guide's pre-provider privacy and source-authority checks.
-- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 199-route public replica, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
+- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 200-route public replica, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
 
 The Pages publication workflow is [`.github/workflows/pages.yml`](.github/workflows/pages.yml). It builds the allowlisted `_site/` directory and deploys that artifact after changes reach `main` or an authorized manual run begins.
 

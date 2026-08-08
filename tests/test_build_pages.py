@@ -35,12 +35,12 @@ def snapshot_document(label="Home"):
 
 
 class IndexRouteTests(unittest.TestCase):
-    def test_real_index_loads_all_199_current_public_html_routes(self):
+    def test_real_index_loads_all_200_current_public_html_routes(self):
         routes = build_pages.load_routes()
 
-        self.assertEqual(len(routes), 199)
-        self.assertEqual(len({route["path"] for route in routes}), 199)
-        self.assertEqual(len({route["pageId"] for route in routes}), 199)
+        self.assertEqual(len(routes), 200)
+        self.assertEqual(len({route["path"] for route in routes}), 200)
+        self.assertEqual(len({route["pageId"] for route in routes}), 200)
         self.assertIn("/", {route["path"] for route in routes})
 
     def test_route_path_canonicalizes_trailing_slash(self):

@@ -5,6 +5,20 @@ SELECT json_build_object(
         SELECT 1 FROM schema_migrations
         WHERE version = '002_turn_page_context'
     ),
+    'evaluation_schema_current', EXISTS (
+        SELECT 1 FROM schema_migrations
+        WHERE version = '004_evaluation_taxonomy'
+    ),
+    'evaluation_slot_count', (
+        SELECT COUNT(*) FROM evaluator_accounts
+    ),
+    'evaluation_unassigned_slot_count', (
+        SELECT COUNT(*) FROM evaluator_accounts
+        WHERE claimed_at IS NULL
+          AND email_normalized IS NULL
+          AND password_hash IS NULL
+          AND invite_token_hash IS NULL
+    ),
     'clear_turn_count', (
         SELECT COUNT(*) FROM conversation_turns
         WHERE id = :'clear_turn'::uuid

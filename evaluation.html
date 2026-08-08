@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#281a39">
+  <title>Review conversations · Fortune Digital Equity</title>
+  <link rel="stylesheet" href="/evaluation/assets/evaluation.css">
+  <script src="/evaluation/assets/evaluation.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#evaluation-main">Skip to review workspace</a>
+
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="Fortune Digital Equity public site">
+      <img src="https://static.wixstatic.com/media/e58568_4e51b8190cfa48a29f9b946ee22ebdc1~mv2.png" alt="The Fortune Society — Building people, not prisons">
+    </a>
+    <nav aria-label="Workspace navigation">
+      <a href="/">Public site</a>
+      <span aria-current="page">Review</span>
+      <button id="account-button" type="button" hidden>Account</button>
+    </nav>
+  </header>
+
+  <main id="evaluation-main">
+    <section class="access-view" id="access-view" aria-labelledby="access-title">
+      <div class="access-card">
+        <h1 id="access-title">Evaluation workspace</h1>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input id="login-email" name="email" type="email" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="primary-button" type="submit">Sign in</button>
+        </form>
+
+        <form id="claim-form" hidden>
+          <div class="field">
+            <label for="claim-name">Name</label>
+            <input id="claim-name" name="display_name" autocomplete="name" maxlength="80" required>
+          </div>
+          <div class="field">
+            <label for="claim-email">Email</label>
+            <input id="claim-email" name="email" type="email" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="claim-password">Create password</label>
+            <input id="claim-password" name="password" type="password" autocomplete="new-password" minlength="12" required>
+          </div>
+          <button class="primary-button" type="submit">Claim account</button>
+          <button class="text-button" id="claim-cancel" type="button">Back to sign in</button>
+        </form>
+
+        <p class="form-status" id="access-status" role="status"></p>
+      </div>
+    </section>
+
+    <section class="workspace" id="workspace" aria-labelledby="workspace-title" hidden>
+      <div class="workspace-heading">
+        <h1 id="workspace-title">Review conversations</h1>
+        <div class="toolbar">
+          <label class="search-control">
+            <span class="sr-only">Search conversations</span>
+            <span aria-hidden="true">⌕</span>
+            <input id="conversation-search" type="search" placeholder="Search conversations">
+          </label>
+          <button class="primary-button" id="new-bucket-button" type="button">New bucket</button>
+        </div>
+      </div>
+
+      <div class="board" id="conversation-board" aria-label="Conversation evaluation buckets"></div>
+      <p class="empty-state" id="empty-state" hidden>No conversations match.</p>
+    </section>
+  </main>
+
+  <dialog class="transcript-dialog" id="transcript-dialog" aria-labelledby="transcript-title">
+    <div class="dialog-header">
+      <div>
+        <h2 id="transcript-title">Conversation</h2>
+        <p id="transcript-meta"></p>
+      </div>
+      <button class="icon-button" id="transcript-close" type="button" aria-label="Close transcript">×</button>
+    </div>
+    <div class="transcript" id="transcript"></div>
+  </dialog>
+
+  <dialog class="bucket-dialog" id="bucket-dialog" aria-labelledby="bucket-title">
+    <form id="bucket-form">
+      <div class="dialog-header">
+        <h2 id="bucket-title">New bucket</h2>
+        <button class="icon-button" id="bucket-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="field">
+        <label for="bucket-name">Name</label>
+        <input id="bucket-name" name="label" maxlength="40" required>
+      </div>
+      <div class="field">
+        <label for="bucket-color">Color</label>
+        <select id="bucket-color" name="color_key">
+          <option value="blue">Blue</option>
+          <option value="sky">Sky</option>
+          <option value="eggplant">Eggplant</option>
+          <option value="coral">Coral</option>
+        </select>
+      </div>
+      <button class="primary-button" type="submit">Create</button>
+    </form>
+  </dialog>
+
+  <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-title">
+    <div class="dialog-header">
+      <h2 id="account-title">Account</h2>
+      <button class="icon-button" id="account-close" type="button" aria-label="Close">×</button>
+    </div>
+    <p id="account-name"></p>
+    <div id="account-slots" hidden></div>
+    <button class="secondary-button" id="logout-button" type="button">Sign out</button>
+  </dialog>
+
+  <p class="sr-only" id="move-status" aria-live="polite"></p>
+</body>
+</html>

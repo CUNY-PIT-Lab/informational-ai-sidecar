@@ -67,7 +67,7 @@ test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.pathFor("https://www.fortunedigitalequity.org/"), "/");
 });
 
-test("all 199 routes receive one of the reviewed page families", () => {
+test("all 200 routes receive one of the reviewed page families", () => {
   const counts = {};
   for (const page of pages) {
     const family = Core.pageFamily(page);
@@ -75,16 +75,16 @@ test("all 199 routes receive one of the reviewed page families", () => {
   }
   assert.deepEqual(counts, {
     program: 4,
-    excluded: 24,
+    excluded: 27,
     action: 6,
-    directory: 8,
-    support: 2,
+    directory: 7,
+    support: 1,
     event: 6,
     archive: 21,
     news: 9,
     service: 119,
   });
-  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 199);
+  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 200);
 });
 
 test("every page has a tailored heading, placeholder, and exactly two prompts", () => {
@@ -102,11 +102,11 @@ test("every page has a tailored heading, placeholder, and exactly two prompts", 
 
 test("current-page evidence is recognized before a wider search", () => {
   const devices = byPath.get("/devices");
-  const trainings = byPath.get("/trainings");
+  const calendar = byPath.get("/calendar");
   assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", devices), true);
-  assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", trainings), false);
-  assert.equal(Core.currentPageCanAnswer("What does this page say?", trainings), true);
-  assert.equal(Core.currentPageCanAnswer("What is the zzyzx quasar permit policy?", trainings), false);
+  assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", calendar), false);
+  assert.equal(Core.currentPageCanAnswer("What does this page say?", calendar), true);
+  assert.equal(Core.currentPageCanAnswer("What is the zzyzx quasar permit policy?", calendar), false);
 });
 
 test("excluded, archived, and partial records can never become current-page evidence", () => {

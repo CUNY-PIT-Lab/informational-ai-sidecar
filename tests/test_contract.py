@@ -18,14 +18,14 @@ import server
 class SiteIndexTests(unittest.TestCase):
     def test_complete_public_sitemap_inventory_is_present(self):
         self.assertTrue(server.SITE_INDEX_PATH.exists())
-        self.assertEqual(server.SITE_INDEX["unique_urls"], 199)
-        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 212)
-        self.assertEqual(len(server.SITE_INDEX["pages"]), 199)
+        self.assertEqual(server.SITE_INDEX["unique_urls"], 200)
+        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 213)
+        self.assertEqual(len(server.SITE_INDEX["pages"]), 200)
 
     def test_authority_boundary_is_explicit(self):
         self.assertEqual(
             server.SITE_INDEX["authority_counts"],
-            {"answer": 145, "excluded": 24, "archive": 21, "navigation": 9},
+            {"answer": 143, "excluded": 27, "archive": 21, "navigation": 9},
         )
         self.assertGreaterEqual(len(server.ANSWER_SOURCES), 140)
         self.assertTrue(all(source["authority"] == "answer" for source in server.ANSWER_SOURCES))
@@ -148,7 +148,7 @@ class StagedRetrievalTests(unittest.TestCase):
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") == "answer" and page.get("status") == 200
         ]
-        self.assertEqual(len(complete_pages), 145)
+        self.assertEqual(len(complete_pages), 143)
         for page in complete_pages:
             question = f"What does this page say about {page.get('title') or page['id']}?"
             with self.subTest(url=page["url"]):
@@ -164,7 +164,7 @@ class StagedRetrievalTests(unittest.TestCase):
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") != "answer" or page.get("status") != 200
         ]
-        self.assertEqual(len(blocked_pages), 54)
+        self.assertEqual(len(blocked_pages), 57)
         self.assertEqual(
             {page.get("authority") for page in blocked_pages},
             {"archive", "excluded", "navigation"},
@@ -374,7 +374,7 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("definitely available today", result["message"])
         self.assertNotIn("I know this from elsewhere", result["reason"])
         self.assertIn("Laptop supply is limited", result["message"])
-        self.assertIn("Distribution is currently on hold", result["message"])
+        self.assertIn("distribution is currently on hold", result["message"].lower())
 
     def test_model_clarification_cannot_restate_facts_or_reopen_a_clear_request(self):
         retrieved = server.retrieve_sources("free laptop")
@@ -387,7 +387,7 @@ class ResponseContractTests(unittest.TestCase):
         result = server.parse_model_json(raw, "Can I get a free laptop?", retrieved, "page")
         self.assertEqual(result["kind"], "answer")
         self.assertNotIn("definitely", result["message"])
-        self.assertIn("Distribution is currently on hold", result["message"])
+        self.assertIn("distribution is currently on hold", result["message"].lower())
 
     def test_malformed_model_output_falls_back_to_retrieved_sources(self):
         retrieved = server.retrieve_sources("free laptop")
