@@ -28,6 +28,8 @@
       this.conversationToken = "";
       this.pendingClientEventId = "";
       this.pendingQuestion = "";
+      this.lastQuestion = "";
+      this.editingQuestion = "";
       this.capturePolicyReady = false;
       this.capturePolicyPromise = null;
       this.warmupPromise = null;
@@ -98,7 +100,7 @@
             text-transform: uppercase;
           }
           h2 { margin: 0; font-size: 22px; letter-spacing: -.015em; line-height: 1.2; }
-          .close, .again {
+          .close, .again, .edit-question, .cancel-edit {
             min-height: 40px;
             padding: 7px 10px;
             border: 1px solid transparent;
@@ -108,7 +110,7 @@
             font-weight: 700;
             cursor: pointer;
           }
-          .close:hover, .again:hover { border-color: #d5dde4; color: var(--guide-blue-dark); background: #fff; }
+          .close:hover, .again:hover, .edit-question:hover, .cancel-edit:hover { border-color: #d5dde4; color: var(--guide-blue-dark); background: #fff; }
           .body { min-height: 0; overflow: auto; padding: 14px 18px 18px; overscroll-behavior: contain; scrollbar-gutter: stable; }
           label { display: block; margin-bottom: 8px; font-size: 16px; font-weight: 750; }
           .row { display: flex; gap: 8px; }
@@ -181,6 +183,7 @@
                 <input id="fortune-guide-question" name="question" autocomplete="off" />
                 <button class="send" type="submit">Ask</button>
               </div>
+              <button class="cancel-edit" type="button" hidden>Cancel edit</button>
               <p class="capture-notice">Checking the conversation privacy policy…</p>
               <p class="status" role="status" aria-live="polite"></p>
             </form>
@@ -196,12 +199,14 @@
       this.form = root.querySelector("form");
       this.input = root.querySelector("input");
       this.sendButton = root.querySelector(".send");
+      this.cancelEditButton = root.querySelector(".cancel-edit");
       this.captureNotice = root.querySelector(".capture-notice");
       this.status = root.querySelector(".status");
       this.result = root.querySelector(".result");
 
       this.toggleButton.addEventListener("click", () => this.open());
       this.closeButton.addEventListener("click", () => this.close());
+      this.cancelEditButton.addEventListener("click", () => this.cancelEdit());
       this.form.addEventListener("submit", (event) => {
         event.preventDefault();
         this.ask(this.input.value.trim());
@@ -283,10 +288,13 @@
         return;
       }
 
+      const editing = Boolean(this.editingQuestion);
+      const requestHistory = editing ? this.history.slice(0, -2) : this.history;
       this.sendButton.disabled = true;
+      this.sendButton.textContent = "Checking…";
       this.panel.classList.add("expanded");
       this.status.textContent = "Checking Fortune's approved pages…";
-      this.result.hidden = true;
+      if (!editing) this.result.hidden = true;
 
       if (this.pendingQuestion !== question || !this.pendingClientEventId) {
         this.pendingQuestion = question;
@@ -302,17 +310,15 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: question,
-            history: this.history,
+            history: requestHistory,
             page_context: this.pageContext(),
             client_surface: "wix",
             client_event_id: this.pendingClientEventId,
-            conversation_id: this.conversationId || undefined,
-            conversation_token: this.conversationToken || undefined
+            conversation_id: editing ? undefined : this.conversationId || undefined,
+            conversation_token: editing ? undefined : this.conversationToken || undefined
           })
         });
         const payload = await response.json();
-        this.conversationId = String(payload.conversation_id || this.conversationId);
-        this.conversationToken = String(payload.conversation_token || this.conversationToken);
         if (!response.ok) {
           const error = new Error(payload.error || "The guide is unavailable.");
           error.payload = payload;
@@ -320,16 +326,29 @@
         }
         this.pendingClientEventId = "";
         this.pendingQuestion = "";
+        if (editing && payload.kind === "privacy") {
+          this.input.value = "";
+          this.status.textContent = "Personal information was not sent. The original answer is unchanged; edit again without personal details or cancel.";
+          return;
+        }
         if (payload.kind === "privacy") {
           this.history = [];
+          this.lastQuestion = "";
+          this.conversationId = "";
+          this.conversationToken = "";
         } else {
-          this.history.push(
+          this.lastQuestion = question;
+          this.history = requestHistory.concat(
             { role: "user", content: question },
             { role: "assistant", content: String(payload.message || "") }
-          );
-          this.history = this.history.slice(-6);
+          ).slice(-6);
+          this.conversationId = String(payload.conversation_id || (editing ? "" : this.conversationId));
+          this.conversationToken = String(payload.conversation_token || (editing ? "" : this.conversationToken));
         }
+        this.editingQuestion = "";
+        this.cancelEditButton.hidden = true;
         this.render(payload);
+        this.input.value = "";
         this.revealResult();
         this.status.textContent = payload.model_called
           ? `Answer ready from ${payload.model || "the live model"}.`
@@ -339,11 +358,40 @@
           this.pendingClientEventId = "";
           this.pendingQuestion = "";
         }
-        this.renderError(error instanceof Error ? error.message : "The guide is unavailable.");
-        this.status.textContent = "The live guide could not answer right now.";
+        if (editing) {
+          this.input.value = question;
+          this.status.textContent = "The revised question was not completed. The original answer is unchanged; retry or cancel.";
+        } else {
+          this.renderError(error instanceof Error ? error.message : "The guide is unavailable.");
+          this.status.textContent = "The live guide could not answer right now.";
+        }
       } finally {
         this.sendButton.disabled = false;
+        this.sendButton.textContent = this.editingQuestion ? "Resend" : "Ask";
       }
+    }
+
+    beginEdit() {
+      if (!this.lastQuestion || this.sendButton.disabled) return;
+      this.editingQuestion = this.lastQuestion;
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
+      this.input.value = this.lastQuestion;
+      this.sendButton.textContent = "Resend";
+      this.cancelEditButton.hidden = false;
+      this.status.textContent = "Edit the question, then choose Resend. This starts a new guide conversation.";
+      this.input.focus({ preventScroll: true });
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+    }
+
+    cancelEdit() {
+      this.editingQuestion = "";
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
+      this.input.value = "";
+      this.sendButton.textContent = "Ask";
+      this.cancelEditButton.hidden = true;
+      this.status.textContent = "The original question and answer are unchanged.";
     }
 
     revealResult() {
@@ -464,6 +512,15 @@
       const actions = document.createElement("div");
       actions.className = "footer-actions";
 
+      if (this.lastQuestion) {
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "edit-question";
+        edit.textContent = "Edit and resend";
+        edit.addEventListener("click", () => this.beginEdit());
+        actions.append(edit);
+      }
+
       const again = document.createElement("button");
       again.type = "button";
       again.className = "again";
@@ -471,7 +528,8 @@
         ? continuation.label
         : "Ask another question";
       again.addEventListener("click", () => {
-        this.input.value = "";
+        this.cancelEdit();
+        this.status.textContent = "";
         this.input.focus({ preventScroll: true });
       });
       actions.append(again);

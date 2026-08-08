@@ -151,6 +151,18 @@ test("redaction removes every six-digit representation from display text", () =>
   }
 });
 
+test("editing the latest exchange branches from the preceding bounded history", () => {
+  const history = [
+    { role: "user", content: "First question" },
+    { role: "assistant", content: "First answer" },
+    { role: "user", content: "Latest question" },
+    { role: "assistant", content: "Latest answer" },
+  ];
+  assert.deepEqual(Core.historyBeforeLatestExchange(history), history.slice(0, 2));
+  assert.deepEqual(Core.historyBeforeLatestExchange([]), []);
+  assert.deepEqual(Core.historyBeforeLatestExchange(null), []);
+});
+
 test("mock hrefs preserve the repository base for root and nested routes", () => {
   const about = Core.canonicalUrl("/about");
   const root = Core.canonicalUrl("/");

@@ -11,8 +11,12 @@
   const transcript = document.querySelector("#chat-transcript");
   const suggestions = document.querySelector("#chat-suggestions");
   const form = document.querySelector("#question-form");
+  const questionLabel = document.querySelector("#question-label");
   const questionField = document.querySelector("#question");
   const submitButton = form.querySelector('button[type="submit"]');
+  const editBanner = document.querySelector("#edit-banner");
+  const editBannerCopy = document.querySelector("#edit-banner-copy");
+  const editCancel = document.querySelector("#edit-cancel");
   const modelStatus = document.querySelector("#model-status");
   const contextWindow = document.querySelector("#context-window");
   const contextWindowText = document.querySelector("#context-window-text");
@@ -35,6 +39,8 @@
   const WALKTHROUGH_STORAGE_KEY = "fortune-guide-walkthrough-v1";
 
   let history = [];
+  let latestTurn = null;
+  let editTarget = null;
   let apiReady = false;
   let modelReady = false;
   let captureMode = "none";
@@ -331,6 +337,19 @@
     body.textContent = redactSixDigitValues(cleanText(message));
     article.append(label, body);
 
+    if (role === "user" && options.editable) {
+      transcript.querySelectorAll(".chat-message-actions").forEach(actions => actions.remove());
+      const actions = document.createElement("div");
+      actions.className = "chat-message-actions";
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "chat-edit-button";
+      editButton.textContent = "Edit and resend";
+      editButton.setAttribute("aria-label", "Edit and resend this question");
+      actions.append(editButton);
+      article.append(actions);
+    }
+
     if (Array.isArray(options.choices) && options.choices.length) {
       const choiceList = document.createElement("div");
       choiceList.className = "answer-choices";
@@ -418,6 +437,8 @@
     if (!page) return;
     activePageId = page.id;
     history = [];
+    latestTurn = null;
+    endEditing({ clearInput: true });
     conversationId = "";
     conversationToken = "";
     pendingClientEventId = "";
@@ -440,8 +461,35 @@
     if (value) panel.classList.add("is-expanded");
     submitButton.disabled = value;
     questionField.disabled = value;
+    editCancel.disabled = value;
+    transcript.querySelectorAll(".chat-edit-button").forEach(button => { button.disabled = value; });
     panel.setAttribute("aria-busy", String(value));
-    submitButton.textContent = value ? "Checking…" : "Ask";
+    submitButton.textContent = value ? "Checking…" : editTarget ? "Resend" : "Ask";
+  }
+
+  function endEditing(options = {}) {
+    editTarget?.userArticle?.classList.remove("is-editing");
+    editTarget = null;
+    editBanner.hidden = true;
+    questionLabel.textContent = "Ask about this page";
+    if (options.clearInput) questionField.value = "";
+    if (!answering) submitButton.textContent = "Ask";
+  }
+
+  function startEditing(userArticle) {
+    if (!latestTurn || latestTurn.userArticle !== userArticle || answering) return;
+    editTarget?.userArticle?.classList.remove("is-editing");
+    editTarget = latestTurn;
+    pendingClientEventId = "";
+    pendingQuestion = "";
+    userArticle.classList.add("is-editing");
+    editBanner.hidden = false;
+    editBannerCopy.textContent = "Editing the latest question. The original answer stays here until the revised question succeeds.";
+    questionLabel.textContent = "Edit and resend this question";
+    questionField.value = latestTurn.question;
+    submitButton.textContent = "Resend";
+    questionField.focus({ preventScroll: true });
+    questionField.setSelectionRange(questionField.value.length, questionField.value.length);
   }
 
   function privacyHold() {
@@ -457,10 +505,16 @@
       },
     );
     history = [];
+    latestTurn = null;
+    conversationId = "";
+    conversationToken = "";
+    pendingClientEventId = "";
+    pendingQuestion = "";
+    transcript.querySelectorAll(".chat-message-actions").forEach(actions => actions.remove());
     updateContextWindow();
   }
 
-  async function remoteAnswer(question, clientEventId) {
+  async function remoteAnswer(question, clientEventId, options = {}) {
     if (warmupPromise) {
       try {
         await warmupPromise;
@@ -473,17 +527,15 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: question,
-        history,
+        history: options.history || history,
         page_context: pageContext(),
         client_surface: "replica",
         client_event_id: clientEventId,
-        conversation_id: conversationId || undefined,
-        conversation_token: conversationToken || undefined,
+        conversation_id: options.startNew ? undefined : conversationId || undefined,
+        conversation_token: options.startNew ? undefined : conversationToken || undefined,
       }),
     });
     const data = await response.json();
-    conversationId = String(data.conversation_id || conversationId);
-    conversationToken = String(data.conversation_token || conversationToken);
     if (!response.ok || data.error) {
       const error = new Error(data.error || "The live model could not answer.");
       error.payload = data;
@@ -516,7 +568,7 @@
   function showAnswer(data) {
     suggestions.replaceChildren();
     const destination = distinctDestination(data);
-    appendMessage("assistant", data.message || "The website does not contain an approved answer. Please contact Digital Equity staff.", {
+    return appendMessage("assistant", data.message || "The website does not contain an approved answer. Please contact Digital Equity staff.", {
       choices: data.choices,
       destination,
       sources: data.sources,
@@ -543,11 +595,20 @@
     questionField.value = "";
 
     if (personalInformationDetected(value)) {
+      if (editTarget) {
+        questionField.value = "";
+        pendingClientEventId = "";
+        pendingQuestion = "";
+        editBannerCopy.textContent = "Personal information was removed before sending. The original answer is unchanged; edit again without personal details or cancel.";
+        return;
+      }
       privacyHold();
       return;
     }
 
     const safeQuestion = redactSixDigitValues(value);
+    const editing = editTarget;
+    const requestHistory = editing ? Core.historyBeforeLatestExchange(history) : history;
     if (pendingQuestion !== safeQuestion || !pendingClientEventId) {
       pendingQuestion = safeQuestion;
       pendingClientEventId = window.crypto.randomUUID();
@@ -559,12 +620,28 @@
         await checkHealth();
         if (!apiReady) throw new Error("The guide backend is unavailable.");
       }
-      const data = await remoteAnswer(safeQuestion, pendingClientEventId);
-      appendMessage("user", safeQuestion);
-      history.push({ role: "user", content: safeQuestion }, { role: "assistant", content: redactSixDigitValues(data.message || "") });
-      history = history.slice(-MAX_CONTEXT_MESSAGES);
+      const data = await remoteAnswer(safeQuestion, pendingClientEventId, {
+        history: requestHistory,
+        startNew: Boolean(editing),
+      });
+      if (editing) {
+        let node = editing.userArticle;
+        while (node) {
+          const next = node.nextSibling;
+          node.remove();
+          node = next;
+        }
+        endEditing();
+      }
+      const userArticle = appendMessage("user", safeQuestion, { editable: true });
+      const answer = redactSixDigitValues(data.message || "");
+      const assistantArticle = showAnswer(data);
+      history = [...requestHistory, { role: "user", content: safeQuestion }, { role: "assistant", content: answer }]
+        .slice(-MAX_CONTEXT_MESSAGES);
+      latestTurn = { question: safeQuestion, answer, userArticle, assistantArticle };
+      conversationId = String(data.conversation_id || (editing ? "" : conversationId));
+      conversationToken = String(data.conversation_token || (editing ? "" : conversationToken));
       updateContextWindow();
-      showAnswer(data);
       pendingClientEventId = "";
       pendingQuestion = "";
     } catch (error) {
@@ -577,9 +654,15 @@
       modelReady = false;
       modelStatus.textContent = "Guide temporarily unavailable";
       modelStatus.classList.remove("model-ready");
-      showUnavailable(error?.payload?.idempotency_complete
-        ? "That request finished, but this privacy mode did not retain answer text for replay. Please submit it once more or contact Digital Equity staff."
-        : undefined);
+      if (editing) {
+        editBannerCopy.textContent = error?.payload?.idempotency_complete
+          ? "The revised request completed without replayable answer text. The original answer is unchanged; submit again or cancel."
+          : "The revised question was not completed. The original answer is unchanged; retry or cancel.";
+      } else {
+        showUnavailable(error?.payload?.idempotency_complete
+          ? "That request finished, but this privacy mode did not retain answer text for replay. Please submit it once more or contact Digital Equity staff."
+          : undefined);
+      }
     } finally {
       setBusy(false);
     }
@@ -643,8 +726,18 @@
     ask(button.dataset.prompt);
   });
   transcript.addEventListener("click", event => {
+    const editButton = event.target.closest(".chat-edit-button");
+    if (editButton) {
+      startEditing(editButton.closest(".chat-message.user"));
+      return;
+    }
     const button = event.target.closest("[data-prompt]");
     if (button) ask(button.dataset.prompt);
+  });
+  editCancel.addEventListener("click", () => {
+    pendingClientEventId = "";
+    pendingQuestion = "";
+    endEditing({ clearInput: true });
   });
   document.addEventListener("keydown", event => {
     if (walkthroughStep >= 0) {
@@ -686,6 +779,8 @@
       activePageId,
       answering,
       historyLength: history.length,
+      latestQuestion: latestTurn?.question || "",
+      editing: Boolean(editTarget),
       contextExchanges: contextExchangeCount(),
       walkthroughStep,
     }),

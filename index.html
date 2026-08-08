@@ -81,10 +81,14 @@
       <div class="chat-suggestions" id="chat-suggestions" aria-label="Questions about this page"></div>
 
       <form class="chat-form" id="question-form">
-        <label for="question">Ask about this page</label>
+        <label id="question-label" for="question">Ask about this page</label>
         <div class="chat-input-row">
           <textarea id="question" name="question" maxlength="600" required rows="2" placeholder="What would you like to know?"></textarea>
           <button type="submit">Ask</button>
+        </div>
+        <div class="edit-banner" id="edit-banner" hidden>
+          <p id="edit-banner-copy" role="status" aria-live="polite">Editing a previous question will remove the later answers shown here.</p>
+          <button id="edit-cancel" type="button">Cancel edit</button>
         </div>
         <p class="privacy-copy"><strong>Do not enter personally identifiable information (PII).</strong> This includes your six-digit Fortune ID, name, contact details, case information, or health information.</p>
       </form>

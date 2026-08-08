@@ -218,6 +218,10 @@
       .replace(/(?<!\d)\d{6}(?!\d)/g, "[six-digit ID removed]");
   }
 
+  function historyBeforeLatestExchange(value) {
+    return Array.isArray(value) ? value.slice(0, -2) : [];
+  }
+
   function hrefFor(value, options = {}) {
     const canonical = canonicalUrl(value);
     const knownUrls = options.knownUrls;
@@ -246,6 +250,7 @@
     deicticPageQuestion,
     destinationLabel,
     evidenceFor,
+    historyBeforeLatestExchange,
     hrefFor,
     normalizeDigits,
     normalizeTokens,

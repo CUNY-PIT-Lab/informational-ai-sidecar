@@ -34,6 +34,8 @@ After a question:
 7. GLM-5.2 on Ollama Cloud selects from the supplied source IDs. The server validates that choice and builds the visible factual answer from sentences in the selected website record. Model-written factual prose is never shown.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
+The latest completed user question also includes **Edit and resend**. The original question and answer stay visible while the visitor edits. A resend branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. The Wix element follows the same latest-question behavior.
+
 Archive, navigation, and excluded routes still receive a tailored guide. Their page text cannot become factual answer authority. The guide moves the visitor to a current operational page.
 
 ## Privacy

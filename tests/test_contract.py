@@ -533,7 +533,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("FAQS", app)
         self.assertNotIn("renderMenu", app)
         self.assertNotIn("renderClasses", app)
-        self.assertNotIn("questionField.focus", app)
+        startup = app[app.index("window.FortuneMockSite.ready.then") :]
+        self.assertNotIn("questionField.focus", startup)
 
     def test_first_visit_walkthrough_teaches_page_grounding_through_the_live_controls(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
@@ -574,7 +575,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("This page + 0 of 3 recent exchanges", html)
         self.assertIn("const MAX_CONTEXT_MESSAGES = 6", app)
         self.assertIn("MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2", app)
-        self.assertIn("history.slice(-MAX_CONTEXT_MESSAGES)", app)
+        self.assertIn(".slice(-MAX_CONTEXT_MESSAGES)", app)
         self.assertIn("updateContextWindow();", app)
         self.assertIn("three recent exchanges (six messages)", readme)
         self.assertEqual(server.MAX_HISTORY, 6)
@@ -644,6 +645,24 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("data.choices", app)
         self.assertIn("data.related", app)
         self.assertIn("page_context: pageContext()", app)
+
+    def test_edit_and_resend_replaces_the_latest_turn_after_a_new_conversation_succeeds(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        self.assertIn('id="edit-banner"', html)
+        self.assertIn("Edit and resend", app)
+        self.assertIn("Core.historyBeforeLatestExchange(history)", app)
+        self.assertIn("startNew: Boolean(editing)", app)
+        self.assertIn("The original answer is unchanged; retry or cancel.", app)
+        self.assertIn('pendingClientEventId = "";', app[app.index("function startEditing") : app.index("function privacyHold")])
+        self.assertIn(".chat-edit-button", styles)
+        self.assertIn("Edit and resend", wix)
+        self.assertIn("this.history.slice(0, -2)", wix)
+        self.assertIn("conversation_id: editing ? undefined", wix)
+        self.assertIn("if (!editing) this.result.hidden = true;", wix)
+        self.assertIn("The original answer is unchanged; retry or cancel.", wix)
 
     def test_pages_and_wix_preload_the_model_without_a_provider_key(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
