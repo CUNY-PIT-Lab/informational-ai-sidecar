@@ -1,7 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "python3 scripts/build_pages.py"
+    "buildCommand": "node scripts/unpack_deploy_snapshots.mjs && python3 scripts/build_pages.py"
   },
   "deploy": {
     "preDeployCommand": "python3 scripts/migrate.py",
