@@ -24,6 +24,12 @@
       if (this.shadowRoot) return;
 
       this.history = [];
+      this.conversationId = "";
+      this.conversationToken = "";
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
+      this.capturePolicyReady = false;
+      this.capturePolicyPromise = null;
       this.warmupPromise = null;
       const root = this.attachShadow({ mode: "open" });
       root.innerHTML = `
@@ -131,6 +137,7 @@
           .send:hover, .choice:hover { background: #083e63; transform: translateY(-1px); }
           .send:disabled { opacity: .65; cursor: wait; }
           .status { min-height: 22px; margin: 9px 0 0; color: var(--guide-muted); font-size: 14px; line-height: 1.4; }
+          .capture-notice { margin: 9px 0 0; color: var(--guide-muted); font-size: 13px; line-height: 1.4; }
           .result { margin-top: 14px; border-top: 1px solid #d5dde4; padding-top: 14px; }
           .answer { margin: 0; color: #2f4351; font-size: 16px; line-height: 1.52; white-space: pre-wrap; }
           h3 { margin: 16px 0 7px; font-size: 16px; }
@@ -174,6 +181,7 @@
                 <input id="fortune-guide-question" name="question" autocomplete="off" />
                 <button class="send" type="submit">Ask</button>
               </div>
+              <p class="capture-notice">Checking the conversation privacy policy…</p>
               <p class="status" role="status" aria-live="polite"></p>
             </form>
             <div class="result" aria-live="polite" hidden></div>
@@ -188,6 +196,7 @@
       this.form = root.querySelector("form");
       this.input = root.querySelector("input");
       this.sendButton = root.querySelector(".send");
+      this.captureNotice = root.querySelector(".capture-notice");
       this.status = root.querySelector(".status");
       this.result = root.querySelector(".result");
 
@@ -200,6 +209,7 @@
       root.addEventListener("keydown", (event) => {
         if (event.key === "Escape") this.close();
       });
+      this.loadCapturePolicy();
       this.warmModel();
     }
 
@@ -232,6 +242,41 @@
       };
     }
 
+    loadCapturePolicy() {
+      if (this.capturePolicyPromise) return this.capturePolicyPromise;
+      let healthUrl;
+      try {
+        healthUrl = this.apiUrl("/health");
+      } catch {
+        this.captureNotice.textContent = "Conversation privacy status is unavailable because the guide backend is not configured.";
+        return Promise.resolve(null);
+      }
+      this.capturePolicyPromise = fetch(healthUrl, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Capture policy unavailable.");
+          const payload = await response.json();
+          const mode = payload.conversation_logging?.capture_mode;
+          if (mode === "transcript") {
+            this.captureNotice.textContent = "Approved evaluation capture is active. Questions and answers that pass the automated privacy hold are recorded for authorized review. Do not enter personal information.";
+          } else if (mode === "metadata") {
+            this.captureNotice.textContent = "Evaluation metadata capture is active. IDs and routing metadata are recorded, but question and answer text is not retained.";
+          } else {
+            this.captureNotice.textContent = "Do not enter personal information. This deployment does not retain conversation text.";
+          }
+          this.capturePolicyReady = true;
+          return payload;
+        })
+        .catch(() => {
+          this.captureNotice.textContent = "Conversation privacy status is unavailable. Please try again after the guide reconnects.";
+          this.capturePolicyReady = false;
+          return null;
+        })
+        .finally(() => {
+          this.capturePolicyPromise = null;
+        });
+      return this.capturePolicyPromise;
+    }
+
     async ask(question) {
       if (!question) {
         this.status.textContent = "Enter a question first.";
@@ -243,7 +288,14 @@
       this.status.textContent = "Checking Fortune's approved pages…";
       this.result.hidden = true;
 
+      if (this.pendingQuestion !== question || !this.pendingClientEventId) {
+        this.pendingQuestion = question;
+        this.pendingClientEventId = window.crypto.randomUUID();
+      }
+
       try {
+        if (!this.capturePolicyReady) await this.loadCapturePolicy();
+        if (!this.capturePolicyReady) throw new Error("Conversation privacy status is unavailable.");
         if (this.warmupPromise) await this.warmupPromise;
         const response = await fetch(this.apiUrl("/api/chat"), {
           method: "POST",
@@ -251,11 +303,23 @@
           body: JSON.stringify({
             message: question,
             history: this.history,
-            page_context: this.pageContext()
+            page_context: this.pageContext(),
+            client_surface: "wix",
+            client_event_id: this.pendingClientEventId,
+            conversation_id: this.conversationId || undefined,
+            conversation_token: this.conversationToken || undefined
           })
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "The guide is unavailable.");
+        this.conversationId = String(payload.conversation_id || this.conversationId);
+        this.conversationToken = String(payload.conversation_token || this.conversationToken);
+        if (!response.ok) {
+          const error = new Error(payload.error || "The guide is unavailable.");
+          error.payload = payload;
+          throw error;
+        }
+        this.pendingClientEventId = "";
+        this.pendingQuestion = "";
         if (payload.kind === "privacy") {
           this.history = [];
         } else {
@@ -271,6 +335,10 @@
           ? `Answer ready from ${payload.model || "the live model"}.`
           : "Showing approved source navigation without a model call.";
       } catch (error) {
+        if (error?.payload?.idempotency_complete) {
+          this.pendingClientEventId = "";
+          this.pendingQuestion = "";
+        }
         this.renderError(error instanceof Error ? error.message : "The guide is unavailable.");
         this.status.textContent = "The live guide could not answer right now.";
       } finally {

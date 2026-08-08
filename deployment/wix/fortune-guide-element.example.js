@@ -24,6 +24,10 @@
       if (this.shadowRoot) return;
 
       this.history = [];
+      this.conversationId = "";
+      this.conversationToken = "";
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
       const root = this.attachShadow({ mode: "open" });
       root.innerHTML = `
         <style>
@@ -205,6 +209,11 @@
       this.status.textContent = "Checking Fortune's approved pages…";
       this.result.hidden = true;
 
+      if (this.pendingQuestion !== question || !this.pendingClientEventId) {
+        this.pendingQuestion = question;
+        this.pendingClientEventId = window.crypto.randomUUID();
+      }
+
       try {
         const response = await fetch(this.apiUrl("/api/chat"), {
           method: "POST",
@@ -212,11 +221,23 @@
           body: JSON.stringify({
             message: question,
             history: this.history,
-            page_context: this.pageContext()
+            page_context: this.pageContext(),
+            client_surface: "wix",
+            client_event_id: this.pendingClientEventId,
+            conversation_id: this.conversationId || undefined,
+            conversation_token: this.conversationToken || undefined
           })
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "The guide is unavailable.");
+        this.conversationId = String(payload.conversation_id || this.conversationId);
+        this.conversationToken = String(payload.conversation_token || this.conversationToken);
+        if (!response.ok) {
+          const error = new Error(payload.error || "The guide is unavailable.");
+          error.payload = payload;
+          throw error;
+        }
+        this.pendingClientEventId = "";
+        this.pendingQuestion = "";
         if (payload.kind === "privacy") {
           this.history = [];
         } else {
@@ -231,6 +252,10 @@
           ? `Answer ready from ${payload.model || "the live model"}.`
           : "Showing approved source navigation without a model call.";
       } catch (error) {
+        if (error?.payload?.idempotency_complete) {
+          this.pendingClientEventId = "";
+          this.pendingQuestion = "";
+        }
         this.renderError(error instanceof Error ? error.message : "The guide is unavailable.");
         this.status.textContent = "The live guide could not answer right now.";
       } finally {

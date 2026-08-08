@@ -23,6 +23,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from conversation_store import (
+    CaptureUnavailable,
+    ConversationLimit,
+    ConversationRecorder,
+    IdempotencyConflict,
+    SCHEMA_VERSION,
+    response_with_ids,
+)
+
 
 HERE = pathlib.Path(__file__).parent
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -63,6 +72,18 @@ MODEL_CALLS_PER_DAY = bounded_env_int(
     minimum=1,
     maximum=5000,
 )
+CHAT_REQUESTS_PER_HOUR = bounded_env_int(
+    "FORTUNE_CHAT_REQUESTS_PER_HOUR",
+    default=120,
+    minimum=10,
+    maximum=1000,
+)
+CHAT_REQUESTS_PER_DAY = bounded_env_int(
+    "FORTUNE_CHAT_REQUESTS_PER_DAY",
+    default=2000,
+    minimum=100,
+    maximum=20000,
+)
 MODEL_WARMUP_COOLDOWN = bounded_env_int(
     "FORTUNE_MODEL_WARMUP_COOLDOWN",
     default=900,
@@ -70,6 +91,7 @@ MODEL_WARMUP_COOLDOWN = bounded_env_int(
     maximum=3600,
 )
 MODEL_KEEP_ALIVE = os.environ.get("FORTUNE_MODEL_KEEP_ALIVE", "30m").strip() or "30m"
+CONVERSATION_RECORDER = ConversationRecorder()
 
 CONTACT_URL = "https://www.fortunedigitalequity.org/contact"
 CALENDAR_URL = "https://www.fortunedigitalequity.org/calendar"
@@ -146,6 +168,7 @@ class ModelCallBudget:
 
 
 MODEL_CALL_BUDGET = ModelCallBudget(MODEL_CALLS_PER_HOUR, MODEL_CALLS_PER_DAY)
+CHAT_REQUEST_BUDGET = ModelCallBudget(CHAT_REQUESTS_PER_HOUR, CHAT_REQUESTS_PER_DAY)
 
 
 class ModelWarmup:
@@ -622,6 +645,23 @@ def sanitize_page_context(value):
     }
 
 
+def capture_page_context(value):
+    """Return server-owned page metadata suitable for persistence."""
+
+    context = sanitize_page_context(value)
+    source_id = SOURCE_ID_BY_URL.get(context["url"], "")
+    source = SOURCE_BY_ID.get(source_id)
+    if not source:
+        return {"source_id": "", "url": "", "path": "", "title": "", "authority": ""}
+    return {
+        "source_id": source["id"],
+        "url": source["url"],
+        "path": urllib.parse.urlsplit(source["url"]).path or "/",
+        "title": source["title"],
+        "authority": source["authority"],
+    }
+
+
 def approved_current_page_source(page_context):
     context = sanitize_page_context(page_context)
     source_id = SOURCE_ID_BY_URL.get(context["url"], "")
@@ -939,8 +979,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlsplit(self.path)
         if parsed.path == "/health":
-            self._json(200, {
-                "status": "ok",
+            capture_ready = CONVERSATION_RECORDER.check()
+            service_ready = not CONVERSATION_RECORDER.required or capture_ready
+            self._json(200 if service_ready else 503, {
+                "status": "ok" if service_ready else "unavailable",
                 "model": MODEL,
                 "model_enabled": bool(KEY),
                 "index_loaded": SITE_INDEX_PATH.exists(),
@@ -953,10 +995,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "per_client_hour": MODEL_CALLS_PER_HOUR,
                     "shared_day": MODEL_CALLS_PER_DAY,
                 },
+                "chat_request_limits": {
+                    "per_client_hour": CHAT_REQUESTS_PER_HOUR,
+                    "shared_day": CHAT_REQUESTS_PER_DAY,
+                    "max_turns_per_conversation": CONVERSATION_RECORDER.max_turns,
+                },
                 "model_warmup": {
                     "status": MODEL_WARMUP.status(),
                     "cooldown_seconds": MODEL_WARMUP_COOLDOWN,
                     "keep_alive": MODEL_KEEP_ALIVE,
+                },
+                "conversation_logging": {
+                    "capture_mode": CONVERSATION_RECORDER.mode,
+                    "database_configured": CONVERSATION_RECORDER.configured,
+                    "database_ready": capture_ready,
+                    "enabled": CONVERSATION_RECORDER.enabled,
+                    "retention_days": CONVERSATION_RECORDER.retention_days,
+                    "schema_version": SCHEMA_VERSION,
                 },
             })
             return
@@ -1013,6 +1068,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "model": MODEL,
                 })
             return
+        turn = None
+        question = ""
+        started_at = time.monotonic()
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > MAX_BODY:
@@ -1024,19 +1082,77 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not question:
                 self._json(400, {"error": "Write a question first."})
                 return
+            if not CHAT_REQUEST_BUDGET.claim(self._client_identifier()):
+                self._json(
+                    429,
+                    {"error": "The guide has reached its request limit. Please try again later."},
+                    headers={"Retry-After": "60"},
+                )
+                return
+            turn = CONVERSATION_RECORDER.begin_turn(
+                question=question,
+                conversation_id=request.get("conversation_id"),
+                conversation_token=request.get("conversation_token"),
+                client_event_id=request.get("client_event_id"),
+                page_context=capture_page_context(page_context),
+                client_surface=request.get("client_surface"),
+            )
+            if turn.duplicate_response:
+                token = CONVERSATION_RECORDER.conversation_token(turn.conversation_id)
+                if turn.duplicate_response.get("message"):
+                    duplicate = dict(turn.duplicate_response)
+                    duplicate["conversation_token"] = token
+                    self._json(200, duplicate)
+                else:
+                    self._json(409, {
+                        "error": "This turn completed, but its answer text was not retained in this capture mode.",
+                        "idempotency_complete": True,
+                        "conversation_id": turn.conversation_id,
+                        "conversation_token": token,
+                        "turn_id": turn.turn_id,
+                        "client_event_id": turn.client_event_id,
+                    })
+                return
+            if turn.in_progress:
+                self._json(
+                    409,
+                    {
+                        "error": "This question is still being processed. Retry shortly with the same client event ID.",
+                        "idempotency_complete": False,
+                        "conversation_id": turn.conversation_id,
+                        "turn_id": turn.turn_id,
+                        "client_event_id": turn.client_event_id,
+                    },
+                    headers={"Retry-After": "2"},
+                )
+                return
             if contains_personal_details(question):
-                self._json(200, privacy_response(question))
+                self._chat_json(
+                    200,
+                    privacy_response(question),
+                    turn,
+                    question,
+                    started_at,
+                    privacy_state="blocked",
+                )
                 return
             if needs_human_handoff(question):
-                self._json(200, human_handoff_response(question))
+                self._chat_json(
+                    200,
+                    human_handoff_response(question),
+                    turn,
+                    question,
+                    started_at,
+                    privacy_state="sensitive_handoff",
+                )
                 return
             ambiguous = ambiguity_response(question)
             if ambiguous:
-                self._json(200, ambiguous)
+                self._chat_json(200, ambiguous, turn, question, started_at)
                 return
             retrieval_scope, retrieved = retrieval_plan(question, page_context)
             if retrieval_scope == "staff":
-                self._json(200, response_contract(
+                self._chat_json(200, response_contract(
                     kind="handoff",
                     message="I could not find that information in the approved Digital Equity pages. Please ask Digital Equity staff instead.",
                     reason="The guide does not use unrelated pages or invent an answer when the approved site has no matching information.",
@@ -1044,10 +1160,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     question=question,
                     model_called=False,
                     retrieval_scope="staff",
-                ))
+                ), turn, question, started_at)
                 return
             if not KEY:
-                self._json(200, response_contract(
+                self._chat_json(200, response_contract(
                     kind="handoff",
                     message="The live model is not configured. The current Digital Equity pages and staff route are still available.",
                     reason="The page directory works without sending a question to an external model.",
@@ -1055,10 +1171,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     question=question,
                     model_called=False,
                     retrieval_scope=retrieval_scope,
-                ))
+                ), turn, question, started_at)
                 return
             if not MODEL_CALL_BUDGET.claim(self._client_identifier()):
-                self._json(200, response_contract(
+                self._chat_json(200, response_contract(
                     kind="handoff",
                     message="The live demonstration has reached its usage limit. The approved page links and Digital Equity staff route remain available.",
                     reason="A public usage limit protects the shared model credential.",
@@ -1066,17 +1182,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     question=question,
                     model_called=False,
                     retrieval_scope=retrieval_scope,
-                ))
+                ), turn, question, started_at, error_code="usage_limit")
                 return
             messages = [{"role": "system", "content": retrieval_prompt(question, retrieved, page_context)}]
             messages.extend(sanitize_history(request.get("history")))
             messages.append({"role": "user", "content": question[:2000]})
             raw = self._ollama(messages)
-            self._json(200, parse_model_json(raw, question, retrieved, retrieval_scope))
+            self._chat_json(
+                200,
+                parse_model_json(raw, question, retrieved, retrieval_scope),
+                turn,
+                question,
+                started_at,
+            )
         except (ValueError, json.JSONDecodeError):
             self._json(400, {"error": "The request could not be read."})
+        except CaptureUnavailable:
+            self._json(503, {
+                "error": "The guide could not safely record this question. Please try again shortly."
+            })
+        except IdempotencyConflict:
+            self._json(409, {
+                "error": "This client event ID was already used for a different question."
+            })
+        except ConversationLimit:
+            self._json(429, {
+                "error": "This conversation reached its turn limit. Start again from the current page."
+            })
         except Exception:
-            self._json(200, response_contract(
+            response = response_contract(
                 kind="handoff",
                 message="The live model could not answer. Use the current page links or contact Digital Equity staff.",
                 reason="The verified directory stays available when the model is unavailable.",
@@ -1084,7 +1218,53 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 question="Digital Equity help",
                 model_called=False,
                 retrieval_scope="staff",
-            ))
+            )
+            if turn is None:
+                self._json(200, response)
+            else:
+                try:
+                    self._chat_json(
+                        200,
+                        response,
+                        turn,
+                        question,
+                        started_at,
+                        error_code="model_unavailable",
+                    )
+                except CaptureUnavailable:
+                    self._json(503, {
+                        "error": "The guide could not safely record this question. Please try again shortly."
+                    })
+
+    def _chat_json(
+        self,
+        status,
+        response,
+        turn,
+        question,
+        started_at,
+        *,
+        privacy_state="clear",
+        error_code=None,
+    ):
+        enriched = response_with_ids(
+            response,
+            turn,
+            mode=turn.capture_mode,
+            stored=turn.persisted,
+            conversation_token=CONVERSATION_RECORDER.conversation_token(
+                turn.conversation_id
+            ),
+        )
+        CONVERSATION_RECORDER.complete_turn(
+            turn,
+            question=question,
+            response=enriched,
+            privacy_state=privacy_state,
+            latency_ms=round((time.monotonic() - started_at) * 1000),
+            error_code=error_code,
+        )
+        self._json(status, enriched)
 
     def _ollama(self, messages):
         data = ollama_request({
@@ -1113,12 +1293,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
 
-    def _json(self, status, value):
+    def _json(self, status, value, *, headers=None):
         body = json.dumps(value, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self._cors_headers()
+        for name, header_value in (headers or {}).items():
+            self.send_header(str(name), str(header_value))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -1139,6 +1321,7 @@ class ThreadingServer(socketserver.ThreadingTCPServer):
 
 
 if __name__ == "__main__":
+    CONVERSATION_RECORDER.open()
     print("Fortune Digital Equity model demo")
     print("  http://%s:%d" % (HOST, PORT))
     print("  model=%s  key=%s  indexed_pages=%d  answer_sources=%d" % (
@@ -1147,10 +1330,13 @@ if __name__ == "__main__":
         SITE_INDEX.get("unique_urls", len(SOURCE_BY_ID)),
         len(ANSWER_SOURCES),
     ))
-    with ThreadingServer((HOST, PORT), Handler) as server:
-        threading.Thread(
-            target=warm_model_quietly,
-            name="fortune-model-warmup",
-            daemon=True,
-        ).start()
-        server.serve_forever()
+    try:
+        with ThreadingServer((HOST, PORT), Handler) as server:
+            threading.Thread(
+                target=warm_model_quietly,
+                name="fortune-model-warmup",
+                daemon=True,
+            ).start()
+            server.serve_forever()
+    finally:
+        CONVERSATION_RECORDER.close()

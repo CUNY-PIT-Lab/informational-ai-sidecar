@@ -40,7 +40,9 @@ Archive, navigation, and excluded routes still receive a tailored guide. Their p
 
 The guide tells visitors: **Do not enter your six-digit Fortune ID, name, phone number, email, address, case details, or other personal information.** The browser replaces a message containing a likely six-digit Fortune ID with a privacy notice before adding it to chat history or making a network request. The backend applies the same hold before retrieval or a model call. Names, contact details, case information, health information, passwords, and similar details follow the same pre-model route.
 
-The local server writes no query log and has no chat database. Browser history exists only in memory for the current tab and is capped at three recent exchanges (six messages). Moving to another mock page clears that history. Open-ended questions sent to the active model must use public or invented information.
+Conversation capture is off by default. With `FORTUNE_CONVERSATION_CAPTURE=none`, the server writes no query log and needs no chat database. Browser history exists only in memory for the current tab and is capped at three recent exchanges (six messages). Moving to another mock page clears that history. Open-ended questions sent to the active model must use public or invented information.
+
+An isolated evaluation deployment may select `metadata` or `transcript` capture after Fortune approves the purpose, notice, reviewers, and retention period. Metadata mode stores identifiers and bounded routing/result fields without question or answer text. Transcript mode stores the question and answer only when the automated privacy hold classifies the turn as clear; blocked and sensitive turns keep metadata but no message content. The hold is not guaranteed anonymization, so transcript mode is synthetic-only until Fortune approves participant use and its visible notice. Captured conversations expire after 90 days by default. See [the conversation-capture deployment contract](deployment/CONVERSATION-CAPTURE.md).
 
 Internal Drive notes and meeting transcripts may shape navigation, ambiguity, transparency, and handoff tests. They are not participant-facing factual sources. A statement enters the public answer index only after Fortune assigns a source URL, owner, approval date, and next review date. See [deployment/TRANSCRIPT-INGESTION.md](deployment/TRANSCRIPT-INGESTION.md).
 
@@ -53,7 +55,7 @@ Run the key-free tests and check that the index can produce all route shells:
 python3 scripts/build_pages.py --check-index
 ```
 
-The test launcher runs 85 Python unit tests across retrieval, API contracts, privacy, source authority, grounding, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 13 browser-core and bridge tests plus 13 snapshot-capture safety tests.
+The test launcher runs the Python unit suite across retrieval, API contracts, privacy, source authority, grounding, conversation persistence, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 13 browser-core and bridge tests plus 13 snapshot-capture safety tests.
 
 Build the static GitHub Pages output:
 
@@ -103,7 +105,7 @@ The provider remains behind the server contract. Fortune can later move from the
 
 ## GitHub publication
 
-The demonstration has a dedicated public repository at [zmuhls/fortune-digital-equity-guide-demo](https://github.com/zmuhls/fortune-digital-equity-guide-demo). Its repository root contains only the demonstration source, tests, workflows, and deployment notes. GitHub Actions builds the allowlisted static artifact and publishes it at [zmuhls.github.io/fortune-digital-equity-guide-demo](https://zmuhls.github.io/fortune-digital-equity-guide-demo/). The public Pages version uses the HTTPS model backend configured in `config.js` and falls back to the source-backed browser guide whenever that service is unavailable or its public usage limit has been reached.
+The demonstration has a dedicated public repository at [zmuhls/fortune-digital-equity-guide-demo](https://github.com/zmuhls/fortune-digital-equity-guide-demo). Its repository root contains only the demonstration source, tests, workflows, and deployment notes. GitHub Actions builds the allowlisted static artifact and publishes it at [zmuhls.github.io/fortune-digital-equity-guide-demo](https://zmuhls.github.io/fortune-digital-equity-guide-demo/). The public Pages version uses the HTTPS model backend configured in `config.js`. If that service is unavailable, the replicated pages and source navigation remain readable, while chat reports that it is unavailable instead of substituting an unlogged browser answer.
 
 ## Suggested meeting path
 

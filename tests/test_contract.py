@@ -6,6 +6,7 @@ import json
 import pathlib
 import sys
 import unittest
+import uuid
 
 
 DEMO = pathlib.Path(__file__).resolve().parents[1]
@@ -129,6 +130,18 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["status"], 200)
         self.assertEqual(captured["payload"]["retrieval_scope"], "page")
         self.assertEqual([record["id"] for record in self.retrieval_records(model_calls)], ["devices"])
+
+    def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
+        captured, _ = self.dispatch_chat(
+            "Can I get a free laptop?",
+            "https://www.fortunedigitalequity.org/devices",
+        )
+        payload = captured["payload"]
+        for key in ("conversation_id", "turn_id", "client_event_id"):
+            self.assertEqual(str(uuid.UUID(payload[key])), payload[key])
+        for message_id in payload["message_ids"].values():
+            self.assertEqual(str(uuid.UUID(message_id)), message_id)
+        self.assertEqual(payload["capture"], {"mode": "none", "stored": False})
 
     def test_every_content_complete_answer_url_resolves_to_page_only_evidence(self):
         complete_pages = [
@@ -497,6 +510,18 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("OLLAMA_API_KEY", config_source)
         self.assertIn('"model_enabled": bool(KEY)', server_source)
 
+        handler = server.Handler.__new__(server.Handler)
+        handler.path = "/health"
+        handler.headers = {}
+        captured = {}
+        handler._json = lambda status, value: captured.update(status=status, payload=value)
+        handler.do_GET()
+        serialized = json.dumps(captured["payload"])
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["conversation_logging"]["capture_mode"], "none")
+        self.assertNotIn("DATABASE_URL", serialized)
+        self.assertNotIn("FORTUNE_CONVERSATION_TOKEN_SECRET", serialized)
+
     def test_chat_only_panel_keeps_the_question_form_and_privacy_warning(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
@@ -629,10 +654,11 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("OLLAMA_API_KEY", app)
         self.assertNotIn("OLLAMA_API_KEY", wix)
 
-    def test_static_fallback_is_staged_and_never_ends_without_a_route(self):
+    def test_static_directory_fallback_is_not_used_as_an_unlogged_chat_answer(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
         fallback = site[site.index("function staticAnswer") : site.index("function selectedUrl")]
+        ask = app[app.index("async function ask") : app.index("async function checkHealth")]
         self.assertNotIn("const FAQS", app)
         self.assertLess(fallback.index("ambiguityAnswer"), fallback.index("rankPages"))
         self.assertIn("onCurrentPage", fallback)
@@ -642,6 +668,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("handoff_url:", fallback)
         self.assertIn("model_called: false", fallback)
         self.assertIn("distinctDestination(data)", app)
+        self.assertNotIn("staticAnswer", ask)
+        self.assertIn("pendingClientEventId", ask)
 
     def test_page_families_supply_specific_chat_prompts(self):
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
@@ -663,7 +691,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
         ask = app[app.index("async function ask") : app.index("async function checkHealth")]
-        self.assertLess(ask.index("personalInformationDetected(value)"), ask.index("remoteAnswer(safeQuestion)"))
+        self.assertLess(ask.index("personalInformationDetected(value)"), ask.index("remoteAnswer(safeQuestion,"))
         self.assertIn("privacyHold();", ask)
         self.assertIn(r"\d{6}", core)
         self.assertIn(r"\d{3}[-. ]\d{3}", core)
@@ -692,16 +720,28 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("Permissions.Anyone", backend)
         self.assertNotIn("getSecretValue", dashboard)
         self.assertNotIn("getSecretValue", site_element)
+        portable = (DEMO / "deployment" / "wix" / "fortune-guide-element.example.js").read_text(encoding="utf-8")
+        for client in (site_element, portable):
+            self.assertIn("client_event_id", client)
+            self.assertIn("conversation_id", client)
+            self.assertIn("conversation_token", client)
+            self.assertIn("pendingClientEventId", client)
 
     def test_railway_manifest_has_a_healthcheck_and_no_secret_values(self):
         manifest = json.loads((DEMO / "railway.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["deploy"]["startCommand"], "python3 server.py")
+        self.assertEqual(manifest["deploy"]["preDeployCommand"], "python3 scripts/migrate.py")
         self.assertEqual(manifest["deploy"]["healthcheckPath"], "/health")
         env_template = (DEMO / ".env.example").read_text(encoding="utf-8")
         self.assertIn("OLLAMA_API_KEY=", env_template)
         self.assertIn("FORTUNE_MODEL_WARMUP_COOLDOWN=900", env_template)
         self.assertIn("FORTUNE_MODEL_KEEP_ALIVE=30m", env_template)
+        self.assertIn("FORTUNE_CONVERSATION_CAPTURE=none", env_template)
+        self.assertIn("FORTUNE_CONVERSATION_TOKEN_SECRET=", env_template)
+        self.assertIn("DATABASE_URL=", env_template)
         self.assertNotRegex(env_template, r"OLLAMA_API_KEY=.+")
+        self.assertNotRegex(env_template, r"FORTUNE_CONVERSATION_TOKEN_SECRET=.+")
+        self.assertNotRegex(env_template, r"DATABASE_URL=.+")
 
 
 if __name__ == "__main__":

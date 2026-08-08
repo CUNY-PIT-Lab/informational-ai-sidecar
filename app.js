@@ -16,6 +16,7 @@
   const modelStatus = document.querySelector("#model-status");
   const contextWindow = document.querySelector("#context-window");
   const contextWindowText = document.querySelector("#context-window-text");
+  const contextWindowCopy = document.querySelector("#context-window-copy");
   const walkthrough = document.querySelector("#walkthrough");
   const walkthroughCard = walkthrough.querySelector(".walkthrough-card");
   const walkthroughTitle = document.querySelector("#walkthrough-title");
@@ -34,7 +35,13 @@
   const WALKTHROUGH_STORAGE_KEY = "fortune-guide-walkthrough-v1";
 
   let history = [];
+  let apiReady = false;
   let modelReady = false;
+  let captureMode = "none";
+  let conversationId = "";
+  let conversationToken = "";
+  let pendingClientEventId = "";
+  let pendingQuestion = "";
   let answering = false;
   let activePageId = "";
   let warmupPromise = null;
@@ -411,6 +418,10 @@
     if (!page) return;
     activePageId = page.id;
     history = [];
+    conversationId = "";
+    conversationToken = "";
+    pendingClientEventId = "";
+    pendingQuestion = "";
     updateContextWindow();
     panel.classList.remove("is-expanded");
     transcript.replaceChildren();
@@ -449,7 +460,7 @@
     updateContextWindow();
   }
 
-  async function remoteAnswer(question) {
+  async function remoteAnswer(question, clientEventId) {
     if (warmupPromise) {
       try {
         await warmupPromise;
@@ -460,10 +471,24 @@
     const response = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: question, history, page_context: pageContext() }),
+      body: JSON.stringify({
+        message: question,
+        history,
+        page_context: pageContext(),
+        client_surface: "replica",
+        client_event_id: clientEventId,
+        conversation_id: conversationId || undefined,
+        conversation_token: conversationToken || undefined,
+      }),
     });
     const data = await response.json();
-    if (!response.ok || data.error) throw new Error(data.error || "The live model could not answer.");
+    conversationId = String(data.conversation_id || conversationId);
+    conversationToken = String(data.conversation_token || conversationToken);
+    if (!response.ok || data.error) {
+      const error = new Error(data.error || "The live model could not answer.");
+      error.payload = data;
+      throw error;
+    }
     return data;
   }
 
@@ -500,6 +525,18 @@
     });
   }
 
+  function showUnavailable(message = "The guide could not display an answer right now. Please retry; the guide will reuse the same request when possible, or contact Digital Equity staff.") {
+    showAnswer({
+      kind: "handoff",
+      message,
+      reason: "The source pages remain available while the guide reconnects.",
+      sources: [],
+      related: [{ title: "Contact Digital Equity staff", url: CONTACT_URL }],
+      retrieval_scope: "staff",
+      model_called: false,
+    });
+  }
+
   async function ask(question) {
     const value = cleanText(question);
     if (!value || answering) return;
@@ -511,26 +548,38 @@
     }
 
     const safeQuestion = redactSixDigitValues(value);
-    appendMessage("user", safeQuestion);
+    if (pendingQuestion !== safeQuestion || !pendingClientEventId) {
+      pendingQuestion = safeQuestion;
+      pendingClientEventId = window.crypto.randomUUID();
+    }
     suggestions.replaceChildren();
     setBusy(true);
     try {
-      let data;
-      if (modelReady) {
-        try {
-          data = await remoteAnswer(safeQuestion);
-        } catch {
-          data = window.FortuneMockSite.staticAnswer(safeQuestion, currentPage());
-          modelStatus.textContent = "Source guide · live model unavailable";
-          modelReady = false;
-        }
-      } else {
-        data = window.FortuneMockSite.staticAnswer(safeQuestion, currentPage());
+      if (!apiReady) {
+        await checkHealth();
+        if (!apiReady) throw new Error("The guide backend is unavailable.");
       }
+      const data = await remoteAnswer(safeQuestion, pendingClientEventId);
+      appendMessage("user", safeQuestion);
       history.push({ role: "user", content: safeQuestion }, { role: "assistant", content: redactSixDigitValues(data.message || "") });
       history = history.slice(-MAX_CONTEXT_MESSAGES);
       updateContextWindow();
       showAnswer(data);
+      pendingClientEventId = "";
+      pendingQuestion = "";
+    } catch (error) {
+      questionField.value = value;
+      if (error?.payload?.idempotency_complete) {
+        pendingClientEventId = "";
+        pendingQuestion = "";
+      }
+      apiReady = false;
+      modelReady = false;
+      modelStatus.textContent = "Guide temporarily unavailable";
+      modelStatus.classList.remove("model-ready");
+      showUnavailable(error?.payload?.idempotency_complete
+        ? "That request finished, but this privacy mode did not retain answer text for replay. Please submit it once more or contact Digital Equity staff."
+        : undefined);
     } finally {
       setBusy(false);
     }
@@ -541,14 +590,30 @@
       const response = await fetch(apiUrl("/health"), { cache: "no-store" });
       if (!response.ok || !String(response.headers.get("content-type") || "").includes("application/json")) throw new Error("No model backend");
       const data = await response.json();
+      apiReady = true;
       modelReady = Boolean(data.model_enabled);
+      captureMode = ["none", "metadata", "transcript"].includes(data.conversation_logging?.capture_mode)
+        ? data.conversation_logging.capture_mode
+        : "none";
+      walkthroughSteps[4].copy = captureMode === "transcript"
+        ? "Only the last three exchanges stay in this tab. This approved evaluation build records questions and answers that pass its automated privacy hold for authorized reviewers. Do not enter personal information."
+        : captureMode === "metadata"
+          ? "Only the last three exchanges stay in this tab. This evaluation build records conversation IDs and response metadata, not question or answer text."
+          : "Only the last three exchanges stay in memory for this tab. A new page clears them, and the server keeps no chat database.";
+      contextWindowCopy.textContent = captureMode === "transcript"
+        ? "Changing pages starts a new conversation. This approved evaluation build records questions and answers that pass its automated privacy hold for authorized review. The hold is not guaranteed anonymization, so do not enter personal information."
+        : captureMode === "metadata"
+          ? "Changing pages starts a new conversation. This evaluation build records IDs and response metadata, not question or answer text."
+          : "The current page title and URL travel with each question. Changing pages clears the conversation, and the server keeps no chat database.";
       const pages = Number(data.indexed_pages) || Number(window.FortuneMockSite.getIndex()?.unique_urls) || 199;
       modelStatus.textContent = modelReady ? `Preparing ${data.model || "live model"}…` : `Source guide · ${pages} pages`;
       modelStatus.classList.toggle("model-ready", modelReady);
       if (modelReady) warmupPromise = warmModel(data.model, pages);
     } catch {
       const pages = Number(window.FortuneMockSite.getIndex()?.unique_urls) || 199;
+      apiReady = false;
       modelReady = false;
+      captureMode = "none";
       modelStatus.textContent = `Source guide · ${pages} pages`;
       modelStatus.classList.remove("model-ready");
     }
@@ -613,7 +678,11 @@
     tour: startWalkthrough,
     privacyDetected: personalInformationDetected,
     state: () => ({
+      apiReady,
       modelReady,
+      captureMode,
+      conversationId,
+      pendingClientEventId,
       activePageId,
       answering,
       historyLength: history.length,
