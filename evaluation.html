@@ -71,6 +71,31 @@
             <span aria-hidden="true">⌕</span>
             <input id="conversation-search" type="search" placeholder="Search conversations">
           </label>
+          <div class="view-controls" aria-label="Bucket view controls">
+            <label>
+              <span>Show</span>
+              <select id="bucket-visibility">
+                <option value="all">All buckets</option>
+                <option value="with-conversations">With conversations</option>
+                <option value="empty">Empty buckets</option>
+              </select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select id="bucket-sort">
+                <option value="default">Default order</option>
+                <option value="name">Bucket name</option>
+                <option value="count">Most conversations</option>
+              </select>
+            </label>
+            <label>
+              <span>Layout</span>
+              <select id="bucket-layout">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+          </div>
           <button class="primary-button" id="new-bucket-button" type="button">New bucket</button>
         </div>
       </div>

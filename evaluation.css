@@ -172,7 +172,7 @@ h1, h2, p { margin-top: 0; }
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(260px, 480px) auto;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
   gap: 14px;
   align-items: center;
 }
@@ -194,6 +194,23 @@ h1, h2, p { margin-top: 0; }
   background: transparent;
 }
 
+.view-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.view-controls label { display: grid; gap: 4px; }
+.view-controls span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.view-controls select {
+  min-height: 48px;
+  border: 1px solid #aeb2bb;
+  border-radius: 4px;
+  padding: 8px 32px 8px 10px;
+  color: var(--ink);
+  background: var(--white);
+}
+
 .toolbar .primary-button { justify-self: start; min-width: 150px; }
 
 .board {
@@ -206,6 +223,18 @@ h1, h2, p { margin-top: 0; }
   padding: 0;
   background: transparent;
 }
+
+.board[data-layout="compact"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.board[data-layout="compact"] .bucket { min-height: 260px; }
+.board[data-layout="compact"] .bucket-header { padding: 15px 14px 10px; }
+.board[data-layout="compact"] .bucket-cards { min-height: 190px; padding: 6px 14px 18px; }
+.board[data-layout="compact"] .conversation-card { padding: 14px 36px 14px 14px; }
+.board[data-layout="compact"] .conversation-card.is-selected { padding: 13px 35px 13px 13px; }
+.board[data-layout="compact"] .conversation-id { margin-bottom: 6px; font-size: 15px; }
 
 .bucket {
   min-width: 0;
@@ -262,9 +291,19 @@ h1, h2, p { margin-top: 0; }
 
 .card-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .open-transcript { border: 1px solid var(--blue); border-radius: 3px; padding: 7px 9px; color: var(--blue); background: var(--white); cursor: pointer; font-weight: 800; }
-.card-move { width: 1px; height: 1px; opacity: 0; position: absolute; }
-.conversation-card:hover .card-move,
-.card-move:focus { position: static; width: auto; height: 34px; opacity: 1; }
+.card-move {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 14px;
+  border: 1px solid #aeb2bb;
+  border-radius: 3px;
+  padding: 6px 28px 6px 8px;
+  color: var(--ink);
+  background: var(--white);
+}
+
+.card-actions .card-move { margin-top: 0; }
 
 .empty-state { max-width: 1420px; margin: 20px auto; font-weight: 800; }
 
@@ -330,8 +369,12 @@ dialog::backdrop { background: rgb(40 26 57 / 55%); }
   main { min-height: calc(100vh - 72px); }
   .workspace { padding: 28px 14px; }
   .toolbar { grid-template-columns: 1fr; }
+  .view-controls { display: grid; grid-template-columns: 1fr 1fr; }
+  .view-controls label:last-child { grid-column: 1 / -1; }
+  .view-controls select { width: 100%; }
   .toolbar .primary-button { width: 100%; }
-  .board { min-height: 540px; grid-template-columns: 1fr; gap: 16px; }
+  .board,
+  .board[data-layout="compact"] { min-height: 540px; grid-template-columns: 1fr; gap: 16px; }
   .bucket { min-height: 280px; }
   .bucket-cards { min-height: 200px; padding: 8px 16px 20px; }
   .access-card { padding: 28px 22px; }

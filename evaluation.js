@@ -16,6 +16,9 @@
   const board = document.querySelector("#conversation-board");
   const emptyState = document.querySelector("#empty-state");
   const search = document.querySelector("#conversation-search");
+  const bucketVisibility = document.querySelector("#bucket-visibility");
+  const bucketSort = document.querySelector("#bucket-sort");
+  const bucketLayout = document.querySelector("#bucket-layout");
   const newBucketButton = document.querySelector("#new-bucket-button");
   const bucketDialog = document.querySelector("#bucket-dialog");
   const bucketForm = document.querySelector("#bucket-form");
@@ -30,12 +33,15 @@
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
   const previewKey = "fortune-evaluation-preview-v2";
+  const viewKeyPrefix = "fortune-evaluation-view-v1";
+  const defaultView = { visibility: "all", sort: "default", layout: "comfortable" };
   const state = {
     session: null,
     csrf: "",
     buckets: [],
     conversations: [],
     selectedId: "",
+    view: { ...defaultView },
   };
 
   const previewBuckets = [
@@ -97,6 +103,7 @@
     state.session = { slot_key: "editor-1", role: "editor", display_name: "Editor 1" };
     state.buckets = saved?.buckets || previewBuckets;
     state.conversations = saved?.conversations || previewConversations;
+    loadViewPreferences();
     showWorkspace();
     renderBoard();
   }
@@ -113,15 +120,37 @@
     ]);
     state.buckets = bucketPayload.buckets || [];
     state.conversations = conversationPayload.conversations || [];
+    loadViewPreferences();
     showWorkspace();
     renderBoard();
   }
 
   function bucketColumns() {
     return [
-      { id: null, label: "Unsorted", color_key: "blue" },
+      { id: null, label: "Not yet reviewed", color_key: "blue" },
       ...state.buckets.filter(item => !item.archived_at),
     ];
+  }
+
+  function viewStorageKey() {
+    return `${viewKeyPrefix}:${state.session?.slot_key || "preview"}`;
+  }
+
+  function loadViewPreferences() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(viewStorageKey()) || "{}"); } catch (_error) {}
+    state.view = {
+      visibility: ["all", "with-conversations", "empty"].includes(saved.visibility) ? saved.visibility : defaultView.visibility,
+      sort: ["default", "name", "count"].includes(saved.sort) ? saved.sort : defaultView.sort,
+      layout: ["comfortable", "compact"].includes(saved.layout) ? saved.layout : defaultView.layout,
+    };
+    bucketVisibility.value = state.view.visibility;
+    bucketSort.value = state.view.sort;
+    bucketLayout.value = state.view.layout;
+  }
+
+  function saveViewPreferences() {
+    localStorage.setItem(viewStorageKey(), JSON.stringify(state.view));
   }
 
   function filteredConversations() {
@@ -159,7 +188,16 @@
   function renderBoard() {
     const conversations = filteredConversations();
     emptyState.hidden = conversations.length > 0;
-    board.innerHTML = bucketColumns().map(bucket => {
+    const counts = new Map(bucketColumns().map(bucket => [bucket.id, conversations.filter(item => (item.bucket_id || null) === bucket.id).length]));
+    let columns = bucketColumns().filter(bucket => {
+      if (state.view.visibility === "with-conversations") return counts.get(bucket.id) > 0;
+      if (state.view.visibility === "empty") return counts.get(bucket.id) === 0;
+      return true;
+    });
+    if (state.view.sort === "name") columns = [...columns].sort((a, b) => a.label.localeCompare(b.label));
+    if (state.view.sort === "count") columns = [...columns].sort((a, b) => counts.get(b.id) - counts.get(a.id));
+    board.dataset.layout = state.view.layout;
+    board.innerHTML = columns.map(bucket => {
       const items = conversations.filter(item => (item.bucket_id || null) === bucket.id);
       return `
         <section class="bucket" data-bucket-id="${escapeHtml(bucket.id || "")}" data-color="${escapeHtml(bucket.color_key || "blue")}" aria-labelledby="bucket-${escapeHtml(bucket.id || "unsorted")}">
@@ -226,12 +264,23 @@
             operation_id: crypto.randomUUID(),
           }),
         });
-        Object.assign(conversation, payload.evaluation || {});
+        const evaluation = payload.evaluation || {};
+        conversation.bucket_id = evaluation.bucket_id || null;
+        conversation.evaluation_version = Number(evaluation.version ?? conversation.evaluation_version ?? 0);
+        conversation.transcript_version = Number(evaluation.transcript_version ?? conversation.transcript_version ?? 0);
       }
-      const label = bucketColumns().find(bucket => bucket.id === bucketId)?.label || "Unsorted";
+      renderBoard();
+      const label = bucketColumns().find(bucket => bucket.id === bucketId)?.label || "Not yet reviewed";
       moveStatus.textContent = `${shortId(conversationId)} moved to ${label}.`;
     } catch (error) {
-      conversation.bucket_id = previous;
+      const current = error.payload?.current;
+      if (error.status === 409 && current) {
+        conversation.bucket_id = current.bucket_id || null;
+        conversation.evaluation_version = Number(current.version || 0);
+        conversation.transcript_version = Number(current.transcript_version || conversation.transcript_version || 0);
+      } else {
+        conversation.bucket_id = previous;
+      }
       renderBoard();
       moveStatus.textContent = `Move failed. ${error.message}`;
     }
@@ -311,6 +360,21 @@
   });
 
   search.addEventListener("input", renderBoard);
+  bucketVisibility.addEventListener("change", () => {
+    state.view.visibility = bucketVisibility.value;
+    saveViewPreferences();
+    renderBoard();
+  });
+  bucketSort.addEventListener("change", () => {
+    state.view.sort = bucketSort.value;
+    saveViewPreferences();
+    renderBoard();
+  });
+  bucketLayout.addEventListener("change", () => {
+    state.view.layout = bucketLayout.value;
+    saveViewPreferences();
+    renderBoard();
+  });
   newBucketButton.addEventListener("click", () => bucketDialog.showModal());
   bucketClose.addEventListener("click", () => bucketDialog.close());
   transcriptClose.addEventListener("click", () => transcriptDialog.close());

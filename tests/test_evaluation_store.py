@@ -106,12 +106,17 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertNotIn("Conversation queue", html)
         self.assertNotIn("conversation-filter", html)
         self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr))", css)
-        self.assertIn('{ id: null, label: "Unsorted"', javascript)
+        self.assertIn('{ id: null, label: "Not yet reviewed"', javascript)
         for label in ("Success", "Needs work", "Handoff"):
             self.assertIn(f'label: "{label}"', javascript)
         self.assertNotIn('label: "Mostly works"', javascript)
         self.assertIn('addEventListener("drop"', javascript)
         self.assertIn("card-move", javascript)
+        self.assertIn("conversation.evaluation_version = Number(evaluation.version", javascript)
+        self.assertIn('id="bucket-visibility"', html)
+        self.assertIn('id="bucket-sort"', html)
+        self.assertIn('id="bucket-layout"', html)
+        self.assertIn('board[data-layout="compact"]', css)
         self.assertIn("localStorage.setItem", javascript)
 
 
