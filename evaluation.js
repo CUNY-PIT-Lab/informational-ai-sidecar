@@ -49,7 +49,7 @@
     ["9f2a1c", "Device Distribution", 8, "success"],
     ["6e7f9g", "Legal Help Referrals", 6, "needs"],
     ["3h6j8k", "Benefits Assistance", 5, "handoff"],
-    ["5k9l0m", "Program Navigation", 4, "handoff"],
+    ["5k9l0m", "Theory of Change", 4, "handoff"],
   ].map(([id, page_title, turn_count, bucket_id]) => ({
     id, page_title, turn_count, bucket_id, transcript_version: turn_count,
     last_turn_at: "2026-08-08T14:30:00Z",
