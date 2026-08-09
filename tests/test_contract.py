@@ -249,6 +249,22 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(payload["handoff_url"], server.CONTACT_URL)
         self.assertTrue(payload["related"])
 
+    def test_broad_start_request_uses_approved_choices_without_calling_model(self):
+        captured, model_calls = self.dispatch_chat(
+            "How can I get started?",
+            "https://www.fortunedigitalequity.org/",
+        )
+        payload = captured["payload"]
+        self.assertEqual(payload["kind"], "clarify")
+        self.assertEqual(payload["message"], "What do you want to start with?")
+        self.assertEqual(
+            [choice["label"] for choice in payload["choices"]],
+            ["Take a class", "Get a device", "Talk to staff"],
+        )
+        self.assertEqual([source["id"] for source in payload["sources"]], ["home"])
+        self.assertFalse(payload["model_called"])
+        self.assertEqual(model_calls, [])
+
     def test_unknown_query_has_no_default_core_evidence(self):
         self.assertEqual(server.retrieve_sources("zzyzx quasar permit policy"), [])
         self.assertEqual(
@@ -262,7 +278,10 @@ class StagedRetrievalTests(unittest.TestCase):
 
 class AmbiguityAndPrivacyTests(unittest.TestCase):
     def test_known_ambiguous_requests_ask_one_question_with_choices(self):
-        for question in ("help", "device", "class", "internet"):
+        for question in (
+            "help", "device", "class", "internet", "How can I get started?",
+            "What programs are available?", "Can I get help?", "Where do I begin?",
+        ):
             response = server.ambiguity_response(question)
             self.assertIsNotNone(response, question)
             self.assertEqual(response["kind"], "clarify")
@@ -271,6 +290,16 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
             self.assertFalse(response["model_called"])
             self.assertTrue(response["related"])
             self.assertTrue(response["continuation"]["label"])
+
+    def test_broad_start_requests_use_approved_choices_before_retrieval_filtering(self):
+        response = server.ambiguity_response("How can I get started?")
+        self.assertEqual(response["message"], "What do you want to start with?")
+        self.assertEqual(
+            [choice["label"] for choice in response["choices"]],
+            ["Take a class", "Get a device", "Talk to staff"],
+        )
+        self.assertEqual([source["id"] for source in response["sources"]], ["home"])
+        self.assertFalse(response["model_called"])
 
     def test_clear_requests_skip_deterministic_clarification(self):
         for question in ("Can I get a free laptop?", "I want an Excel pivot table class", "When is the email class?"):
@@ -836,6 +865,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
     def test_static_directory_fallback_is_not_used_as_an_unlogged_chat_answer(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         fallback = site[site.index("function staticAnswer") : site.index("function selectedUrl")]
         ask = app[app.index("async function ask") : app.index("async function checkHealth")]
         self.assertNotIn("const FAQS", app)
@@ -847,6 +877,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("handoff_url:", fallback)
         self.assertIn("model_called: false", fallback)
         self.assertIn("distinctDestination(data)", app)
+        self.assertIn("data?.choices", app)
+        self.assertIn("payload?.choices", wix)
         self.assertNotIn("staticAnswer", ask)
         self.assertIn("pendingClientEventId", ask)
 
