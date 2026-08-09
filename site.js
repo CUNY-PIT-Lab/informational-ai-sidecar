@@ -282,7 +282,7 @@
     const blocks = document.querySelector("#page-blocks");
     const liveLink = document.querySelector("#live-page-link");
 
-    document.title = `${title} · Digital Equity guide demonstration`;
+    document.title = `${title} · Website Guide demo`;
     document.body.dataset.page = pathFor(page.url);
     document.body.dataset.sourceUrl = page.url;
     heading.textContent = title;

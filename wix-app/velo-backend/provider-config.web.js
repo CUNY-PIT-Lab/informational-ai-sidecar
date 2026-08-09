@@ -3,7 +3,7 @@ import { Permissions, webMethod } from "wix-web-module";
 import { secrets } from "wix-secrets-backend.v2";
 
 const SECRET_NAME = "fortuneGuideOllamaKey";
-const DESCRIPTION = "Ollama Cloud key for the Fortune Digital Equity guide";
+const DESCRIPTION = "Ollama Cloud key for the Fortune Website Guide";
 
 const createSecret = elevate(secrets.createSecret);
 const listSecretInfo = elevate(secrets.listSecretInfo);

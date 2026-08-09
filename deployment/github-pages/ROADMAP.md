@@ -1,6 +1,6 @@
 # GitHub Pages demonstration roadmap
 
-GitHub Pages hosts an inert replica for each of the 199 public HTML routes in `site-index.json`, so a reviewer can open a class, device, support, calendar, event, news, or archive path directly. Each snapshot preserves its rendered Wix page and adds the informational sidecar with the canonical Fortune source ID.
+GitHub Pages hosts an inert replica for each of the 200 public HTML routes in `site-index.json`, so a reviewer can open a class, device, support, calendar, event, news, or archive path directly. Each snapshot preserves its rendered Wix page and adds the informational sidecar with the canonical Fortune source ID.
 
 GitHub Pages serves static files and cannot protect a runtime model credential. The public site therefore has two operating states.
 
@@ -21,7 +21,7 @@ GitHub Pages route
 
 The external service holds `OLLAMA_API_KEY` in its environment, enforces the page-first source and privacy rules, and limits browser origins to the Pages URL and approved local development origins. It checks the current page first, searches other approved pages only after a local miss, and skips the model when neither layer contains evidence. The model selects a validated source; visible factual sentences come from that website record. The repository, Pages files, browser requests, and source maps contain no model credential.
 
-The current public API base is `https://guide-api-production-a1a1.up.railway.app`. The Railway `guide-api` service uses the exact GitHub Pages origin, a 30-call hourly limit per client, a 300-call shared daily limit, and `/health` as its deployment healthcheck.
+The current public API base is `https://guide-api-production-a1a1.up.railway.app`. The Railway `guide-api` service uses the exact GitHub Pages origin, a 30-call hourly model limit per client, a 300-call shared daily model limit, a separate bounded chat-request budget, and `/health` as its deployment healthcheck. Public production capture remains off unless Fortune completes the approval gate in [`../CONVERSATION-CAPTURE.md`](../CONVERSATION-CAPTURE.md).
 
 The provider boundary also allows Fortune to replace the meeting model with an approved Microsoft service without changing the public sidecar.
 
@@ -36,7 +36,7 @@ python3 scripts/build_pages.py
 python3 -m http.server 8791 --directory _site
 ```
 
-The builder creates `_site/index.html` and one nested `index.html` for every non-root canonical path. The complete output contains 199 route snapshots plus the shared replica, sidecar, configuration, and source-index files.
+The builder creates `_site/index.html` and one nested `index.html` for every non-root canonical path. The complete output contains 200 route snapshots plus the shared replica, sidecar, configuration, and source-index files.
 
 Each route shell sets public route context with `path`, `sourceUrl`, and `pageId`. Internal mock links remain inside the Pages site when the destination is indexed. Unindexed booking actions, PDFs, and other live-only destinations open the canonical Fortune URL.
 
@@ -52,7 +52,7 @@ The local service runs at `http://127.0.0.1:8790`. Before publishing, deploy the
 Required backend routes are:
 
 - `GET /health` reports service availability, model state, index date, and source count without exposing secrets.
-- `POST /api/chat` accepts `{ message, history, page_context }` and returns a bounded extractive answer, retrieval scope, validated sources, related pages, ambiguity choices, model-call status, and staff handoff.
+- `POST /api/chat` accepts the shared message/history/page context plus client event and server-issued conversation continuation fields. It returns a bounded extractive answer, retrieval scope, validated sources, related pages, ambiguity choices, model-call status, staff handoff, stable UUIDs, and capture status.
 - `GET /api/search?q=` provides key-free retrieval over approved answer sources.
 - `GET /api/sources` provides the public source inventory used by the demonstration.
 
@@ -66,7 +66,7 @@ Required backend routes are:
 - The question field always warns visitors not to enter a six-digit Fortune ID or other personal information.
 - A likely six-digit Fortune ID is removed in the browser before chat history or a request. The backend applies the same pre-model hold.
 - Failed or absent model service leaves the static page context, current Fortune source, related routes, and staff contact available.
-- The public build excludes raw transcripts, private Drive notes, API keys, and query logs.
+- The public production build excludes raw transcripts, private Drive notes, API keys, and query logs. Synthetic staging capture uses a separate Railway environment and database.
 
 ## Weekly and manual source review
 
@@ -89,7 +89,7 @@ python3 scripts/build_pages.py --check-index
 
 ## Publication sequence
 
-1. Review the 199-route static build locally, including excluded and archived routes.
+1. Review the 200-route static build locally, including excluded and archived routes.
 2. Run the key-free tests, index check, keyboard checks, desktop and mobile browser checks, and a broken-link pass.
 3. Publish the source-backed static build through [`../../.github/workflows/pages.yml`](../../.github/workflows/pages.yml).
 4. Verify every generated route at the repository Pages base path.
