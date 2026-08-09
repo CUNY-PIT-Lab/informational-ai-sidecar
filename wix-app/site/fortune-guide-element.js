@@ -372,11 +372,11 @@
             }
           }
         </style>
-        <button class="toggle" id="fortune-guide-toggle" type="button" aria-controls="fortune-guide-panel" aria-expanded="false">AI guide</button>
+        <button class="toggle" id="fortune-guide-toggle" type="button" aria-controls="fortune-guide-panel" aria-expanded="false">Website Guide</button>
         <section class="panel" id="fortune-guide-panel" role="dialog" aria-modal="false" aria-labelledby="fortune-guide-title" aria-hidden="true" hidden>
           <header class="head">
-            <h2 id="fortune-guide-title">AI guide</h2>
-            <button class="close" type="button" aria-label="Close AI guide">Close</button>
+            <h2 id="fortune-guide-title">Website Guide</h2>
+            <button class="close" type="button" aria-label="Close Website Guide">Close</button>
           </header>
           <div class="transcript result" aria-live="polite" aria-label="Guide conversation"></div>
           <div class="suggestions" aria-label="Questions about this page"></div>
@@ -904,7 +904,7 @@
         meta.className = "message-meta";
         const speaker = document.createElement("p");
         speaker.className = "speaker";
-        speaker.textContent = "AI guide";
+        speaker.textContent = "Guide";
         meta.append(speaker);
         assistant.append(meta);
         this.addAssistantContent(assistant, turn);

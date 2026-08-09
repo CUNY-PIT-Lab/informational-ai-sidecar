@@ -589,9 +589,12 @@ class FrontendAndDeploymentTests(unittest.TestCase):
     def test_chat_panel_keeps_only_the_compact_question_form_and_disclosed_info(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         panel = html[html.index('id="guide-panel"') : html.index("<!-- ROUTE_CONFIG -->")]
         self.assertIn('id="question-form"', panel)
-        self.assertIn('<h2 id="guide-title">AI guide</h2>', panel)
+        self.assertIn('<h2 id="guide-title">Website Guide</h2>', panel)
+        self.assertIn('>Website Guide</button>', wix)
+        self.assertIn('<h2 id="fortune-guide-title">Website Guide</h2>', wix)
         self.assertIn("Ask about this page", panel)
         self.assertIn(">Send</button>", panel)
         self.assertIn("Don’t include personal information.", panel)
@@ -844,7 +847,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "What current information are you looking for?",
         ):
             self.assertIn(prompt, core)
-        self.assertIn('title.textContent = "AI guide"', app)
+        self.assertIn('title.textContent = "Website Guide"', app)
+        self.assertNotIn('"AI guide"', app)
         self.assertIn('questionField.placeholder = "Ask about this page"', app)
         self.assertIn("button.dataset.prompt = prompt", app)
         self.assertIn("button.textContent = Core.suggestionLabel(prompt)", app)

@@ -122,7 +122,7 @@
     meta.className = "chat-message-meta";
     const label = document.createElement("p");
     label.className = "chat-speaker";
-    label.textContent = role === "user" ? "You" : "AI guide";
+    label.textContent = role === "user" ? "You" : "Guide";
     const body = document.createElement("p");
     body.className = "chat-copy";
     body.textContent = redactSixDigitValues(cleanText(message));
@@ -233,7 +233,7 @@
     updateContextWindow();
     panel.classList.remove("is-expanded");
     transcript.replaceChildren();
-    title.textContent = "AI guide";
+    title.textContent = "Website Guide";
     questionField.placeholder = "Ask about this page";
     renderSuggestions(starter);
   }
