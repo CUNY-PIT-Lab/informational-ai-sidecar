@@ -98,14 +98,21 @@ class EvaluationStoreBoundaryTests(unittest.TestCase):
 
 
 class EvaluationFrontendContractTests(unittest.TestCase):
-    def test_square_review_surface_stays_concise(self):
+    def test_review_surface_fits_multiple_buckets_and_stays_concise(self):
         html = (DEMO / "evaluation.html").read_text(encoding="utf-8")
         css = (DEMO / "evaluation.css").read_text(encoding="utf-8")
         javascript = (DEMO / "evaluation.js").read_text(encoding="utf-8")
         self.assertIn("Review conversations", html)
         self.assertNotIn("Conversation queue", html)
         self.assertNotIn("conversation-filter", html)
-        self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr))", css)
+        self.assertIn(
+            "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+            css,
+        )
+        self.assertIn(
+            "repeat(auto-fit, minmax(min(210px, 100%), 1fr))",
+            css,
+        )
         self.assertIn('{ id: null, label: "Not yet reviewed"', javascript)
         for label in ("Success", "Needs work", "Handoff"):
             self.assertIn(f'label: "{label}"', javascript)
@@ -117,6 +124,8 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('id="bucket-sort"', html)
         self.assertIn('id="bucket-layout"', html)
         self.assertIn('board[data-layout="compact"]', css)
+        self.assertIn('layout: "compact"', javascript)
+        self.assertIn('viewKeyPrefix = "fortune-evaluation-view-v2"', javascript)
         self.assertIn("localStorage.setItem", javascript)
 
 

@@ -32,9 +32,9 @@
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
-  const previewKey = "fortune-evaluation-preview-v2";
-  const viewKeyPrefix = "fortune-evaluation-view-v1";
-  const defaultView = { visibility: "all", sort: "default", layout: "comfortable" };
+  const previewKey = "fortune-evaluation-preview-v3";
+  const viewKeyPrefix = "fortune-evaluation-view-v2";
+  const defaultView = { visibility: "all", sort: "default", layout: "compact" };
   const state = {
     session: null,
     csrf: "",
