@@ -593,6 +593,8 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         panel = html[html.index('id="guide-panel"') : html.index("<!-- ROUTE_CONFIG -->")]
         self.assertIn('id="question-form"', panel)
         self.assertIn('<h2 id="guide-title">Website Guide</h2>', panel)
+        self.assertIn('Website Guide demo · Public information only', html)
+        self.assertNotIn('Digital Equity guide', html)
         self.assertIn('>Website Guide</button>', wix)
         self.assertIn('<h2 id="fortune-guide-title">Website Guide</h2>', wix)
         self.assertIn("Ask about this page", panel)
