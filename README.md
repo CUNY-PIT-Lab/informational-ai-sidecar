@@ -52,7 +52,7 @@ Internal Drive notes and meeting transcripts may shape navigation, ambiguity, tr
 
 Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Each reviewer receives an independent bucket set with **Success**, **Needs work**, and **Handoff**, plus the virtual **Unsorted** area and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event.
 
-The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. It never copies transcript text into bucket or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
+The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. Reviewers can keep a private conversation note and annotate individual transcript messages as helpful, unclear, incorrect, a safety concern, or other. Annotation records reference message IDs and never copy transcript text into evaluation or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
 
 Run the content-free aggregate release gate with `DATABASE_URL` supplied through the environment:
 

@@ -113,6 +113,14 @@
       </div>
       <button class="icon-button" id="transcript-close" type="button" aria-label="Close transcript">×</button>
     </div>
+    <form class="review-note-form" id="review-note-form">
+      <label for="review-note">Reviewer note</label>
+      <textarea id="review-note" maxlength="1000" rows="3" placeholder="What worked or needs attention?"></textarea>
+      <div class="note-actions">
+        <button class="secondary-button" type="submit">Save note</button>
+        <span class="save-status" id="review-note-status" role="status"></span>
+      </div>
+    </form>
     <div class="transcript" id="transcript"></div>
   </dialog>
 

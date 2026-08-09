@@ -65,6 +65,31 @@ class _FakeEvaluationStore:
     def list_conversations(self, _slot, _limit):
         return []
 
+    def save_note(self, slot, conversation_id, note, expected_version, transcript_version, operation_id):
+        return {
+            "slot": slot,
+            "conversation_id": conversation_id,
+            "note": note,
+            "version": int(expected_version) + 1,
+            "transcript_version": int(transcript_version),
+            "operation_id": operation_id,
+        }
+
+    def save_annotation(
+        self, slot, conversation_id, message_id, category, note,
+        expected_version, transcript_version, operation_id,
+    ):
+        return {
+            "slot": slot,
+            "conversation_id": conversation_id,
+            "message_id": message_id,
+            "category": category,
+            "note": note,
+            "version": int(expected_version) + 1,
+            "transcript_version": int(transcript_version),
+            "operation_id": operation_id,
+        }
+
     def list_accounts(self):
         raise AssertionError("An editor must not reach the account list")
 
@@ -183,6 +208,61 @@ class EvaluationApiTests(unittest.TestCase):
         )
         self.assertEqual(status, 403)
 
+    def test_notes_and_annotations_require_csrf_and_return_bounded_records(self):
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        message_id = "22222222-2222-4222-8222-222222222222"
+        operation_id = "33333333-3333-4333-8333-333333333333"
+        status, _, _ = self.request(
+            "PUT",
+            f"/api/evaluation/conversations/{conversation_id}/note",
+            {
+                "note": "The next step was clear.",
+                "expected_version": 2,
+                "expected_transcript_version": 9,
+                "operation_id": operation_id,
+            },
+            {
+                **self.same_origin_headers(),
+                "Cookie": "__Host-fs_eval=session-token",
+            },
+        )
+        self.assertEqual(status, 403)
+
+        headers = {
+            **self.same_origin_headers(),
+            "Cookie": "__Host-fs_eval=session-token",
+            "X-CSRF-Token": "csrf-token",
+        }
+        status, _, body = self.request(
+            "PUT",
+            f"/api/evaluation/conversations/{conversation_id}/note",
+            {
+                "note": "The next step was clear.",
+                "expected_version": 2,
+                "expected_transcript_version": 9,
+                "operation_id": operation_id,
+            },
+            headers,
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["evaluation"]["version"], 3)
+
+        status, _, body = self.request(
+            "PUT",
+            f"/api/evaluation/conversations/{conversation_id}/annotations/{message_id}",
+            {
+                "category": "helpful",
+                "note": "Good transition.",
+                "expected_version": 0,
+                "expected_transcript_version": 9,
+                "operation_id": "44444444-4444-4444-8444-444444444444",
+            },
+            headers,
+        )
+        self.assertEqual(status, 200)
+        annotation = json.loads(body)["annotation"]
+        self.assertEqual(annotation["category"], "helpful")
+        self.assertEqual(annotation["message_id"], message_id)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

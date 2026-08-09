@@ -13,10 +13,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-EVALUATION_SCHEMA_VERSION = "004_evaluation_taxonomy"
+EVALUATION_SCHEMA_VERSION = "006_transcript_annotations"
 COOKIE_NAME = "__Host-fs_eval"
 SLOT_KEYS = ("admin", "editor-1", "editor-2", "editor-3")
 COLOR_KEYS = {"blue", "sky", "eggplant", "coral"}
+ANNOTATION_CATEGORIES = {"helpful", "unclear", "incorrect", "unsafe", "other"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -82,6 +83,22 @@ def _uuid(value: Any, label: str) -> str:
         return str(uuid.UUID(str(value)))
     except (TypeError, ValueError, AttributeError) as error:
         raise EvaluationValidation(f"{label} must be a UUID.") from error
+
+
+def _reviewer_note(value: Any, *, maximum: int, label: str) -> str | None:
+    note = str(value or "").strip()
+    if len(note) > maximum:
+        raise EvaluationValidation(f"{label} must be {maximum} characters or fewer.")
+    return note or None
+
+
+def _annotation_category(value: Any, *, allow_empty: bool = False) -> str | None:
+    category = str(value or "").strip().lower()
+    if allow_empty and not category:
+        return None
+    if category not in ANNOTATION_CATEGORIES:
+        raise EvaluationValidation("Choose an available annotation type.")
+    return category
 
 
 def _json_value(value: Any) -> Any:
@@ -700,7 +717,8 @@ class EvaluationStore:
         query = self._eligible_cte() + """
             SELECT e.id, e.last_turn_at, e.turn_count, e.transcript_version,
                    COALESCE(e.page_context ->> 'title', 'Unknown page') AS page_title,
-                   ce.bucket_id, COALESCE(ce.version, 0) AS evaluation_version
+                   s.id AS bucket_set_id, ce.bucket_id, ce.note,
+                   COALESCE(ce.version, 0) AS evaluation_version
             FROM eligible e
             JOIN evaluation_bucket_sets s
               ON s.account_slot = %s AND s.archived_at IS NULL
@@ -717,6 +735,7 @@ class EvaluationStore:
                 conversation = cursor.fetchone()
                 if not conversation:
                     raise EvaluationForbidden("That conversation is not available for review.")
+                set_id = str(conversation["bucket_set_id"])
                 cursor.execute(
                     """
                     SELECT m.id, m.turn_id, m.ordinal, m.role, m.content
@@ -728,9 +747,252 @@ class EvaluationStore:
                     (conversation_id,),
                 )
                 messages = [dict(row) for row in cursor.fetchall()]
+                cursor.execute(
+                    """
+                    SELECT message_id, category, note, transcript_version, version
+                    FROM conversation_annotations
+                    WHERE bucket_set_id = %s AND conversation_id = %s
+                    ORDER BY created_at, message_id
+                    """,
+                    (set_id, conversation_id),
+                )
+                annotations = [dict(row) for row in cursor.fetchall()]
         payload = dict(conversation)
+        payload.pop("bucket_set_id", None)
         payload["messages"] = messages
+        payload["annotations"] = annotations
         return _json_value(payload)
+
+    def _current_transcript_version(self, cursor, conversation_id: str) -> int:
+        cursor.execute(
+            """
+            SELECT MAX(t.sequence)::BIGINT AS transcript_version
+            FROM conversations c
+            JOIN conversation_turns t ON t.conversation_id = c.id
+            WHERE c.id = %s AND c.capture_mode = 'transcript'
+              AND c.client_surface = 'synthetic' AND c.expires_at > NOW()
+              AND c.last_turn_at <= NOW() - (%s * INTERVAL '1 second')
+            HAVING BOOL_AND(
+                t.status = 'complete' AND t.privacy_state = 'clear'
+                AND t.review_state = 'ready'
+                AND (SELECT COUNT(*) FROM conversation_messages m WHERE m.turn_id = t.id) = 2
+            )
+            """,
+            (conversation_id, self.min_inactive_seconds),
+        )
+        row = cursor.fetchone()
+        if not row or row["transcript_version"] is None:
+            raise EvaluationForbidden("That conversation is not available for review.")
+        return int(row["transcript_version"])
+
+    @staticmethod
+    def _expected_versions(expected_value: Any, transcript_value: Any) -> tuple[int, int]:
+        try:
+            return max(0, int(expected_value)), max(0, int(transcript_value))
+        except (TypeError, ValueError) as error:
+            raise EvaluationValidation("Evaluation versions must be integers.") from error
+
+    def save_note(
+        self,
+        account_slot: str,
+        conversation_value: Any,
+        note_value: Any,
+        expected_version_value: Any,
+        transcript_version_value: Any,
+        operation_value: Any,
+    ) -> dict:
+        conversation_id = _uuid(conversation_value, "conversation_id")
+        note = _reviewer_note(note_value, maximum=1000, label="Reviewer note")
+        operation_id = _uuid(operation_value, "operation_id")
+        expected_version, expected_transcript_version = self._expected_versions(
+            expected_version_value, transcript_version_value
+        )
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                set_id = self._bucket_set_id(cursor, account_slot)
+                actual_transcript_version = self._current_transcript_version(
+                    cursor, conversation_id
+                )
+                cursor.execute(
+                    """
+                    SELECT bucket_id, note, transcript_version, version
+                    FROM conversation_evaluations
+                    WHERE bucket_set_id = %s AND conversation_id = %s
+                    FOR UPDATE
+                    """,
+                    (set_id, conversation_id),
+                )
+                current = cursor.fetchone()
+                current_payload = _json_value(dict(current)) if current else {
+                    "bucket_id": None,
+                    "note": None,
+                    "transcript_version": actual_transcript_version,
+                    "version": 0,
+                }
+                cursor.execute(
+                    "SELECT 1 FROM evaluation_audit_events WHERE operation_id = %s",
+                    (operation_id,),
+                )
+                if cursor.fetchone():
+                    return current_payload
+                if (
+                    expected_version != int(current_payload["version"])
+                    or expected_transcript_version != actual_transcript_version
+                ):
+                    raise EvaluationConflict(
+                        "The conversation changed; refresh before saving the note.",
+                        current_payload,
+                    )
+                next_version = expected_version + 1
+                cursor.execute(
+                    """
+                    INSERT INTO conversation_evaluations (
+                        bucket_set_id, conversation_id, bucket_id, note,
+                        transcript_version, version, updated_by
+                    ) VALUES (%s, %s, NULL, %s, %s, %s, %s)
+                    ON CONFLICT (bucket_set_id, conversation_id) DO UPDATE SET
+                        note = EXCLUDED.note,
+                        transcript_version = EXCLUDED.transcript_version,
+                        version = EXCLUDED.version,
+                        updated_by = EXCLUDED.updated_by,
+                        updated_at = NOW()
+                    RETURNING bucket_id, note, transcript_version, version
+                    """,
+                    (
+                        set_id, conversation_id, note, actual_transcript_version,
+                        next_version, account_slot,
+                    ),
+                )
+                evaluation = dict(cursor.fetchone())
+                cursor.execute(
+                    """
+                    INSERT INTO evaluation_audit_events (
+                        id, operation_id, actor_slot, action,
+                        bucket_set_id, conversation_id, metadata
+                    ) VALUES (%s, %s, %s, 'conversation.note', %s, %s, %s)
+                    """,
+                    (
+                        str(uuid.uuid4()), operation_id, account_slot, set_id,
+                        conversation_id,
+                        self._jsonb({"present": bool(note), "length": len(note or "")}),
+                    ),
+                )
+            connection.commit()
+        return _json_value(evaluation)
+
+    def save_annotation(
+        self,
+        account_slot: str,
+        conversation_value: Any,
+        message_value: Any,
+        category_value: Any,
+        note_value: Any,
+        expected_version_value: Any,
+        transcript_version_value: Any,
+        operation_value: Any,
+    ) -> dict | None:
+        conversation_id = _uuid(conversation_value, "conversation_id")
+        message_id = _uuid(message_value, "message_id")
+        note = _reviewer_note(note_value, maximum=500, label="Annotation note")
+        category = _annotation_category(category_value, allow_empty=not note)
+        operation_id = _uuid(operation_value, "operation_id")
+        expected_version, expected_transcript_version = self._expected_versions(
+            expected_version_value, transcript_version_value
+        )
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                set_id = self._bucket_set_id(cursor, account_slot)
+                actual_transcript_version = self._current_transcript_version(
+                    cursor, conversation_id
+                )
+                cursor.execute(
+                    "SELECT 1 FROM conversation_messages "
+                    "WHERE id = %s AND conversation_id = %s",
+                    (message_id, conversation_id),
+                )
+                if not cursor.fetchone():
+                    raise EvaluationForbidden("That message is not available for annotation.")
+                cursor.execute(
+                    """
+                    SELECT message_id, category, note, transcript_version, version
+                    FROM conversation_annotations
+                    WHERE bucket_set_id = %s AND conversation_id = %s AND message_id = %s
+                    FOR UPDATE
+                    """,
+                    (set_id, conversation_id, message_id),
+                )
+                current = cursor.fetchone()
+                current_payload = _json_value(dict(current)) if current else {
+                    "message_id": message_id,
+                    "category": None,
+                    "note": None,
+                    "transcript_version": actual_transcript_version,
+                    "version": 0,
+                }
+                cursor.execute(
+                    "SELECT 1 FROM evaluation_audit_events WHERE operation_id = %s",
+                    (operation_id,),
+                )
+                if cursor.fetchone():
+                    return current_payload if current else None
+                if (
+                    expected_version != int(current_payload["version"])
+                    or expected_transcript_version != actual_transcript_version
+                ):
+                    raise EvaluationConflict(
+                        "The annotation changed; reopen the transcript before saving.",
+                        current_payload,
+                    )
+                if category is None:
+                    cursor.execute(
+                        "DELETE FROM conversation_annotations "
+                        "WHERE bucket_set_id = %s AND conversation_id = %s AND message_id = %s",
+                        (set_id, conversation_id, message_id),
+                    )
+                    annotation = None
+                else:
+                    next_version = expected_version + 1
+                    cursor.execute(
+                        """
+                        INSERT INTO conversation_annotations (
+                            bucket_set_id, conversation_id, message_id, category, note,
+                            transcript_version, version, updated_by
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (bucket_set_id, conversation_id, message_id) DO UPDATE SET
+                            category = EXCLUDED.category,
+                            note = EXCLUDED.note,
+                            transcript_version = EXCLUDED.transcript_version,
+                            version = EXCLUDED.version,
+                            updated_by = EXCLUDED.updated_by,
+                            updated_at = NOW()
+                        RETURNING message_id, category, note, transcript_version, version
+                        """,
+                        (
+                            set_id, conversation_id, message_id, category, note,
+                            actual_transcript_version, next_version, account_slot,
+                        ),
+                    )
+                    annotation = dict(cursor.fetchone())
+                cursor.execute(
+                    """
+                    INSERT INTO evaluation_audit_events (
+                        id, operation_id, actor_slot, action,
+                        bucket_set_id, conversation_id, metadata
+                    ) VALUES (%s, %s, %s, 'conversation.annotation', %s, %s, %s)
+                    """,
+                    (
+                        str(uuid.uuid4()), operation_id, account_slot, set_id,
+                        conversation_id,
+                        self._jsonb({
+                            "message_id": message_id,
+                            "category": category,
+                            "present": category is not None,
+                            "note_length": len(note or ""),
+                        }),
+                    ),
+                )
+            connection.commit()
+        return _json_value(annotation) if annotation else None
 
     def move_conversation(
         self,

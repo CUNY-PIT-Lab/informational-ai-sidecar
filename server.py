@@ -1600,7 +1600,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             r"/api/evaluation/conversations/([0-9a-fA-F-]{36})/placement",
             path,
         )
-        if not placement_match:
+        note_match = re.fullmatch(
+            r"/api/evaluation/conversations/([0-9a-fA-F-]{36})/note",
+            path,
+        )
+        annotation_match = re.fullmatch(
+            r"/api/evaluation/conversations/([0-9a-fA-F-]{36})/annotations/([0-9a-fA-F-]{36})",
+            path,
+        )
+        if not (placement_match or note_match or annotation_match):
             self.send_error(404)
             return
         account, _ = self._require_evaluation_account(mutation=True)
@@ -1608,15 +1616,38 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         try:
             request = self._read_json()
-            evaluation = EVALUATION_STORE.move_conversation(
-                account["slot_key"],
-                placement_match.group(1),
-                request.get("bucket_id"),
-                request.get("expected_version"),
-                request.get("expected_transcript_version"),
-                request.get("operation_id"),
-            )
-            self._json(200, {"evaluation": evaluation})
+            if placement_match:
+                evaluation = EVALUATION_STORE.move_conversation(
+                    account["slot_key"],
+                    placement_match.group(1),
+                    request.get("bucket_id"),
+                    request.get("expected_version"),
+                    request.get("expected_transcript_version"),
+                    request.get("operation_id"),
+                )
+                self._json(200, {"evaluation": evaluation})
+            elif note_match:
+                evaluation = EVALUATION_STORE.save_note(
+                    account["slot_key"],
+                    note_match.group(1),
+                    request.get("note"),
+                    request.get("expected_version"),
+                    request.get("expected_transcript_version"),
+                    request.get("operation_id"),
+                )
+                self._json(200, {"evaluation": evaluation})
+            else:
+                annotation = EVALUATION_STORE.save_annotation(
+                    account["slot_key"],
+                    annotation_match.group(1),
+                    annotation_match.group(2),
+                    request.get("category"),
+                    request.get("note"),
+                    request.get("expected_version"),
+                    request.get("expected_transcript_version"),
+                    request.get("operation_id"),
+                )
+                self._json(200, {"annotation": annotation})
         except EvaluationConflict as error:
             self._json(409, {"error": str(error), "current": error.current})
         except EvaluationForbidden as error:

@@ -338,11 +338,43 @@ dialog::backdrop { background: rgb(40 26 57 / 55%); }
 }
 
 .transcript { overflow-y: auto; }
+.review-note-form { margin: 18px 0 22px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.review-note-form label { display: block; margin-bottom: 7px; font-weight: 900; }
+.review-note-form textarea,
+.annotation-form textarea,
+.annotation-form select {
+  width: 100%;
+  border: 1px solid #aeb2bb;
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--white);
+  font: inherit;
+}
+.review-note-form textarea,
+.annotation-form textarea { resize: vertical; }
+.note-actions,
+.annotation-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.save-status { min-height: 20px; color: var(--muted); font-size: 13px; font-weight: 800; }
 .message { max-width: 84%; margin: 18px 0; }
 .message.assistant { margin-left: auto; }
 .message-role { margin-bottom: 6px; font-size: 13px; font-weight: 900; }
 .message-content { margin: 0; padding: 14px 16px; border-left: 4px solid var(--blue); background: #edf8ff; white-space: pre-wrap; }
 .message.assistant .message-content { border-color: var(--eggplant); background: #f2eef6; }
+.annotation-toggle {
+  margin-top: 8px;
+  border: 0;
+  padding: 4px 0;
+  color: var(--blue);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+}
+.annotation-form { margin-top: 8px; padding: 12px; border: 1px solid var(--line); background: #f8fafc; }
+.annotation-form label { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 900; }
+.annotation-form textarea { margin-top: 10px; }
+.annotation-actions .text-button { min-height: 38px; padding: 6px 4px; }
 
 .slot-list { margin: 18px 0; padding: 0; list-style: none; }
 .slot-list li { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); }

@@ -28,6 +28,9 @@
   const transcriptTitle = document.querySelector("#transcript-title");
   const transcriptMeta = document.querySelector("#transcript-meta");
   const transcript = document.querySelector("#transcript");
+  const reviewNoteForm = document.querySelector("#review-note-form");
+  const reviewNote = document.querySelector("#review-note");
+  const reviewNoteStatus = document.querySelector("#review-note-status");
   const moveStatus = document.querySelector("#move-status");
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
@@ -41,7 +44,16 @@
     buckets: [],
     conversations: [],
     selectedId: "",
+    openConversation: null,
     view: { ...defaultView },
+  };
+
+  const annotationLabels = {
+    helpful: "Helpful",
+    unclear: "Unclear",
+    incorrect: "Incorrect",
+    unsafe: "Safety concern",
+    other: "Other",
   };
 
   const previewBuckets = [
@@ -292,22 +304,165 @@
     if (localPreview) {
       detail = {
         ...conversation,
+        note: conversation.note || null,
+        annotations: conversation.annotations || [],
         messages: [
-          { role: "user", content: "Where can I find the current information on this page?" },
-          { role: "assistant", content: "I found the relevant public page and can point you to it." },
+          { id: `${conversation.id}-user`, role: "user", content: "Where can I find the current information on this page?" },
+          { id: `${conversation.id}-assistant`, role: "assistant", content: "I found the relevant public page and can point you to it." },
         ],
       };
     } else {
       detail = (await api(`/api/evaluation/conversations/${encodeURIComponent(conversationId)}`)).conversation;
     }
+    state.openConversation = detail;
     transcriptTitle.textContent = shortId(detail.id);
     transcriptMeta.textContent = detail.page_title || "Conversation";
-    transcript.innerHTML = (detail.messages || []).map(message => `
-      <article class="message ${message.role === "assistant" ? "assistant" : "user"}">
+    reviewNote.value = detail.note || "";
+    reviewNoteStatus.textContent = "";
+    renderTranscriptMessages();
+    transcriptDialog.showModal();
+  }
+
+  function annotationOptions(selected) {
+    return [
+      ["", "Choose type"],
+      ...Object.entries(annotationLabels),
+    ].map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("");
+  }
+
+  function annotationFor(messageId) {
+    return (state.openConversation?.annotations || []).find(item => item.message_id === messageId) || null;
+  }
+
+  function transcriptMessageHtml(message) {
+    const annotation = annotationFor(message.id);
+    const buttonLabel = annotation
+      ? `Annotated: ${annotationLabels[annotation.category] || "Other"}`
+      : "Annotate";
+    return `
+      <article class="message ${message.role === "assistant" ? "assistant" : "user"}" data-message-id="${escapeHtml(message.id)}">
         <p class="message-role">${message.role === "assistant" ? "Digital Equity guide" : "Visitor"}</p>
         <p class="message-content">${escapeHtml(message.content)}</p>
-      </article>`).join("");
-    transcriptDialog.showModal();
+        <button class="annotation-toggle" type="button" aria-expanded="false">${escapeHtml(buttonLabel)}</button>
+        <form class="annotation-form" hidden>
+          <label>Annotation type
+            <select name="category">${annotationOptions(annotation?.category || "")}</select>
+          </label>
+          <label class="sr-only" for="annotation-${escapeHtml(message.id)}">Annotation note</label>
+          <textarea id="annotation-${escapeHtml(message.id)}" name="note" maxlength="500" rows="2" placeholder="Short note (optional)">${escapeHtml(annotation?.note || "")}</textarea>
+          <div class="annotation-actions">
+            <button class="secondary-button" type="submit">Save annotation</button>
+            ${annotation ? '<button class="text-button remove-annotation" type="button">Remove</button>' : ""}
+          </div>
+        </form>
+      </article>`;
+  }
+
+  function renderTranscriptMessages() {
+    transcript.innerHTML = (state.openConversation?.messages || []).map(transcriptMessageHtml).join("");
+    transcript.querySelectorAll(".message").forEach(message => {
+      const messageId = message.dataset.messageId;
+      const toggle = message.querySelector(".annotation-toggle");
+      const form = message.querySelector(".annotation-form");
+      toggle.addEventListener("click", () => {
+        form.hidden = !form.hidden;
+        toggle.setAttribute("aria-expanded", String(!form.hidden));
+      });
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        saveAnnotation(messageId, form, false);
+      });
+      form.querySelector(".remove-annotation")?.addEventListener("click", () => {
+        saveAnnotation(messageId, form, true);
+      });
+    });
+  }
+
+  function updateOpenConversation(evaluation) {
+    if (!state.openConversation) return;
+    state.openConversation.note = evaluation.note ?? state.openConversation.note ?? null;
+    state.openConversation.evaluation_version = Number(evaluation.version ?? state.openConversation.evaluation_version ?? 0);
+    state.openConversation.transcript_version = Number(evaluation.transcript_version ?? state.openConversation.transcript_version ?? 0);
+    const conversation = state.conversations.find(item => item.id === state.openConversation.id);
+    if (conversation) {
+      conversation.note = state.openConversation.note;
+      conversation.evaluation_version = state.openConversation.evaluation_version;
+      conversation.transcript_version = state.openConversation.transcript_version;
+    }
+  }
+
+  async function saveReviewNote() {
+    if (!state.openConversation) return;
+    reviewNoteStatus.textContent = "Saving…";
+    try {
+      let evaluation;
+      if (localPreview) {
+        evaluation = {
+          note: reviewNote.value.trim() || null,
+          version: Number(state.openConversation.evaluation_version || 0) + 1,
+          transcript_version: Number(state.openConversation.transcript_version || 0),
+        };
+      } else {
+        evaluation = (await api(`/api/evaluation/conversations/${encodeURIComponent(state.openConversation.id)}/note`, {
+          method: "PUT",
+          body: JSON.stringify({
+            note: reviewNote.value,
+            expected_version: Number(state.openConversation.evaluation_version || 0),
+            expected_transcript_version: Number(state.openConversation.transcript_version || 0),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).evaluation;
+      }
+      updateOpenConversation(evaluation || {});
+      if (localPreview) previewSave();
+      reviewNoteStatus.textContent = "Saved";
+    } catch (error) {
+      if (error.status === 409 && error.payload?.current) {
+        updateOpenConversation(error.payload.current);
+        reviewNote.value = state.openConversation.note || "";
+      }
+      reviewNoteStatus.textContent = `Not saved. ${error.message}`;
+    }
+  }
+
+  async function saveAnnotation(messageId, form, remove) {
+    if (!state.openConversation) return;
+    const current = annotationFor(messageId);
+    const category = remove ? "" : form.elements.category.value;
+    const note = remove ? "" : form.elements.note.value;
+    reviewNoteStatus.textContent = "Saving annotation…";
+    try {
+      let annotation;
+      if (localPreview) {
+        annotation = remove ? null : {
+          message_id: messageId,
+          category,
+          note: note.trim() || null,
+          transcript_version: Number(state.openConversation.transcript_version || 0),
+          version: Number(current?.version || 0) + 1,
+        };
+      } else {
+        annotation = (await api(`/api/evaluation/conversations/${encodeURIComponent(state.openConversation.id)}/annotations/${encodeURIComponent(messageId)}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            category,
+            note,
+            expected_version: Number(current?.version || 0),
+            expected_transcript_version: Number(state.openConversation.transcript_version || 0),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).annotation;
+      }
+      state.openConversation.annotations = (state.openConversation.annotations || []).filter(item => item.message_id !== messageId);
+      if (annotation) state.openConversation.annotations.push(annotation);
+      const conversation = state.conversations.find(item => item.id === state.openConversation.id);
+      if (conversation) conversation.annotations = state.openConversation.annotations;
+      if (localPreview) previewSave();
+      renderTranscriptMessages();
+      reviewNoteStatus.textContent = annotation ? "Annotation saved" : "Annotation removed";
+    } catch (error) {
+      reviewNoteStatus.textContent = `Annotation not saved. ${error.message}`;
+    }
   }
 
   loginForm.addEventListener("submit", async event => {
@@ -377,7 +532,14 @@
   });
   newBucketButton.addEventListener("click", () => bucketDialog.showModal());
   bucketClose.addEventListener("click", () => bucketDialog.close());
-  transcriptClose.addEventListener("click", () => transcriptDialog.close());
+  reviewNoteForm.addEventListener("submit", event => {
+    event.preventDefault();
+    saveReviewNote();
+  });
+  transcriptClose.addEventListener("click", () => {
+    transcriptDialog.close();
+    state.openConversation = null;
+  });
   accountButton.addEventListener("click", async () => {
     accountName.textContent = `${state.session?.display_name || "Account"} · ${state.session?.role || "editor"}`;
     accountSlots.hidden = true;

@@ -49,7 +49,7 @@ class EvaluationSchemaTests(unittest.TestCase):
     def test_evaluation_schema_version_is_separate_from_capture_schema(self):
         self.assertEqual(
             evaluation_store.EVALUATION_SCHEMA_VERSION,
-            "004_evaluation_taxonomy",
+            "006_transcript_annotations",
         )
         self.assertEqual(evaluation_store.COOKIE_NAME, "__Host-fs_eval")
 
@@ -82,6 +82,38 @@ class EvaluationStoreBoundaryTests(unittest.TestCase):
             evaluation_store._password("short")
         with self.assertRaises(evaluation_store.EvaluationValidation):
             evaluation_store._uuid("not-a-uuid", "operation_id")
+
+    def test_notes_and_annotation_categories_are_bounded(self):
+        self.assertEqual(
+            evaluation_store._reviewer_note(
+                "  Clear next step.  ", maximum=1000, label="Note"
+            ),
+            "Clear next step.",
+        )
+        self.assertEqual(
+            evaluation_store._annotation_category("HELPFUL"), "helpful"
+        )
+        self.assertIsNone(
+            evaluation_store._annotation_category("", allow_empty=True)
+        )
+        with self.assertRaises(evaluation_store.EvaluationValidation):
+            evaluation_store._reviewer_note(
+                "x" * 501, maximum=500, label="Annotation note"
+            )
+        with self.assertRaises(evaluation_store.EvaluationValidation):
+            evaluation_store._annotation_category("private-data")
+
+    def test_annotation_migration_is_reviewer_specific_and_transcript_free(self):
+        sql = (DEMO / "migrations" / "006_transcript_annotations.sql").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "PRIMARY KEY (bucket_set_id, conversation_id, message_id)", sql
+        )
+        self.assertIn("conversation.annotation", sql)
+        self.assertIn("LENGTH(note) <= 500", sql)
+        self.assertNotIn("message_content", sql)
+        self.assertNotIn("conversation_messages.content", sql)
 
     def test_session_and_csrf_digests_are_purpose_separated(self):
         store = evaluation_store.EvaluationStore(
@@ -126,6 +158,10 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('board[data-layout="compact"]', css)
         self.assertIn('layout: "compact"', javascript)
         self.assertIn('viewKeyPrefix = "fortune-evaluation-view-v2"', javascript)
+        self.assertIn('id="review-note"', html)
+        self.assertIn('maxlength="1000"', html)
+        self.assertIn("annotation-toggle", javascript)
+        self.assertIn('maxlength="500"', javascript)
         self.assertIn("localStorage.setItem", javascript)
 
 
