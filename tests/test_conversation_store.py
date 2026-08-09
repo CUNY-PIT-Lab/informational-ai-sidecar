@@ -70,8 +70,8 @@ class _RecordingPool:
         return _Context(self.connection_value)
 
 
-def persisted_reservation(mode="none"):
-    value = conversation_store.new_reservation(mode=mode)
+def persisted_reservation(mode="none", surface="unknown"):
+    value = conversation_store.new_reservation(mode=mode, client_surface=surface)
     return conversation_store.TurnReservation(**{
         **value.__dict__,
         "persisted": True,
@@ -136,6 +136,28 @@ class ConversationStoreTests(unittest.TestCase):
             recorder.accepted_conversation_id(conversation_id, "wrong-token")
         )
 
+    def test_idempotency_fingerprint_includes_safe_history_context(self):
+        base = dict(
+            secret="test-secret-" * 4,
+            question="Where is the class?",
+            page_context={"source_id": "calendar"},
+            client_surface="synthetic",
+        )
+        first = conversation_store.fingerprint_request(
+            **base,
+            history_context=[{"role": "user", "content": "I need a class."}],
+        )
+        changed = conversation_store.fingerprint_request(
+            **base,
+            history_context=[{"role": "user", "content": "I need a device."}],
+        )
+        self.assertEqual(len(first), 64)
+        self.assertNotEqual(first, changed)
+
+    def test_duplicate_turn_query_qualifies_columns_shared_with_conversations(self):
+        source = (DEMO / "conversation_store.py").read_text(encoding="utf-8")
+        self.assertIn("t.capture_mode, t.status, t.response_json", source)
+
     def test_metadata_capture_never_writes_message_content(self):
         recorder = recording_recorder("metadata")
         recorder.complete_turn(
@@ -185,6 +207,33 @@ class ConversationStoreTests(unittest.TestCase):
             "SYNTHETIC ANSWER",
         ])
 
+    def test_only_clear_synthetic_turns_are_review_ready(self):
+        cases = (
+            ("synthetic", "clear", "ready"),
+            ("replica", "clear", "pending"),
+            ("synthetic", "blocked", "excluded"),
+        )
+        for surface, privacy_state, expected_review_state in cases:
+            with self.subTest(surface=surface, privacy_state=privacy_state):
+                recorder = recording_recorder("metadata")
+                recorder.complete_turn(
+                    persisted_reservation("metadata", surface),
+                    question="Synthetic question",
+                    response={
+                        "kind": "answer",
+                        "message": "Synthetic answer",
+                        "chat_stage": "opening",
+                        "request_kind": "retrieval",
+                        "request_language": "en",
+                        "response_language": "en",
+                        "prompt_policy_version": "2026-08-08-v2",
+                    },
+                    privacy_state=privacy_state,
+                    latency_ms=6,
+                )
+                update_params = recorder._pool.cursor.calls[0][1]
+                self.assertEqual(update_params[1], expected_review_state)
+
     def test_capture_page_context_uses_only_server_index_values(self):
         captured = server.capture_page_context({
             "url": "https://www.fortunedigitalequity.org/devices",
@@ -209,7 +258,20 @@ class ConversationStoreTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("ADD COLUMN page_context JSONB", turn_context)
-        self.assertEqual(conversation_store.SCHEMA_VERSION, "002_turn_page_context")
+        interaction_context = (
+            DEMO / "migrations" / "005_interaction_context.sql"
+        ).read_text(encoding="utf-8")
+        for column in (
+            "chat_stage",
+            "request_kind",
+            "request_language",
+            "response_language",
+            "prompt_policy_version",
+        ):
+            self.assertIn(f"ADD COLUMN {column}", interaction_context)
+        self.assertIn("conversation_turns_ready_is_safe", interaction_context)
+        self.assertIn("conversation_turns_ready_is_synthetic", interaction_context)
+        self.assertEqual(conversation_store.SCHEMA_VERSION, "005_interaction_context")
 
 
 if __name__ == "__main__":

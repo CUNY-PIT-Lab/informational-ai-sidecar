@@ -42,7 +42,7 @@ The guide tells visitors: **Do not enter your six-digit Fortune ID, name, phone 
 
 Conversation capture is off by default. With `FORTUNE_CONVERSATION_CAPTURE=none`, the server writes no query log and needs no chat database. Browser history exists only in memory for the current tab and is capped at three recent exchanges (six messages). Moving to another mock page clears that history. Open-ended questions sent to the active model must use public or invented information.
 
-An isolated evaluation deployment may select `metadata` or `transcript` capture after Fortune approves the purpose, notice, reviewers, and retention period. Metadata mode stores identifiers and bounded routing/result fields without question or answer text. Transcript mode stores the question and answer only when the automated privacy hold classifies the turn as clear; blocked and sensitive turns keep metadata but no message content. The hold is not guaranteed anonymization, so transcript mode is synthetic-only until Fortune approves participant use and its visible notice. Captured conversations expire after 90 days by default. See [the conversation-capture deployment contract](deployment/CONVERSATION-CAPTURE.md).
+An isolated evaluation deployment may select `metadata` or `transcript` capture after Fortune approves the purpose, notice, reviewers, and retention period. Metadata mode stores identifiers and bounded routing/result fields without question or answer text. It also records server-owned interaction labels: opening or follow-up, request type, request and response language, retrieval scope, and prompt-policy version. Transcript mode stores the question and answer only when the automated privacy hold classifies the turn as clear; blocked and sensitive turns keep metadata but no message content. The hold is not guaranteed anonymization, so transcript mode is synthetic-only until Fortune approves participant use and its visible notice. Captured conversations expire after 90 days by default. See [the conversation-capture deployment contract](deployment/CONVERSATION-CAPTURE.md).
 
 Internal Drive notes and meeting transcripts may shape navigation, ambiguity, transparency, and handoff tests. They are not participant-facing factual sources. A statement enters the public answer index only after Fortune assigns a source URL, owner, approval date, and next review date. See [deployment/TRANSCRIPT-INGESTION.md](deployment/TRANSCRIPT-INGESTION.md).
 
@@ -51,6 +51,12 @@ Internal Drive notes and meeting transcripts may shape navigation, ambiguity, tr
 Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Each reviewer receives an independent bucket set with **Success**, **Needs work**, and **Handoff**, plus the virtual **Unsorted** area and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event.
 
 The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. It never copies transcript text into bucket or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
+
+Run the content-free aggregate release gate with `DATABASE_URL` supplied through the environment:
+
+```bash
+python3 scripts/audit_conversation_quality.py
+```
 
 ## Local commands
 

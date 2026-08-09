@@ -21,7 +21,7 @@ from typing import Any
 
 
 CAPTURE_MODES = {"none", "metadata", "transcript"}
-SCHEMA_VERSION = "002_turn_page_context"
+SCHEMA_VERSION = "005_interaction_context"
 
 
 class CaptureUnavailable(RuntimeError):
@@ -64,6 +64,33 @@ def sanitized_surface(value: Any) -> str:
     return surface if surface in {"replica", "wix", "api", "synthetic"} else "unknown"
 
 
+def fingerprint_request(
+    secret: str,
+    *,
+    question: str,
+    page_context: dict | None,
+    client_surface: Any,
+    history_context: list[dict] | None,
+) -> str:
+    """Bind idempotency to every input that can affect the model response."""
+
+    return hmac.new(
+        secret.encode("utf-8"),
+        json.dumps(
+            {
+                "message": str(question),
+                "page_context": page_context or {},
+                "client_surface": sanitized_surface(client_surface),
+                "history": history_context or [],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
 @dataclass(frozen=True)
 class TurnReservation:
     conversation_id: str
@@ -73,6 +100,7 @@ class TurnReservation:
     assistant_message_id: str
     lease_id: str
     capture_mode: str
+    client_surface: str = "unknown"
     persisted: bool = False
     duplicate_response: dict | None = None
     in_progress: bool = False
@@ -82,6 +110,7 @@ def new_reservation(
     conversation_id: Any = None,
     client_event_id: Any = None,
     mode: str = "none",
+    client_surface: Any = None,
 ) -> TurnReservation:
     return TurnReservation(
         conversation_id=canonical_uuid(conversation_id),
@@ -91,6 +120,7 @@ def new_reservation(
         assistant_message_id=canonical_uuid(),
         lease_id=canonical_uuid(),
         capture_mode=capture_mode(mode),
+        client_surface=sanitized_surface(client_surface),
     )
 
 
@@ -201,7 +231,7 @@ class ConversationRecorder:
             or "local"
         )[:120]
         self.prompt_version = str(
-            prompt_version or os.environ.get("FORTUNE_PROMPT_VERSION") or "2026-08-08-v1"
+            prompt_version or os.environ.get("FORTUNE_PROMPT_VERSION") or "2026-08-08-v2"
         )[:80]
         self.token_secret = str(
             token_secret
@@ -327,6 +357,8 @@ class ConversationRecorder:
         client_event_id: Any = None,
         page_context: dict | None = None,
         client_surface: Any = None,
+        history_context: list[dict] | None = None,
+        interaction_context: dict | None = None,
     ) -> TurnReservation:
         accepted_conversation_id = self.accepted_conversation_id(
             conversation_id,
@@ -336,26 +368,20 @@ class ConversationRecorder:
             accepted_conversation_id,
             client_event_id,
             self.mode,
+            client_surface,
         )
         if not self.required:
             return reservation
         if not self.ready:
             raise CaptureUnavailable("Required conversation capture is not ready")
         self.purge_expired()
-        request_fingerprint = hmac.new(
-            self.token_secret.encode("utf-8"),
-            json.dumps(
-                {
-                    "message": str(question),
-                    "page_context": page_context or {},
-                    "client_surface": sanitized_surface(client_surface),
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
+        request_fingerprint = fingerprint_request(
+            self.token_secret,
+            question=question,
+            page_context=page_context,
+            client_surface=client_surface,
+            history_context=history_context,
+        )
         try:
             with self._pool.connection() as connection:
                 with connection.transaction():
@@ -390,11 +416,14 @@ class ConversationRecorder:
                                 id, conversation_id, client_event_id,
                                 user_message_id, assistant_message_id,
                                 request_fingerprint, lease_id, capture_mode,
-                                page_context,
+                                page_context, chat_stage, request_kind,
+                                request_language, response_language,
+                                prompt_policy_version,
                                 status, privacy_state, review_state,
                                 prompt_version, app_version
                             ) VALUES (
                                 %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s,
                                 'pending', 'pending', 'pending', %s, %s
                             )
                             ON CONFLICT (client_event_id) DO NOTHING
@@ -410,6 +439,11 @@ class ConversationRecorder:
                                 reservation.lease_id,
                                 reservation.capture_mode,
                                 self._jsonb(page_context or {}),
+                                str((interaction_context or {}).get("chat_stage") or "unknown"),
+                                str((interaction_context or {}).get("request_kind") or "unknown"),
+                                str((interaction_context or {}).get("request_language") or "und"),
+                                "und",
+                                str((interaction_context or {}).get("prompt_policy_version") or "legacy")[:80],
                                 self.prompt_version,
                                 self.app_version,
                             ),
@@ -432,13 +466,15 @@ class ConversationRecorder:
                             })
                         cursor.execute(
                             """
-                            SELECT id, conversation_id, user_message_id,
-                                   assistant_message_id, request_fingerprint,
-                                   lease_id, capture_mode, status, response_json,
-                                   created_at < NOW() - (%s * INTERVAL '1 second')
+                            SELECT t.id, t.conversation_id, t.user_message_id,
+                                   t.assistant_message_id, t.request_fingerprint,
+                                   t.lease_id, t.capture_mode, t.status, t.response_json,
+                                   c.client_surface,
+                                   t.created_at < NOW() - (%s * INTERVAL '1 second')
                                        AS lease_expired
-                            FROM conversation_turns
-                            WHERE client_event_id = %s
+                            FROM conversation_turns t
+                            JOIN conversations c ON c.id = t.conversation_id
+                            WHERE t.client_event_id = %s
                             """,
                             (self.lease_seconds, reservation.client_event_id),
                         )
@@ -488,6 +524,7 @@ class ConversationRecorder:
                                     assistant_message_id=str(existing["assistant_message_id"]),
                                     lease_id=reservation.lease_id,
                                     capture_mode=str(existing["capture_mode"]),
+                                    client_surface=str(existing["client_surface"]),
                                     persisted=True,
                                 )
                         return TurnReservation(
@@ -498,6 +535,7 @@ class ConversationRecorder:
                             assistant_message_id=str(existing["assistant_message_id"]),
                             lease_id=str(existing["lease_id"]),
                             capture_mode=str(existing["capture_mode"]),
+                            client_surface=str(existing["client_surface"]),
                             persisted=True,
                             duplicate_response=existing["response_json"],
                             in_progress=existing["status"] != "complete",
@@ -574,7 +612,11 @@ class ConversationRecorder:
             return False
         if not self.enabled:
             raise CaptureUnavailable("Required conversation capture is not ready")
-        review_state = "ready" if privacy_state == "clear" else "excluded"
+        review_state = (
+            "ready"
+            if privacy_state == "clear" and reservation.client_surface == "synthetic"
+            else "pending" if privacy_state == "clear" else "excluded"
+        )
         source_ids = [
             str(item.get("id"))
             for item in response.get("sources", [])
@@ -593,6 +635,11 @@ class ConversationRecorder:
                 "client_event_id",
                 "message_ids",
                 "capture",
+                "chat_stage",
+                "request_kind",
+                "request_language",
+                "response_language",
+                "prompt_policy_version",
             )
             if key in response
         }
@@ -641,6 +688,11 @@ class ConversationRecorder:
                                 model_called = %s,
                                 latency_ms = %s,
                                 error_code = %s,
+                                chat_stage = %s,
+                                request_kind = %s,
+                                request_language = %s,
+                                response_language = %s,
+                                prompt_policy_version = %s,
                                 response_json = %s,
                                 completed_at = NOW()
                             WHERE id = %s AND status = 'pending' AND lease_id = %s
@@ -655,6 +707,11 @@ class ConversationRecorder:
                                 bool(response.get("model_called")),
                                 max(0, int(latency_ms)),
                                 error_code,
+                                response.get("chat_stage") or "unknown",
+                                response.get("request_kind") or "unknown",
+                                response.get("request_language") or "und",
+                                response.get("response_language") or "und",
+                                str(response.get("prompt_policy_version") or "legacy")[:80],
                                 self._jsonb(stored_response),
                                 reservation.turn_id,
                                 reservation.lease_id,

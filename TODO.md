@@ -10,9 +10,11 @@ Create three separate, one-time signup links for:
 
 Do this only after:
 
-- [ ] Railway conversation capture is healthy and writing to Postgres.
-- [ ] At least one privacy-cleared conversation appears in the evaluation workspace.
-- [ ] A conversation and its bucket placement still appear after a reload.
+- [x] Railway conversation capture is healthy and writing to Postgres.
+- [x] At least one privacy-cleared conversation appears in the evaluation workspace.
+- [x] A conversation and its bucket placement still appear after a reload.
+
+Verified on staging on 2026-08-08: the content-free quality gate passed, 9 conversations were eligible for review, and 3 placements persisted through deployment.
 
 Before sharing the links:
 
