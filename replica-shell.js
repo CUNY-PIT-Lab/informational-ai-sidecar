@@ -111,7 +111,7 @@
 
   const frame = document.createElement("iframe");
   frame.id = "fortune-sidecar-frame";
-  frame.title = "Digital Equity guide";
+  frame.title = "Website Guide";
   frame.loading = "eager";
   frame.setAttribute(
     "sandbox",

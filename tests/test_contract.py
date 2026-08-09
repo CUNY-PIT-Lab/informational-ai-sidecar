@@ -609,6 +609,21 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         startup = app[app.index("window.FortuneMockSite.ready.then") :]
         self.assertNotIn("questionField.focus", startup)
 
+    def test_website_guide_name_covers_visible_surfaces(self):
+        surface_paths = (
+            "site.js",
+            "replica-shell.js",
+            "evaluation.js",
+            "wix-app/velo-backend/provider-config.web.js",
+            "wix-app/velo-backend/provider-secret.js",
+            "wix-app/dashboard/provider-settings.html",
+        )
+        surfaces = "\n".join(
+            (DEMO / path).read_text(encoding="utf-8") for path in surface_paths
+        )
+        self.assertIn("Website Guide", surfaces)
+        self.assertNotIn("Digital Equity guide", surfaces)
+
     def test_walkthrough_and_tour_trigger_are_removed_from_the_minimal_guide(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")

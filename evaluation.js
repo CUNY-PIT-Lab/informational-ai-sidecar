@@ -341,7 +341,7 @@
       : "Annotate";
     return `
       <article class="message ${message.role === "assistant" ? "assistant" : "user"}" data-message-id="${escapeHtml(message.id)}">
-        <p class="message-role">${message.role === "assistant" ? "Digital Equity guide" : "Visitor"}</p>
+        <p class="message-role">${message.role === "assistant" ? "Website Guide" : "Visitor"}</p>
         <p class="message-content">${escapeHtml(message.content)}</p>
         <button class="annotation-toggle" type="button" aria-expanded="false">${escapeHtml(buttonLabel)}</button>
         <form class="annotation-form" hidden>
