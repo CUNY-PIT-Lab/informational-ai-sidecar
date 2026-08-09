@@ -5,14 +5,10 @@
   if (search.get("embed") !== "1" || window.parent === window) return;
 
   const panel = document.querySelector("#guide-panel");
-  const walkthrough = document.querySelector("#walkthrough");
   const parentOrigin = window.location.origin;
 
   function notifyState() {
-    const expanded = Boolean(
-      (panel && !panel.hidden) ||
-      (walkthrough && !walkthrough.hidden)
-    );
+    const expanded = Boolean(panel && !panel.hidden);
     window.parent.postMessage({ type: "fortune-sidecar-state", expanded }, parentOrigin);
   }
 
@@ -45,7 +41,6 @@
 
   const observer = new MutationObserver(notifyState);
   if (panel) observer.observe(panel, { attributes: true, attributeFilter: ["class", "hidden"] });
-  if (walkthrough) observer.observe(walkthrough, { attributes: true, attributeFilter: ["class", "hidden", "data-step"] });
   window.addEventListener("load", notifyState);
   window.addEventListener("resize", notifyState);
   notifyState();

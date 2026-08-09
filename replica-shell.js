@@ -122,7 +122,6 @@
   frameUrl.searchParams.set("embed", "1");
   frameUrl.searchParams.set("page", canonicalUrl(sourceUrl) || sourceUrl);
   const pageSearch = new URLSearchParams(window.location.search);
-  if (pageSearch.get("tour") === "1") frameUrl.searchParams.set("tour", "1");
   if (pageSearch.get("open") === "1") frameUrl.searchParams.set("open", "1");
   frame.src = frameUrl.href;
   host.append(frame);

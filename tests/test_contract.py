@@ -225,9 +225,11 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(payload["kind"], "handoff")
         self.assertFalse(payload["model_called"])
         self.assertEqual(model_calls, [])
-        self.assertIn("could not find", payload["message"].lower())
+        self.assertEqual(payload["message"], "I couldn’t confirm that on Fortune’s public pages.")
         self.assertNotIn("Use the approved page.", payload["message"])
         self.assertEqual([source["id"] for source in payload["sources"]], ["contact"])
+        self.assertEqual(payload["handoff_url"], server.CONTACT_URL)
+        self.assertTrue(payload["related"])
 
     def test_unknown_query_has_no_default_core_evidence(self):
         self.assertEqual(server.retrieve_sources("zzyzx quasar permit policy"), [])
@@ -314,18 +316,14 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
         self.assertFalse(captured["payload"]["model_called"])
         self.assertEqual(model_calls, [])
 
-    def test_privacy_copy_names_pii_and_six_digit_fortune_id(self):
-        message = server.privacy_response("123456")["message"]
-        for phrase in (
-            "personally identifiable information (PII)",
-            "six-digit Fortune ID",
-            "name",
-            "contact information",
-            "case information",
-            "health information",
-        ):
-            self.assertIn(phrase, message)
-        self.assertNotIn("123456", message)
+    def test_privacy_response_is_short_and_keeps_contact_routes(self):
+        response = server.privacy_response("123456")
+        self.assertEqual(response["message"], "Remove personal information and try again.")
+        self.assertFalse(response["model_called"])
+        self.assertNotIn("123456", response["message"])
+        self.assertEqual([source["id"] for source in response["sources"]], ["contact"])
+        self.assertEqual(response["handoff_url"], server.CONTACT_URL)
+        self.assertTrue(response["related"])
 
     def test_normal_public_questions_pass_privacy_gate(self):
         for text in ("Where can I learn email?", "Can I get a free laptop?", "Where is the Long Island City class?"):
@@ -522,13 +520,17 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("DATABASE_URL", serialized)
         self.assertNotIn("FORTUNE_CONVERSATION_TOKEN_SECRET", serialized)
 
-    def test_chat_only_panel_keeps_the_question_form_and_privacy_warning(self):
+    def test_chat_panel_keeps_only_the_compact_question_form_and_disclosed_info(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         panel = html[html.index('id="guide-panel"') : html.index("<!-- ROUTE_CONFIG -->")]
         self.assertIn('id="question-form"', panel)
+        self.assertIn('<h2 id="guide-title">AI guide</h2>', panel)
         self.assertIn("Ask about this page", panel)
-        self.assertIn("personally identifiable information (PII)", panel)
+        self.assertIn(">Send</button>", panel)
+        self.assertIn("Don’t include personal information.", panel)
+        self.assertIn("<summary>Info</summary>", panel)
+        self.assertIn("Press Enter to send. Press Shift+Enter for a new line.", panel)
         self.assertNotIn('id="faq', panel.lower())
         self.assertNotIn("FAQS", app)
         self.assertNotIn("renderMenu", app)
@@ -536,7 +538,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         startup = app[app.index("window.FortuneMockSite.ready.then") :]
         self.assertNotIn("questionField.focus", startup)
 
-    def test_first_visit_walkthrough_teaches_page_grounding_through_the_live_controls(self):
+    def test_walkthrough_and_tour_trigger_are_removed_from_the_minimal_guide(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
@@ -545,34 +547,19 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             'id="walkthrough-title"',
             'id="walkthrough-next"',
             'id="walkthrough-skip"',
-            'id="walkthrough-replay"',
             'id="walkthrough-live"',
         ):
-            self.assertIn(identifier, html)
-        for copy in (
-            "This page sets the first boundary",
-            "Questions change with the page",
-            "You can inspect the source",
-            "The context stays small",
-        ):
-            self.assertIn(copy, app)
-        self.assertIn("fortune-guide-walkthrough-v1", app)
-        self.assertIn('search.get("tour") === "1"', app)
-        self.assertIn("walkthroughWasSeen()", app)
-        self.assertIn("requiresSuggestion: true", app)
-        self.assertIn("await ask(button.dataset.prompt)", app)
-        self.assertIn("sourceDetails.open = true", app)
-        self.assertIn("if (walkthroughStartedOpen) openGuide();", app)
+            self.assertNotIn(identifier, html)
+        self.assertNotIn("WALKTHROUGH_STORAGE_KEY", app)
+        self.assertNotIn('search.get("tour")', app)
         self.assertIn("@media (prefers-reduced-motion: reduce)", styles)
-        self.assertIn(".walkthrough-focus", styles)
-        self.assertIn(".walkthrough[data-step=\"1\"]", styles)
 
     def test_context_window_reports_the_same_three_exchange_limit_sent_to_the_server(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         readme = (DEMO / "README.md").read_text(encoding="utf-8")
         self.assertIn('id="context-window"', html)
-        self.assertIn("This page + 0 of 3 recent exchanges", html)
+        self.assertIn("Context · this page · 0/3", html)
         self.assertIn("const MAX_CONTEXT_MESSAGES = 6", app)
         self.assertIn("MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2", app)
         self.assertIn(".slice(-MAX_CONTEXT_MESSAGES)", app)
@@ -585,7 +572,11 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn(".guide-panel.is-expanded", styles)
-        self.assertIn("max-height: 148px", styles)
+        transcript = styles[styles.index(".chat-transcript {") : styles.index(".chat-message {")]
+        expanded = transcript[transcript.index(".guide-panel.is-expanded .chat-transcript") :]
+        self.assertIn("max-height: 240px", transcript)
+        self.assertIn("max-height: none", expanded)
+        self.assertIn("flex: 1 1 auto", expanded)
         self.assertIn('panel.classList.add("is-expanded")', app)
         self.assertIn('panel.classList.remove("is-expanded")', app)
         self.assertIn("options.revealStart", app)
@@ -606,21 +597,44 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "@media (forced-colors: active)",
         ):
             self.assertIn(expected, styles)
-        self.assertIn("height: calc(100dvh - 16px)", styles)
+        mobile = styles[styles.index("@media (max-width: 800px)") : styles.index("@media (max-width: 520px)")]
+        self.assertIn(".guide,\n  html.sidecar-embed .guide { inset: auto 8px 8px; width: auto; }", mobile)
+        self.assertIn(".guide:has(.guide-panel.is-expanded)", mobile)
+        self.assertIn("html.sidecar-embed .guide:has(.guide-panel.is-expanded) { top: 8px; }", mobile)
+        self.assertIn(".guide-panel.is-expanded { height: 100%; max-height: 100%; }", mobile)
+        self.assertNotIn(".guide-panel.is-expanded { height: calc(100dvh", mobile)
         self.assertIn("height: calc(100dvh - 16px)", wix)
         self.assertIn(":focus-visible", wix)
         self.assertIn(":focus-visible", dashboard)
+
+    def test_sidecar_and_wix_share_the_monochrome_minimal_tokens(self):
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        for source in (styles, wix):
+            for token in (
+                "--guide-ink: #0b0b0b",
+                "--guide-muted: #6b6b6b",
+                "--guide-line: #dddddd",
+                "--guide-pale: #f1f1f1",
+                "--guide-paper: #ffffff",
+            ):
+                self.assertIn(token, source)
+            self.assertNotIn("--guide-accent", source)
+        panel = styles[styles.index(".guide-panel {") : styles.index("@keyframes reveal-up")]
+        self.assertIn("border: 1px solid var(--guide-ink)", panel)
+        self.assertIn("border-radius: 3px", panel)
+        self.assertNotIn("box-shadow", panel)
 
     def test_mobile_guide_prioritizes_model_text_over_composer_height(self):
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn("@media (max-width: 520px)", styles)
-        self.assertIn(".guide-panel:not(.is-expanded) .chat-transcript { min-height: 145px; }", styles)
-        self.assertIn("grid-template-columns: minmax(0, 1fr) 72px", styles)
+        self.assertIn(".guide-panel:not(.is-expanded) .chat-transcript:not(:empty) { min-height: 145px; }", styles)
+        self.assertIn("grid-template-columns: minmax(0, 1fr) 74px", styles)
         self.assertIn(".guide-panel.is-expanded .chat-transcript", styles)
         self.assertIn(".guide-panel.is-expanded .privacy-copy", styles)
         self.assertNotIn(".chat-input-row { grid-template-columns: 1fr; }", styles)
-        self.assertIn(".send { width: 72px;", wix)
+        self.assertIn(".send { width: 74px;", wix)
 
     def test_pages_prepare_the_live_backend_connection_before_loading_css(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
@@ -646,23 +660,83 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("data.related", app)
         self.assertIn("page_context: pageContext()", app)
 
-    def test_edit_and_resend_replaces_the_latest_turn_after_a_new_conversation_succeeds(self):
+    def test_edit_update_replaces_only_the_latest_turn_after_the_new_answer_succeeds(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
-        self.assertIn('id="edit-banner"', html)
-        self.assertIn("Edit and resend", app)
+        ask = app[app.index("async function ask") : app.index("async function checkHealth")]
+        self.assertNotIn('id="edit-banner"', html)
+        self.assertIn('id="edit-cancel"', html)
+        self.assertIn('id="edit-status"', html)
+        self.assertNotIn(">Editing<", html)
+        self.assertIn("Edit question", app)
+        self.assertIn('submitButton.textContent = "Update"', app)
+        self.assertIn(">Cancel</button>", html)
         self.assertIn("Core.historyBeforeLatestExchange(history)", app)
         self.assertIn("startNew: Boolean(editing)", app)
-        self.assertIn("The original answer is unchanged; retry or cancel.", app)
+        self.assertLess(ask.index("const data = await remoteAnswer"), ask.index("node.remove()"))
+        self.assertLess(ask.index('data.kind === "privacy"'), ask.index("node.remove()"))
+        self.assertIn("privacyHold(Boolean(editing))", ask)
+        self.assertIn("questionField.value = value", ask)
+        self.assertIn("Couldn’t update. Try again or cancel.", app)
+        self.assertNotIn("The original answer is unchanged; retry or cancel.", app)
         self.assertIn('pendingClientEventId = "";', app[app.index("function startEditing") : app.index("function privacyHold")])
         self.assertIn(".chat-edit-button", styles)
-        self.assertIn("Edit and resend", wix)
+        self.assertIn('edit.textContent = "Edit"', wix)
+        self.assertIn('this.sendButton.textContent = "Update"', wix)
+        self.assertIn(">Cancel</button>", wix)
         self.assertIn("this.history.slice(0, -2)", wix)
         self.assertIn("conversation_id: editing ? undefined", wix)
-        self.assertIn("if (!editing) this.result.hidden = true;", wix)
-        self.assertIn("The original answer is unchanged; retry or cancel.", wix)
+        self.assertIn("this.turns.slice(0, -1).concat(turn)", wix)
+        self.assertIn("this.renderConversation()", wix)
+        self.assertNotIn("if (!editing) this.result.hidden = true;", wix)
+        self.assertIn("Couldn’t update. Try again or cancel.", wix)
+        self.assertNotIn("The original answer is unchanged; retry or cancel.", wix)
+
+    def test_return_submits_while_shift_return_stays_in_the_textarea(self):
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        handler = app[
+            app.index('questionField.addEventListener("keydown"') :
+            app.index('suggestions.addEventListener("click"')
+        ]
+        self.assertIn('event.key !== "Enter"', handler)
+        self.assertIn("event.shiftKey", handler)
+        self.assertIn("event.isComposing", handler)
+        self.assertIn("event.preventDefault()", handler)
+        self.assertIn("form.requestSubmit()", handler)
+
+        wix_handler = wix[
+            wix.index('this.input.addEventListener("keydown"') :
+            wix.index('root.addEventListener("keydown"')
+        ]
+        self.assertIn('event.key !== "Enter"', wix_handler)
+        self.assertIn("event.isComposing", wix_handler)
+        self.assertIn("event.preventDefault()", wix_handler)
+        self.assertIn("this.form.requestSubmit()", wix_handler)
+
+    def test_keyboard_activated_starters_restore_composer_focus(self):
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        app_starters = app[
+            app.index('suggestions.addEventListener("click"') :
+            app.index('transcript.addEventListener("click"')
+        ]
+        wix_starters = wix[
+            wix.index('this.suggestions.addEventListener("click"') :
+            wix.index('this.transcript.addEventListener("click"')
+        ]
+        self.assertIn("restoreFocus: event.detail === 0", app_starters)
+        self.assertIn("restoreFocus: event.detail === 0", wix_starters)
+
+        app_ask = app[app.index("async function ask") : app.index("async function checkHealth")]
+        wix_ask_start = wix.index("async ask")
+        wix_ask = wix[wix_ask_start : wix.index("\n    beginEdit()", wix_ask_start)]
+        self.assertIn("const restoreComposerFocus = options.restoreFocus", app_ask)
+        self.assertIn("if (restoreComposerFocus", app_ask)
+        self.assertIn("const restoreComposerFocus = options.restoreFocus", wix_ask)
+        self.assertIn("if (restoreComposerFocus", wix_ask)
 
     def test_pages_and_wix_preload_the_model_without_a_provider_key(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
@@ -690,8 +764,9 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("staticAnswer", ask)
         self.assertIn("pendingClientEventId", ask)
 
-    def test_page_families_supply_specific_chat_prompts(self):
+    def test_page_families_keep_specific_prompts_behind_compact_buttons(self):
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
         for prompt in (
             "What would you like to know about this class?",
             "Do you need a device or help using one?",
@@ -703,19 +778,22 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "What current information are you looking for?",
         ):
             self.assertIn(prompt, core)
-        self.assertIn("title.textContent = starter.heading", (DEMO / "app.js").read_text(encoding="utf-8"))
-        self.assertIn("questionField.placeholder = starter.placeholder", (DEMO / "app.js").read_text(encoding="utf-8"))
+        self.assertIn('title.textContent = "AI guide"', app)
+        self.assertIn('questionField.placeholder = "Ask about this page"', app)
+        self.assertIn("button.dataset.prompt = prompt", app)
+        self.assertIn("button.textContent = Core.suggestionLabel(prompt)", app)
+        self.assertNotIn('button.setAttribute("aria-label", prompt)', app)
 
     def test_client_holds_six_digit_ids_before_any_network_request(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
         ask = app[app.index("async function ask") : app.index("async function checkHealth")]
         self.assertLess(ask.index("personalInformationDetected(value)"), ask.index("remoteAnswer(safeQuestion,"))
-        self.assertIn("privacyHold();", ask)
+        self.assertIn("privacyHold(Boolean(editTarget));", ask)
         self.assertIn(r"\d{6}", core)
-        self.assertIn(r"\d{3}[-. ]\d{3}", core)
+        self.assertIn(r"\d{3}[-‐‑‒–—.\s]?\d{3}", core)
         self.assertIn('normalize("NFKC")', core)
-        self.assertIn("before it left this browser", app)
+        self.assertIn("Remove personal information and try again.", app)
 
     def test_public_deployment_examples_contain_no_api_key_value(self):
         deployment = DEMO / "deployment"
@@ -740,11 +818,11 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("getSecretValue", dashboard)
         self.assertNotIn("getSecretValue", site_element)
         portable = (DEMO / "deployment" / "wix" / "fortune-guide-element.example.js").read_text(encoding="utf-8")
-        for client in (site_element, portable):
-            self.assertIn("client_event_id", client)
-            self.assertIn("conversation_id", client)
-            self.assertIn("conversation_token", client)
-            self.assertIn("pendingClientEventId", client)
+        for field in ("client_event_id", "conversation_id", "conversation_token", "pendingClientEventId"):
+            self.assertIn(field, site_element)
+        self.assertIn("Retired portable example", portable)
+        self.assertIn("../../wix-app/site/fortune-guide-element.js", portable)
+        self.assertNotIn("--guide-blue", portable)
 
     def test_railway_manifest_has_a_healthcheck_and_no_secret_values(self):
         manifest = json.loads((DEMO / "railway.json").read_text(encoding="utf-8"))

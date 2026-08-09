@@ -856,7 +856,7 @@ def response_contract(
 def privacy_response(question=""):
     return response_contract(
         kind="privacy",
-        message="Remove personally identifiable information (PII), including your six-digit Fortune ID, name, contact information, case information, or health information. Use an approved staff channel.",
+        message="Remove personal information and try again.",
         reason="This demonstration accepts public or made-up questions only.",
         sources=[SOURCE_BY_ID["contact"]],
         question=question or "contact Digital Equity staff",
@@ -867,7 +867,7 @@ def privacy_response(question=""):
 def human_handoff_response(question=""):
     return response_contract(
         kind="handoff",
-        message="This guide cannot answer that request. Use Fortune's official staff route without including case, health, or other personal details.",
+        message="This needs staff help. Don’t include personal information.",
         reason="A person should handle sensitive or urgent needs.",
         sources=[SOURCE_BY_ID["contact"]],
         question=question or "contact Fortune staff",
@@ -1260,7 +1260,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if retrieval_scope == "staff":
                 self._chat_json(200, response_contract(
                     kind="handoff",
-                    message="I could not find that information in the approved Digital Equity pages. Please ask Digital Equity staff instead.",
+                    message="I couldn’t confirm that on Fortune’s public pages.",
                     reason="The guide does not use unrelated pages or invent an answer when the approved site has no matching information.",
                     sources=[SOURCE_BY_ID["contact"]],
                     question=question,
@@ -1271,7 +1271,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not KEY:
                 self._chat_json(200, response_contract(
                     kind="handoff",
-                    message="The live model is not configured. The current Digital Equity pages and staff route are still available.",
+                    message="Live answers are unavailable.",
                     reason="The page directory works without sending a question to an external model.",
                     sources=retrieved,
                     question=question,
@@ -1282,7 +1282,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not MODEL_CALL_BUDGET.claim(self._client_identifier()):
                 self._chat_json(200, response_contract(
                     kind="handoff",
-                    message="The live demonstration has reached its usage limit. The approved page links and Digital Equity staff route remain available.",
+                    message="Live answers are paused. Try again later.",
                     reason="A public usage limit protects the shared model credential.",
                     sources=retrieved,
                     question=question,
@@ -1318,7 +1318,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             response = response_contract(
                 kind="handoff",
-                message="The live model could not answer. Use the current page links or contact Digital Equity staff.",
+                message="Live answer unavailable. Try again.",
                 reason="The verified directory stays available when the model is unavailable.",
                 sources=[SOURCE_BY_ID["contact"]],
                 question="Digital Equity help",

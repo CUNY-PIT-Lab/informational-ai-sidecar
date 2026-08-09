@@ -8,7 +8,7 @@ The shared backend also accepts `POST /api/warmup` from approved origins. The re
 
 - `wix/ROADMAP.md` describes a private Wix app that installs the guide across Fortune's site.
 - `wix/embedded.html.example` is the small fragment an embedded-script extension adds at the end of each page.
-- `wix/fortune-guide-element.example.js` is a portable custom element. It passes the current page URL and title to the backend and renders clarifying questions, approved sources, related routes, and staff handoff.
+- `wix/fortune-guide-element.example.js` is a retirement marker for the old portable example. Copy the maintained monochrome element from `../wix-app/site/fortune-guide-element.js` instead.
 - `wix/backend/ollama-proxy.example.mjs` shows the server boundary without relying on invented Wix extension IDs or package imports.
 - `wix/copilot-studio-bridge/` is a deployable, sandboxed iframe and server-side Direct Line token broker for a public-information Copilot Studio pilot. It is a separate evaluation route, not an adapter for the shared source-bounded API contract below.
 - `github-pages/ROADMAP.md` describes a public static demonstration backed by the same external API.

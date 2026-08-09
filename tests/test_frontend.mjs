@@ -18,7 +18,6 @@ function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
   const messages = [];
   let clickHandler = null;
   const panel = { hidden: panelHidden };
-  const walkthrough = { hidden: true };
   const parent = {
     postMessage(message, origin) { messages.push({ message, origin }); },
   };
@@ -35,7 +34,6 @@ function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
   const document = {
     querySelector(selector) {
       if (selector === "#guide-panel") return panel;
-      if (selector === "#walkthrough") return walkthrough;
       return null;
     },
     addEventListener(type, handler) {
@@ -100,6 +98,22 @@ test("every page has a tailored heading, placeholder, and exactly two prompts", 
   assert.equal(Core.starterFor(byPath.get("/service-page/intro-to-computers")).suggestions[0], "What does this class cover?");
 });
 
+test("starter prompts keep their full question while exposing compact button labels", () => {
+  assert.equal(Core.suggestionLabel("What is the main information here?"), "Page summary");
+  assert.equal(Core.suggestionLabel("Where should I go next?"), "Next step");
+  assert.equal(Core.suggestionLabel("What does this class cover?"), "Class details");
+  assert.equal(Core.suggestionLabel("I need information about getting a device"), "Get a device");
+  assert.equal(Core.suggestionLabel("Where and when are current classes?"), "Class times");
+
+  for (const page of pages) {
+    for (const prompt of Core.starterFor(page).suggestions) {
+      const label = Core.suggestionLabel(prompt);
+      assert.ok(label.length > 0 && label.length <= 32, `${page.url}: ${label}`);
+      assert.equal(/[?!.]$/.test(label), false, `${page.url}: ${label}`);
+    }
+  }
+});
+
 test("current-page evidence is recognized before a wider search", () => {
   const devices = byPath.get("/devices");
   const calendar = byPath.get("/calendar");
@@ -119,6 +133,8 @@ test("six-digit Fortune ID patterns are detected after Unicode normalization", (
   for (const value of [
     "123456",
     "123-456",
+    "123–456",
+    "123—456",
     "123 456",
     "１２３４５６",
     "١٢٣٤٥٦",
@@ -143,7 +159,7 @@ test("other obvious personal-information forms are held", () => {
 });
 
 test("redaction removes every six-digit representation from display text", () => {
-  for (const value of ["123456", "123-456", "123 456", "１２３４５６", "١٢٣٤٥٦"]) {
+  for (const value of ["123456", "123-456", "123–456", "123—456", "123 456", "１２３４５６", "١٢٣٤٥٦"]) {
     const redacted = Core.redactSixDigitValues(`ID ${value}`);
     assert.equal(redacted.includes("123456"), false, value);
     assert.equal(redacted.includes("123-456"), false, value);

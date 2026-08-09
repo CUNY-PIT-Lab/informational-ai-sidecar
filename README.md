@@ -21,7 +21,7 @@ Every index record carries its canonical URL, authority state, content hash, pro
 
 The generated mock site uses the canonical path for each indexed URL. Opening the guide on a class, device, support, calendar, event, program, news, or archive page changes the guide heading, suggested questions, and page context. The interface keeps the initial state small: one question field, an explicit privacy notice, and a few prompts drawn from the current page.
 
-First-time visitors receive a five-step walkthrough of the informational sidecar. It shows that the current page establishes the first retrieval boundary, asks the visitor to try one of the page-specific suggested questions, opens the answer's source disclosure, and explains the short per-tab context window. The walkthrough can be skipped, is not repeated after dismissal or completion, and remains available through **How this works** in the guide footer. Add `?tour=1` to a demonstration URL to force the walkthrough for review.
+The guide stays compact: two page-specific actions, one question field, a short privacy notice, and collapsed **Info** and source details. Use `?open=1` on a demonstration URL to open it for review.
 
 After a question:
 
@@ -34,7 +34,7 @@ After a question:
 7. GLM-5.2 on Ollama Cloud selects from the supplied source IDs. The server validates that choice and builds the visible factual answer from sentences in the selected website record. Model-written factual prose is never shown.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
-The latest completed user question also includes **Edit and resend**. The original question and answer stay visible while the visitor edits. A resend branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. The Wix element follows the same latest-question behavior.
+The latest completed user question includes **Edit**. The original question and answer stay visible while the visitor edits. **Update** branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. The Wix element follows the same latest-question behavior.
 
 Archive, navigation, and excluded routes still receive a tailored guide. Their page text cannot become factual answer authority. The guide moves the visitor to a current operational page.
 
@@ -117,7 +117,7 @@ The demonstration has a dedicated public repository at [zmuhls/fortune-digital-e
 
 ## Suggested meeting path
 
-1. Open a route with `?tour=1` and complete the first-visit walkthrough, including one suggested page question.
+1. Open a route with `?open=1` and press one page-specific starter.
 2. Open a second mock route and show that the sidecar title, prompts, and context counter reset with the page.
 3. Ask a page-specific question and follow the related route to another mock page.
 4. Enter `device` to show one clarifying question.
