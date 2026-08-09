@@ -164,12 +164,21 @@
     const compact = cleanText(question).toLowerCase().replace(/[?.!]/g, "");
     let message = "";
     let choices = [];
-    if (["help", "i need help", "support", "i need support"].includes(compact)) {
-      message = "What would you like help with: learning a skill, using a device, or reaching staff?";
+    const broadStartOrHelp = [
+      "help", "i need help", "i want help", "can i get help", "support", "i need support",
+      "how can you help me", "what can you help with", "how do i get started", "how can i get started",
+      "i want to get started", "i want to start", "where do i start", "where do i begin",
+      "where should i begin", "what can i do", "what can i do here", "what are the options",
+      "what is available", "what is offered", "what programs are available", "what services are available",
+      "what is the program", "what does the program do",
+    ].includes(compact) || /^(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)$/.test(compact)
+      || /^how (?:can|do) i (?:get )?(?:started|begin)$/.test(compact);
+    if (broadStartOrHelp) {
+      message = "What do you want to start with?";
       choices = [
-        { label: "Learn a skill", prompt: "I want to learn a digital skill." },
-        { label: "Use a device", prompt: "I need help using a device." },
-        { label: "Reach staff", prompt: "I want to contact Digital Equity staff." },
+        { label: "Take a class", prompt: "I want to find a digital skills class." },
+        { label: "Get a device", prompt: "I need information about getting a device." },
+        { label: "Talk to staff", prompt: "I want to contact Digital Equity staff." },
       ];
     } else if (/^(?:a |the )?(?:device|computer|phone|laptop)$/.test(compact)) {
       message = "Do you need a device, help learning to use one, or help with a problem?";

@@ -367,7 +367,9 @@
 
   function showAnswer(data) {
     suggestions.replaceChildren();
-    const destination = distinctDestination(data);
+    const destination = Array.isArray(data?.choices) && data.choices.length
+      ? null
+      : distinctDestination(data);
     return appendMessage("assistant", data.message || "I couldn’t confirm that on Fortune’s public pages.", {
       choices: data.choices,
       destination,

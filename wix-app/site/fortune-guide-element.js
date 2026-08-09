@@ -852,7 +852,9 @@
         if (choices.childElementCount) container.append(choices);
       }
 
-      const destination = this.distinctDestination(payload);
+      const destination = Array.isArray(payload?.choices) && payload.choices.length
+        ? null
+        : this.distinctDestination(payload);
       if (destination) {
         const link = document.createElement("a");
         link.className = "destination";

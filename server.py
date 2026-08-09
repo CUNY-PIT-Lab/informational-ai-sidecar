@@ -930,13 +930,25 @@ def ambiguity_response(question, language_code=None):
                 ],
                 ["individual", "trainings"],
             ))
-    if lowered in {"help", "i need help", "support", "i need support", "what can you help with"}:
+    broad_start_or_help = (
+        lowered in {
+            "help", "i need help", "i want help", "can i get help", "support", "i need support",
+            "how can you help me", "what can you help with", "how do i get started", "how can i get started",
+            "i want to get started", "i want to start", "where do i start", "where do i begin",
+            "where should i begin", "what can i do", "what can i do here", "what are the options",
+            "what is available", "what is offered", "what programs are available", "what services are available",
+            "what is the program", "what does the program do",
+        }
+        or bool(re.fullmatch(r"(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)", lowered))
+        or bool(re.fullmatch(r"how (?:can|do) i (?:get )?(?:started|begin)", lowered))
+    )
+    if broad_start_or_help:
         cases.append((
-            "What would you like help with: learning a skill, solving a device problem, or reaching staff?",
+            "What do you want to start with?",
             [
-                ("Learn a skill", "I want to learn a digital skill."),
-                ("Solve a device problem", "I need help using or fixing a device."),
-                ("Reach staff", "I want to contact Digital Equity staff."),
+                ("Take a class", "I want to find a digital skills class."),
+                ("Get a device", "I need information about getting a device."),
+                ("Talk to staff", "I want to contact Digital Equity staff."),
             ],
             ["home"],
         ))
