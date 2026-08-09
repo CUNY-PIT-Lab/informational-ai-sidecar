@@ -7,7 +7,7 @@ SELECT json_build_object(
     ),
     'evaluation_schema_current', EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '004_evaluation_taxonomy'
+        WHERE version = '006_transcript_annotations'
     ),
     'evaluation_slot_count', (
         SELECT COUNT(*) FROM evaluator_accounts

@@ -43,7 +43,7 @@ Only a conversation satisfying every condition enters a reviewer's queue:
 - every turn complete, privacy-clear, and ready;
 - exactly one user and one assistant message for every turn.
 
-Mixed or privacy-held conversations are withheld in full. Reviewers receive their own placements and buckets. Transcript text remains only in the canonical capture tables and expires with the conversation.
+Mixed or privacy-held conversations are withheld in full. Reviewers receive their own placements, buckets, conversation notes, and message annotations. Annotation rows reference canonical message IDs and never copy transcript text. All evaluation records cascade away when the conversation expires.
 
 ## HTTP boundary
 
@@ -58,7 +58,7 @@ Mixed or privacy-held conversations are withheld in full. Reviewers receive thei
 
 1. Run `./run.sh test` and both snapshot checks.
 2. Apply migrations through Railway's pre-deploy command.
-3. Confirm `/health` reports evaluation schema `004_evaluation_taxonomy`, four total slots, and four unassigned slots.
+3. Confirm `/health` reports evaluation schema `006_transcript_annotations`, four total slots, and the expected claimed/unassigned slot counts.
 4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
 5. Confirm `/evaluation` shows the login surface and no reviewer data without a session.
 6. Leave all invitation fields null until Fortune names the recipients.

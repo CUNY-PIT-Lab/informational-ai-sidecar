@@ -175,6 +175,7 @@ def run_audit(database_url: str) -> dict:
                 (SELECT COUNT(*) FROM evaluation_buckets WHERE archived_at IS NULL)::INTEGER
                     AS active_buckets,
                 (SELECT COUNT(*) FROM conversation_evaluations)::INTEGER AS placements,
+                (SELECT COUNT(*) FROM conversation_annotations)::INTEGER AS annotations,
                 (
                     SELECT COUNT(*) FROM (
                         SELECT c.id
@@ -202,7 +203,13 @@ def run_audit(database_url: str) -> dict:
                     LEFT JOIN evaluation_buckets AS b
                       ON b.id = e.bucket_id AND b.bucket_set_id = e.bucket_set_id
                     WHERE e.bucket_id IS NOT NULL AND b.id IS NULL
-                )::INTEGER AS orphan_placements
+                )::INTEGER AS orphan_placements,
+                (
+                    SELECT COUNT(*) FROM conversation_annotations AS a
+                    LEFT JOIN conversation_messages AS m
+                      ON m.id = a.message_id AND m.conversation_id = a.conversation_id
+                    WHERE m.id IS NULL
+                )::INTEGER AS orphan_annotations
         """,
     }
     result = {}
@@ -226,12 +233,13 @@ def run_audit(database_url: str) -> dict:
             "value": int(result["profile"]["expired_not_purged"]),
             "severity": "high",
         })
-    if int(result["evaluation"]["orphan_placements"] or 0) != 0:
-        failures.append({
-            "check": "orphan_placements",
-            "value": int(result["evaluation"]["orphan_placements"]),
-            "severity": "high",
-        })
+    for check in ("orphan_placements", "orphan_annotations"):
+        if int(result["evaluation"][check] or 0) != 0:
+            failures.append({
+                "check": check,
+                "value": int(result["evaluation"][check]),
+                "severity": "high",
+            })
     result["quality_gate"] = {
         "status": "pass" if not failures else "fail",
         "failures": failures,
