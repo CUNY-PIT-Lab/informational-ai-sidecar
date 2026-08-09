@@ -930,6 +930,17 @@ def ambiguity_response(question, language_code=None):
                 ],
                 ["individual", "trainings"],
             ))
+    specific_request_terms = {
+        "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
+        "training", "trainings", "course", "courses", "register", "registration", "calendar",
+        "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
+        "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
+        "eligibility", "eligible", "lifeline",
+    }
+    generic_request_terms = {
+        "start", "started", "begin", "help", "support", "assistance", "program", "programs",
+        "service", "services", "option", "options", "available", "offered", "offer",
+    }
     broad_start_or_help = (
         lowered in {
             "help", "i need help", "i want help", "can i get help", "support", "i need support",
@@ -941,6 +952,11 @@ def ambiguity_response(question, language_code=None):
         }
         or bool(re.fullmatch(r"(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)", lowered))
         or bool(re.fullmatch(r"how (?:can|do) i (?:get )?(?:started|begin)", lowered))
+        or (
+            len(words) <= 13
+            and bool(words.intersection(generic_request_terms))
+            and not words.intersection(specific_request_terms)
+        )
     )
     if broad_start_or_help:
         cases.append((

@@ -162,6 +162,18 @@
 
   function ambiguityAnswer(question, current) {
     const compact = cleanText(question).toLowerCase().replace(/[?.!]/g, "");
+    const words = new Set(compact.match(/[a-z0-9]+/g) || []);
+    const specificRequestTerms = new Set([
+      "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
+      "training", "trainings", "course", "courses", "register", "registration", "calendar",
+      "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
+      "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
+      "eligibility", "eligible", "lifeline",
+    ]);
+    const genericRequestTerms = new Set([
+      "start", "started", "begin", "help", "support", "assistance", "program", "programs",
+      "service", "services", "option", "options", "available", "offered", "offer",
+    ]);
     let message = "";
     let choices = [];
     const broadStartOrHelp = [
@@ -172,7 +184,10 @@
       "what is available", "what is offered", "what programs are available", "what services are available",
       "what is the program", "what does the program do",
     ].includes(compact) || /^(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)$/.test(compact)
-      || /^how (?:can|do) i (?:get )?(?:started|begin)$/.test(compact);
+      || /^how (?:can|do) i (?:get )?(?:started|begin)$/.test(compact)
+      || (words.size <= 13
+        && [...words].some(word => genericRequestTerms.has(word))
+        && ![...words].some(word => specificRequestTerms.has(word)));
     if (broadStartOrHelp) {
       message = "What do you want to start with?";
       choices = [
