@@ -281,6 +281,7 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
         for question in (
             "help", "device", "class", "internet", "How can I get started?",
             "What programs are available?", "Can I get help?", "Where do I begin?",
+            "Can you help me get started?", "Please tell me what programs you offer.",
         ):
             response = server.ambiguity_response(question)
             self.assertIsNotNone(response, question)
