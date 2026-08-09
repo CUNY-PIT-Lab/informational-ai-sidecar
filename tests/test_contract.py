@@ -85,11 +85,12 @@ class RetrievalTests(unittest.TestCase):
 
 
 class StagedRetrievalTests(unittest.TestCase):
-    def dispatch_chat(self, question, page_url, model_source_id="devices"):
+    def dispatch_chat(self, question, page_url, model_source_id="devices", history=None):
         model_calls = []
         body = json.dumps({
             "message": question,
             "page_context": {"url": page_url, "title": "Current page"},
+            "history": history or [],
         }).encode()
         handler = server.Handler.__new__(server.Handler)
         handler.path = "/api/chat"
@@ -142,6 +143,23 @@ class StagedRetrievalTests(unittest.TestCase):
         for message_id in payload["message_ids"].values():
             self.assertEqual(str(uuid.UUID(message_id)), message_id)
         self.assertEqual(payload["capture"], {"mode": "none", "stored": False})
+
+    def test_response_logs_server_owned_interaction_context(self):
+        captured, _ = self.dispatch_chat(
+            "How do I register for a class?",
+            "https://www.fortunedigitalequity.org/trainings",
+            model_source_id="trainings",
+            history=[
+                {"role": "user", "content": "I want a class."},
+                {"role": "assistant", "content": "Which topic?"},
+            ],
+        )
+        payload = captured["payload"]
+        self.assertEqual(payload["chat_stage"], "follow_up")
+        self.assertEqual(payload["request_kind"], "procedure")
+        self.assertEqual(payload["request_language"], "en")
+        self.assertEqual(payload["response_language"], "en")
+        self.assertEqual(payload["prompt_policy_version"], server.PROMPT_POLICY_VERSION)
 
     def test_every_content_complete_answer_url_resolves_to_page_only_evidence(self):
         complete_pages = [
@@ -258,6 +276,17 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
         for question in ("Can I get a free laptop?", "I want an Excel pivot table class", "When is the email class?"):
             self.assertIsNone(server.ambiguity_response(question), question)
 
+    def test_spanish_requests_are_detected_and_clarified_in_spanish(self):
+        self.assertEqual(server.detect_language("Necesito ayuda con una clase"), "es")
+        self.assertEqual(server.request_kind("¿Cómo puedo registrarme?"), "procedure")
+        response = server.ambiguity_response("clase", "es")
+        self.assertEqual(response["kind"], "clarify")
+        self.assertIn("¿", response["message"])
+        self.assertNotIn("What", response["message"])
+
+    def test_language_detection_does_not_treat_non_latin_text_as_english(self):
+        self.assertEqual(server.detect_language("需要帮助"), "other")
+
     def test_personal_details_are_held_before_model_use(self):
         cases = [
             "My Fortune ID is 12345",
@@ -373,6 +402,43 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("I know this from elsewhere", result["reason"])
         self.assertIn("Laptop supply is limited", result["message"])
         self.assertIn("distribution is currently on hold", result["message"].lower())
+
+    def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
+        retrieved = server.retrieve_sources("computadora")
+        raw = json.dumps({
+            "kind": "answer",
+            "message": "Las computadoras son gratis y están disponibles hoy.",
+            "reason": "Lo sé.",
+            "source_ids": [retrieved[0]["id"]],
+        })
+        interaction = {
+            "request_language": "es",
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+        }
+        result = server.parse_model_json(
+            raw, "Necesito una computadora", retrieved, "site", interaction
+        )
+        self.assertIn("Encontré una página oficial", result["message"])
+        self.assertNotIn("disponibles hoy", result["message"])
+        self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
+
+    def test_prompt_loads_only_the_selected_mode_stage_and_language_modules(self):
+        retrieved = server.retrieve_sources("computer class")
+        interaction = {
+            "request_kind": "procedure",
+            "chat_stage": "follow_up",
+            "request_language": "es",
+            "prompt_policy_version": server.PROMPT_POLICY_VERSION,
+        }
+        prompt = server.retrieval_prompt(
+            "¿Cómo me registro?", retrieved, None, interaction
+        )
+        self.assertIn(server.REQUEST_MODE_PROMPTS["procedure"], prompt)
+        self.assertNotIn(server.REQUEST_MODE_PROMPTS["clarification"], prompt)
+        self.assertIn(server.CHAT_STAGE_PROMPTS["follow_up"], prompt)
+        self.assertNotIn(server.CHAT_STAGE_PROMPTS["opening"], prompt)
+        self.assertIn(server.LANGUAGE_PROMPTS["es"], prompt)
 
     def test_model_clarification_cannot_restate_facts_or_reopen_a_clear_request(self):
         retrieved = server.retrieve_sources("free laptop")

@@ -4,7 +4,7 @@ This is the operator contract for adding PostgreSQL evidence capture to the Fort
 
 ## Current implementation slice
 
-The first migration creates `conversations`, `conversation_turns`, and `conversation_messages`; the second puts server-approved page context on every turn so a page transition cannot make later review ambiguous. Every accepted chat response receives UUIDs for its conversation, turn, client event, user message, and assistant message. Clients keep a server-signed conversation continuation token and reuse one client event ID across retries.
+The first migration creates `conversations`, `conversation_turns`, and `conversation_messages`; later migrations add server-approved page context, evaluator data, and bounded interaction labels. Each turn records opening or follow-up stage, request type, request and response language, retrieval scope, and prompt-policy version. Every accepted chat response receives UUIDs for its conversation, turn, client event, user message, and assistant message. Clients keep a server-signed conversation continuation token and reuse one client event ID across retries.
 
 The server reserves a turn before generating an answer and completes storage before returning it. If capture is required and PostgreSQL is unavailable, `/health` and `/api/chat` return `503` rather than creating an unlogged conversation. Request limits, a 50-turn conversation bound, request fingerprints, and expiring turn leases limit duplicate or unbounded writes. The server stores no IP address, user agent, device identifier, or provider credential.
 
@@ -44,7 +44,7 @@ FORTUNE_TURN_LEASE_SECONDS=180
 FORTUNE_MAX_TURNS_PER_CONVERSATION=50
 FORTUNE_CHAT_REQUESTS_PER_HOUR=120
 FORTUNE_CHAT_REQUESTS_PER_DAY=2000
-FORTUNE_PROMPT_VERSION=2026-08-08-v1
+FORTUNE_PROMPT_VERSION=2026-08-08-v2
 ```
 
 `railway.json` runs `python3 scripts/migrate.py` as a pre-deploy command and starts `python3 server.py`. Do not enable production capture merely by copying staging variables.
@@ -55,13 +55,14 @@ A staging release is accepted only after all of these are true:
 
 1. The local Python and JavaScript suites pass.
 2. The Railway deployment reaches terminal `SUCCESS`.
-3. `/health` returns `200`, `capture_mode=transcript`, `database_ready=true`, `enabled=true`, and `schema_version=002_turn_page_context` without revealing database or token values.
+3. `/health` returns `200`, `capture_mode=transcript`, `database_ready=true`, `enabled=true`, and `schema_version=005_interaction_context` without revealing database or token values.
 4. Re-running the migration reports a current schema.
 5. One invented question produces stable UUIDs and exactly two message rows.
 6. Replaying its client event ID returns the same turn and response without another row.
 7. Reusing that event ID with different input returns `409`.
 8. A synthetic six-digit-ID sentinel produces an excluded turn and zero message rows; the sentinel is absent from all persisted JSON and text fields.
 9. Production still reports `capture_mode=none` and has not been redeployed.
+10. `python3 scripts/audit_conversation_quality.py` passes without selecting message content.
 
 ## Dashboard migrations that come next
 

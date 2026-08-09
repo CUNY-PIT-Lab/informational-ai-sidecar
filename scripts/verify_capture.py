@@ -72,6 +72,15 @@ def main() -> int:
         raise AssertionError("Idempotent replay changed persisted identifiers")
     if first.get("capture") != {"mode": "transcript", "stored": True}:
         raise AssertionError("Transcript capture is not active")
+    expected_context = {
+        "chat_stage": "opening",
+        "request_kind": "clarification",
+        "request_language": "en",
+        "response_language": "en",
+        "prompt_policy_version": "2026-08-08-v2",
+    }
+    if {key: first.get(key) for key in expected_context} != expected_context:
+        raise AssertionError("Interaction context was not logged consistently")
     if privacy.get("kind") != "privacy":
         raise AssertionError("Synthetic personal-information sentinel was not held")
 

@@ -3,7 +3,7 @@
 SELECT json_build_object(
     'schema_current', EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '002_turn_page_context'
+        WHERE version = '005_interaction_context'
     ),
     'evaluation_schema_current', EXISTS (
         SELECT 1 FROM schema_migrations
@@ -25,6 +25,11 @@ SELECT json_build_object(
           AND client_event_id = :'clear_event'::uuid
           AND status = 'complete'
           AND review_state = 'ready'
+          AND chat_stage = 'opening'
+          AND request_kind = 'clarification'
+          AND request_language = 'en'
+          AND response_language = 'en'
+          AND prompt_policy_version = '2026-08-08-v2'
     ),
     'clear_message_count', (
         SELECT COUNT(*) FROM conversation_messages
