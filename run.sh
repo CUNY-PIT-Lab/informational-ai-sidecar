@@ -15,12 +15,18 @@ if [[ "${1:-}" == "test" ]]; then
   "$NODE_EXE" --check "$DEMO_DIR/guide-core.js"
   "$NODE_EXE" --check "$DEMO_DIR/site.js"
   "$NODE_EXE" --check "$DEMO_DIR/app.js"
+  "$NODE_EXE" --check "$DEMO_DIR/replica-shell.js"
+  "$NODE_EXE" --check "$DEMO_DIR/embed-frame.js"
+  "$NODE_EXE" --check "$DEMO_DIR/evaluation.js"
   "$NODE_EXE" --check "$DEMO_DIR/wix-app/site/fortune-guide-element.js"
   "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/site/member-access.js"
   "$NODE_EXE" --check "$DEMO_DIR/wix-app/dashboard/provider-settings.js"
   "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/velo-backend/provider-config.web.js"
   "$NODE_EXE" --input-type=module --check < "$DEMO_DIR/wix-app/velo-backend/provider-secret.js"
   "$NODE_EXE" --test "$DEMO_DIR/tests/test_frontend.mjs"
+  if [[ -f "$DEMO_DIR/tests/test_snapshot_generator.mjs" ]]; then
+    "$NODE_EXE" --test "$DEMO_DIR/tests/test_snapshot_generator.mjs"
+  fi
   exit 0
 fi
 

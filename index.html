@@ -6,15 +6,16 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://guide-api-production-a1a1.up.railway.app; img-src 'self' data:; style-src 'self'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="description" content="Public meeting mockup of The Fortune Society Digital Equity website with a page-aware source guide.">
-  <meta name="theme-color" content="#271b3a">
+  <meta name="theme-color" content="#0b0b0b">
   <title>Fortune Digital Equity · guide demonstration</title>
+  <script>document.documentElement.classList.toggle("sidecar-embed", new URLSearchParams(window.location.search).get("embed") === "1");</script>
   <link rel="preconnect" href="https://guide-api-production-a1a1.up.railway.app" crossorigin>
   <link rel="dns-prefetch" href="//guide-api-production-a1a1.up.railway.app">
-  <link rel="stylesheet" href="styles.css?v=20260727-sidecar-tour-2">
+  <link rel="stylesheet" href="styles.css?v=20260808-website-guide-2">
 </head>
 <body>
   <a class="skip-link" href="#page-content">Skip to page information</a>
-  <div class="demo-notice" role="note">Demonstration of a proposed Digital Equity guide · Public website information only</div>
+  <div class="demo-notice" role="note">Website Guide demo · Public information only</div>
 
   <div class="site-utility">
     <nav class="site-member-access" aria-label="Member access">
@@ -66,72 +67,51 @@
     <p class="reference-note">This mock site is generated from the public Digital Equity sitemap. The live Fortune pages remain authoritative.</p>
   </footer>
 
-  <aside class="guide" aria-label="Digital Equity guide">
+  <aside class="guide" aria-label="Website Guide">
     <section class="guide-panel" id="guide-panel" role="dialog" aria-modal="false" aria-labelledby="guide-title" aria-hidden="true" hidden>
       <header class="guide-header" id="guide-header">
-        <div>
-          <p class="guide-kicker">Digital Equity guide</p>
-          <h2 id="guide-title">Ask about this page</h2>
-        </div>
-        <button class="icon-button" id="guide-close" type="button" aria-label="Close Digital Equity guide">Close</button>
+        <h2 id="guide-title">Website Guide</h2>
+        <button class="icon-button" id="guide-close" type="button" aria-label="Close Website Guide">Close</button>
       </header>
 
       <div class="chat-transcript" id="chat-transcript" aria-live="polite" aria-label="Guide conversation"></div>
       <div class="chat-suggestions" id="chat-suggestions" aria-label="Questions about this page"></div>
 
       <form class="chat-form" id="question-form">
-        <label for="question">Ask about this page</label>
+        <label class="sr-only" id="question-label" for="question">Question</label>
         <div class="chat-input-row">
-          <textarea id="question" name="question" maxlength="600" required rows="2" placeholder="What would you like to know?"></textarea>
-          <button type="submit">Ask</button>
+          <textarea id="question" name="question" maxlength="600" required rows="1" placeholder="Ask about this page" aria-describedby="privacy-copy question-key-hint"></textarea>
+          <button type="submit">Send</button>
+          <button class="edit-cancel" id="edit-cancel" type="button" hidden>Cancel</button>
         </div>
-        <p class="privacy-copy"><strong>Do not enter personally identifiable information (PII).</strong> This includes your six-digit Fortune ID, name, contact details, case information, or health information.</p>
+        <p class="edit-status" id="edit-status" role="status" aria-live="polite" hidden></p>
+        <p class="privacy-copy" id="privacy-copy">Don’t include personal information.</p>
+        <span class="sr-only" id="question-key-hint">Press Enter to send. Press Shift+Enter for a new line.</span>
       </form>
 
-      <details class="context-window" id="context-window">
-        <summary>
-          <span class="context-window-label">Context</span>
-          <span id="context-window-text">This page + 0 of 3 recent exchanges</span>
-        </summary>
-        <p>The current page title and URL travel with each question. Changing pages clears the conversation, and the server keeps no chat database.</p>
-      </details>
-
       <footer class="guide-footer">
-        <span id="model-status">Loading the page guide…</span>
-        <span class="guide-footer-actions">
-          <button class="guide-text-button" id="walkthrough-replay" type="button">How this works</button>
-          <a href="?page=%2Fcontact" data-site-url="https://www.fortunedigitalequity.org/contact">Contact staff</a>
-        </span>
+        <details class="context-window" id="context-window">
+          <summary>Info</summary>
+          <div class="guide-info">
+            <p id="context-window-text">Context · this page · 0/3</p>
+            <p id="context-window-copy">Up to 3 exchanges stay in this tab. Changing pages clears them. Chat text isn’t stored.</p>
+            <p>Don’t include your Fortune ID, name, contact, case, or health information.</p>
+            <p id="model-status">Starting…</p>
+          </div>
+        </details>
+        <a href="?page=%2Fcontact" data-site-url="https://www.fortunedigitalequity.org/contact">Contact</a>
       </footer>
     </section>
     <button class="guide-toggle" id="guide-toggle" type="button" aria-controls="guide-panel" aria-expanded="false">
-      <span>Digital Equity guide</span>
-      <span aria-hidden="true">↑</span>
+      <span>Website Guide</span>
     </button>
   </aside>
 
-  <div class="walkthrough" id="walkthrough" aria-hidden="true" hidden>
-    <div class="walkthrough-scrim" aria-hidden="true"></div>
-    <section class="walkthrough-card" role="dialog" aria-modal="false" aria-labelledby="walkthrough-title" aria-describedby="walkthrough-copy walkthrough-instruction">
-      <div class="walkthrough-progress" aria-hidden="true">
-        <span class="walkthrough-progress-fill"></span>
-      </div>
-      <p class="walkthrough-count" id="walkthrough-count">1 of 5</p>
-      <h2 id="walkthrough-title">Meet the page guide</h2>
-      <p id="walkthrough-copy">This informational sidecar helps you understand the page you are on by checking it first and looking elsewhere on the site only when needed.</p>
-      <p class="walkthrough-instruction" id="walkthrough-instruction" hidden></p>
-      <div class="walkthrough-actions">
-        <button class="walkthrough-secondary" id="walkthrough-skip" type="button">Not now</button>
-        <button class="walkthrough-primary" id="walkthrough-next" type="button">Show me how</button>
-      </div>
-    </section>
-    <p class="sr-only" id="walkthrough-live" aria-live="polite"></p>
-  </div>
-
   <!-- ROUTE_CONFIG -->
-  <script src="config.js?v=20260727-sidecar-tour-2"></script>
-  <script src="guide-core.js?v=20260727-sidecar-tour-2"></script>
-  <script src="site.js?v=20260727-sidecar-tour-2"></script>
-  <script src="app.js?v=20260727-sidecar-tour-2"></script>
+  <script src="config.js?v=20260808-website-guide-2"></script>
+  <script src="guide-core.js?v=20260808-website-guide-2"></script>
+  <script src="site.js?v=20260808-website-guide-2"></script>
+  <script src="app.js?v=20260808-website-guide-2"></script>
+  <script src="embed-frame.js?v=20260803-replica-1"></script>
 </body>
 </html>

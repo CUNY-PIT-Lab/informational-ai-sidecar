@@ -162,14 +162,38 @@
 
   function ambiguityAnswer(question, current) {
     const compact = cleanText(question).toLowerCase().replace(/[?.!]/g, "");
+    const words = new Set(compact.match(/[a-z0-9]+/g) || []);
+    const specificRequestTerms = new Set([
+      "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
+      "training", "trainings", "course", "courses", "register", "registration", "calendar",
+      "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
+      "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
+      "eligibility", "eligible", "lifeline",
+    ]);
+    const genericRequestTerms = new Set([
+      "start", "started", "begin", "help", "support", "assistance", "program", "programs",
+      "service", "services", "option", "options", "available", "offered", "offer",
+    ]);
     let message = "";
     let choices = [];
-    if (["help", "i need help", "support", "i need support"].includes(compact)) {
-      message = "What would you like help with: learning a skill, using a device, or reaching staff?";
+    const broadStartOrHelp = [
+      "help", "i need help", "i want help", "can i get help", "support", "i need support",
+      "how can you help me", "what can you help with", "how do i get started", "how can i get started",
+      "i want to get started", "i want to start", "where do i start", "where do i begin",
+      "where should i begin", "what can i do", "what can i do here", "what are the options",
+      "what is available", "what is offered", "what programs are available", "what services are available",
+      "what is the program", "what does the program do",
+    ].includes(compact) || /^(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)$/.test(compact)
+      || /^how (?:can|do) i (?:get )?(?:started|begin)$/.test(compact)
+      || (words.size <= 13
+        && [...words].some(word => genericRequestTerms.has(word))
+        && ![...words].some(word => specificRequestTerms.has(word)));
+    if (broadStartOrHelp) {
+      message = "What do you want to start with?";
       choices = [
-        { label: "Learn a skill", prompt: "I want to learn a digital skill." },
-        { label: "Use a device", prompt: "I need help using a device." },
-        { label: "Reach staff", prompt: "I want to contact Digital Equity staff." },
+        { label: "Take a class", prompt: "I want to find a digital skills class." },
+        { label: "Get a device", prompt: "I need information about getting a device." },
+        { label: "Talk to staff", prompt: "I want to contact Digital Equity staff." },
       ];
     } else if (/^(?:a |the )?(?:device|computer|phone|laptop)$/.test(compact)) {
       message = "Do you need a device, help learning to use one, or help with a problem?";
@@ -282,7 +306,7 @@
     const blocks = document.querySelector("#page-blocks");
     const liveLink = document.querySelector("#live-page-link");
 
-    document.title = `${title} · Digital Equity guide demonstration`;
+    document.title = `${title} · Website Guide demo`;
     document.body.dataset.page = pathFor(page.url);
     document.body.dataset.sourceUrl = page.url;
     heading.textContent = title;

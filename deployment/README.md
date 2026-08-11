@@ -8,7 +8,7 @@ The shared backend also accepts `POST /api/warmup` from approved origins. The re
 
 - `wix/ROADMAP.md` describes a private Wix app that installs the guide across Fortune's site.
 - `wix/embedded.html.example` is the small fragment an embedded-script extension adds at the end of each page.
-- `wix/fortune-guide-element.example.js` is a portable custom element. It passes the current page URL and title to the backend and renders clarifying questions, approved sources, related routes, and staff handoff.
+- `wix/fortune-guide-element.example.js` is a retirement marker for the old portable example. Copy the maintained monochrome element from `../wix-app/site/fortune-guide-element.js` instead.
 - `wix/backend/ollama-proxy.example.mjs` shows the server boundary without relying on invented Wix extension IDs or package imports.
 - `wix/copilot-studio-bridge/` is a deployable, sandboxed iframe and server-side Direct Line token broker for a public-information Copilot Studio pilot. It is a separate evaluation route, not an adapter for the shared source-bounded API contract below.
 - `github-pages/ROADMAP.md` describes a public static demonstration backed by the same external API.
@@ -22,6 +22,10 @@ The Wix and GitHub Pages clients send the same request shape. History stays in b
 ```json
 {
   "message": "I need help with a computer",
+  "client_surface": "wix",
+  "client_event_id": "b92181da-1552-4975-bbd8-9ac98d553ab5",
+  "conversation_id": "d6b917ca-a830-4be7-a184-05cfdb683741",
+  "conversation_token": "server-issued continuation token",
   "history": [{ "role": "user", "content": "I need help" }],
   "page_context": {
     "url": "https://www.fortunedigitalequity.org/trainings",
@@ -44,8 +48,19 @@ The server returns this response shape:
   "handoff_url": "https://www.fortunedigitalequity.org/contact",
   "model": "glm-5.2",
   "model_called": true,
+  "conversation_id": "d6b917ca-a830-4be7-a184-05cfdb683741",
+  "turn_id": "0a9f33fb-6068-4577-8a4d-96ad2d93ee13",
+  "client_event_id": "b92181da-1552-4975-bbd8-9ac98d553ab5",
+  "message_ids": {
+    "user": "5d5bde3f-f732-4405-ad94-84d8b1656fb3",
+    "assistant": "5e115191-3f06-4a62-aea9-c5b9b41e5409"
+  },
+  "conversation_token": "server-issued continuation token",
+  "capture": { "mode": "none", "stored": false },
   "continuation": { "label": "Ask the live guide", "available": true }
 }
 ```
 
-An ambiguous request returns `kind: "clarify"`, one short question in `message`, and two or three `{ "label", "prompt" }` choices. Every response includes at least one approved source and one related route. The interface keeps the question form available and offers `handoff_url` when the guide cannot resolve the request.
+The first request omits `conversation_id` and `conversation_token`. The server issues both; subsequent turns return them unchanged. A client retains one random `client_event_id` until it receives a definitive result, making network retries idempotent. An ambiguous request returns `kind: "clarify"`, one short question in `message`, and two or three `{ "label", "prompt" }` choices. Every response includes at least one approved source and one related route. The interface keeps the question form available and offers `handoff_url` when the guide cannot resolve the request.
+
+Conversation capture, Railway staging, retention, and the evaluator-dashboard sequence are defined in [CONVERSATION-CAPTURE.md](CONVERSATION-CAPTURE.md).

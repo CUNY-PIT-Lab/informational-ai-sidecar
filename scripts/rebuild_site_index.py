@@ -28,6 +28,7 @@ import xml.etree.ElementTree as ET
 HERE = pathlib.Path(__file__).resolve().parents[1]
 OUTPUT = HERE / "site-index.json"
 ROOT_SITEMAP = "https://www.fortunedigitalequity.org/sitemap.xml"
+BLOG_FEED = "https://www.fortunedigitalequity.org/blog-feed.xml"
 ALLOWED_HOST = "www.fortunedigitalequity.org"
 USER_AGENT = "FortuneDigitalEquityGuideIndex/1.0 (+public meeting prototype)"
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -57,11 +58,27 @@ ARCHIVE_PAGE_PATHS = {
     "/techfair/techfair22", "/techfair/techfair23", "/techfair/techfair24",
     "/techfair/techfair25",
 }
+ADDITIONAL_PUBLIC_ROUTES = {
+    "/news/page/2": "blog-categories",
+    "/news/page/3": "blog-categories",
+    "/profile/abarnes/profile": "profiles",
+    "/profile/awhaley/profile": "profiles",
+    "/profile/jschwartz/profile": "profiles",
+    "/profile/wwaters/profile": "profiles",
+}
 
 
 def fetch(url, timeout=40):
     global _LAST_REQUEST
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    parsed = urllib.parse.urlsplit(url)
+    request_url = urllib.parse.urlunsplit((
+        parsed.scheme,
+        parsed.netloc,
+        urllib.parse.quote(urllib.parse.unquote(parsed.path), safe="/%:@"),
+        parsed.query,
+        "",
+    ))
+    request = urllib.request.Request(request_url, headers={"User-Agent": USER_AGENT})
     for attempt in range(5):
         with _RATE_LOCK:
             delay = MIN_REQUEST_INTERVAL - (time.monotonic() - _LAST_REQUEST)
@@ -77,6 +94,10 @@ def fetch(url, timeout=40):
             retry_after = error.headers.get("Retry-After", "")
             wait = float(retry_after) if retry_after.isdigit() else 2 ** (attempt + 1)
             time.sleep(min(wait, 24))
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError):
+            if attempt == 4:
+                raise
+            time.sleep(min(2 ** (attempt + 1), 16))
     raise RuntimeError("fetch retries exhausted")
 
 
@@ -108,6 +129,25 @@ def sitemap_entries():
                 "sitemap_kind": kind,
                 "lastmod": item.findtext("sm:lastmod", default="", namespaces=NS).strip(),
             })
+
+    feed_body, _ = fetch(BLOG_FEED)
+    feed = ET.fromstring(feed_body)
+    for item in feed.findall("./channel/item"):
+        url = canonical_url(item.findtext("link", default="").strip())
+        if urllib.parse.urlsplit(url).hostname != ALLOWED_HOST:
+            continue
+        rows.append({
+            "url": url,
+            "sitemap_kind": "blog-posts",
+            "lastmod": item.findtext("pubDate", default="").strip(),
+        })
+
+    for path, kind in ADDITIONAL_PUBLIC_ROUTES.items():
+        rows.append({
+            "url": canonical_url(path),
+            "sitemap_kind": kind,
+            "lastmod": "",
+        })
 
     deduplicated = {}
     for row in rows:
@@ -222,6 +262,8 @@ def authority_for(row):
         return "archive", "older news post; navigation only"
     if kind == "blog-categories" or path == "/news":
         return "navigation", "news index or category; navigation only"
+    if kind == "profiles":
+        return "excluded", "public author profile; excluded from participant retrieval"
     if path in EXCLUDED_PAGE_PATHS:
         return "excluded", EXCLUDED_PAGE_PATHS[path]
     if path in ARCHIVE_PAGE_PATHS:
@@ -244,6 +286,7 @@ def page_id(row):
         "booking-services": "service",
         "blog-posts": "post",
         "blog-categories": "category",
+        "profiles": "profile",
     }.get(row["sitemap_kind"], "page")
     slug = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-")
     digest = hashlib.sha256(row["url"].encode()).hexdigest()[:8]
@@ -280,10 +323,28 @@ def internal_links(base_url, links):
     return sorted(result)
 
 
-def crawl_page(row):
+def reviewed_authority(row, previous=None):
+    """Keep recorded source decisions; hold newly discovered URLs for review."""
+    if previous:
+        return (
+            previous.get("authority", "excluded"),
+            previous.get(
+                "authority_reason",
+                "existing source classification retained during content refresh",
+            ),
+        )
+    proposed = authority_for(row)
+    if proposed[0] != "answer":
+        return proposed
+    return "excluded", "new public URL pending Fortune staff source review"
+
+
+def crawl_page(row, previous=None):
     record = dict(row)
     record["id"] = page_id(row)
-    record["authority"], record["authority_reason"] = authority_for(row)
+    record["authority"], record["authority_reason"] = reviewed_authority(
+        row, previous
+    )
     path = urllib.parse.urlsplit(row["url"]).path
     record["volatile"] = any(token in path for token in (
         "/calendar", "/events", "/reserve", "/devices", "/opportunities", "/service-page/",
@@ -306,9 +367,14 @@ def crawl_page(row):
             "internal_links": internal_links(row["url"], parser.links),
             "content_characters": content_characters,
             "content_hash": hashlib.sha256("\n".join(blocks).encode()).hexdigest(),
-            "source_owner": "Fortune Society Digital Equity staff (confirmation pending)",
-            "approval_state": "pending Fortune staff review",
-            "reviewed_on": None,
+            "source_owner": (previous or {}).get(
+                "source_owner",
+                "Fortune Society Digital Equity staff (confirmation pending)",
+            ),
+            "approval_state": (previous or {}).get(
+                "approval_state", "pending Fortune staff review"
+            ),
+            "reviewed_on": (previous or {}).get("reviewed_on"),
         })
     except Exception as error:  # keep a failed URL visible in the audit inventory
         record.update({
@@ -430,10 +496,25 @@ def main():
         )
         return
 
+    previous_pages = {}
+    if OUTPUT.is_file():
+        try:
+            previous_document = json.loads(OUTPUT.read_text(encoding="utf-8"))
+            previous_pages = {
+                page["url"]: page
+                for page in previous_document.get("pages", [])
+                if isinstance(page, dict) and page.get("url")
+            }
+        except (OSError, json.JSONDecodeError, TypeError):
+            previous_pages = {}
+
     all_rows, unique_rows = sitemap_entries()
     pages = []
     with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {executor.submit(crawl_page, row): row for row in unique_rows}
+        futures = {
+            executor.submit(crawl_page, row, previous_pages.get(row["url"])): row
+            for row in unique_rows
+        }
         completed = 0
         for future in as_completed(futures):
             pages.append(future.result())
@@ -441,7 +522,7 @@ def main():
             if completed % 20 == 0 or completed == len(unique_rows):
                 print(f"crawled {completed}/{len(unique_rows)}", file=sys.stderr)
 
-    write_index(pages, len(all_rows), [ROOT_SITEMAP])
+    write_index(pages, len(all_rows), [ROOT_SITEMAP, BLOG_FEED])
 
 
 if __name__ == "__main__":
