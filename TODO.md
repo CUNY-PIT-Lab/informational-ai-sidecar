@@ -1,5 +1,15 @@
 # Website Guide — next steps
 
+## Multi-turn retrieval release — 2026-08-12
+
+- [x] Add 13 stateful retrieval conversations with 55 turns, including 32 deictic, elliptical, or topic-switch turns and a seven-turn stale-context test.
+- [x] Freeze a pre-fix production baseline: 0/13 complete conversations, 28/55 turns, and 14/32 context-dependent turns passed.
+- [x] Prefer reviewed class, device, certification, practice, support, registration, partner, impact, and Spanish-language sources without weakening privacy or source-authority gates.
+- [x] Carry only the latest explicit safe topic into genuinely elliptical follow-ups; keep explicit topic shifts from reviving stale context.
+- [x] Pass the real-model suite on Railway staging and production: 13/13 conversations, 55/55 turns, and 32/32 context-dependent turns on both.
+- [x] Replay the seven-turn topic-switch conversation in the published browser UI with Return; all 14 visible user/guide messages rendered and the console stayed clean.
+- [ ] Resolve the two stale pending turns reported by the staging aggregate audit before the next evaluator review. Do not alter participant-capture policy or copy staging data settings into production.
+
 ## Responsiveness and coverage release — 2026-08-12
 
 - [x] Audit the canonical checkout, remote branches, and both GitHub repositories. The demo repository has no open PR; the PIT Lab mirror still has one open sync PR that predates this release.
