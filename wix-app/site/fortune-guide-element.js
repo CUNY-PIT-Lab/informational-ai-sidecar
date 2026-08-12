@@ -647,7 +647,6 @@
       try {
         if (!this.capturePolicyReady) await this.loadCapturePolicy();
         if (!this.capturePolicyReady) throw new Error("Guide unavailable.");
-        if (this.warmupPromise) await this.warmupPromise;
         const response = await fetch(this.apiUrl("/api/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -317,13 +317,6 @@
   }
 
   async function remoteAnswer(question, clientEventId, options = {}) {
-    if (warmupPromise) {
-      try {
-        await warmupPromise;
-      } catch {
-        // The chat request can still succeed when a preload attempt fails.
-      }
-    }
     const response = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },

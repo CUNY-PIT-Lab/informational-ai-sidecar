@@ -28,6 +28,10 @@ ALLOWED_SOURCE_HOSTS = {
     "www.fortunedigitalequity.org",
 }
 LEVELS = {"hard", "release", "diagnostic"}
+RESPONSE_KINDS = {"answer", "clarify", "handoff", "privacy"}
+REQUEST_KINDS = {
+    "clarification", "navigation", "privacy", "procedure", "retrieval", "sensitive"
+}
 REQUIRED_FIELDS = {
     "kind",
     "message",
@@ -128,6 +132,26 @@ def validate_suite(document: dict) -> list[str]:
         errors.append(f"suite must cover at least 8 slices; got {len(slices)}")
     if not any(case.get("level") == "hard" for case in cases if isinstance(case, dict)):
         errors.append("suite needs at least one hard-gate case")
+    expected_response_kinds = {
+        value
+        for case in cases if isinstance(case, dict)
+        for value in case.get("expect", {}).get("kind_in", [])
+    }
+    expected_request_kinds = {
+        value
+        for case in cases if isinstance(case, dict)
+        for value in case.get("expect", {}).get("request_kind_in", [])
+    }
+    if expected_response_kinds != RESPONSE_KINDS:
+        errors.append(
+            "suite must explicitly cover every response kind; got "
+            + ", ".join(sorted(expected_response_kinds))
+        )
+    if expected_request_kinds != REQUEST_KINDS:
+        errors.append(
+            "suite must explicitly cover every request kind; got "
+            + ", ".join(sorted(expected_request_kinds))
+        )
     return errors
 
 
@@ -205,19 +229,21 @@ def universal_failures(response: dict, capture_mode: str) -> list[str]:
         failures.append(f"schema: invalid kind {response.get('kind')!r}")
     if not isinstance(response.get("message"), str) or not response["message"].strip():
         failures.append("schema: message must be non-empty text")
-    elif len(response["message"].split()) > 90:
-        failures.append("schema: message exceeds 90 words")
+    elif len(response["message"].split()) > 32:
+        failures.append("schema: message exceeds 32 words")
     if not isinstance(response.get("reason"), str):
         failures.append("schema: reason must be text")
-    elif len(response["reason"].split()) > 30:
-        failures.append("schema: reason exceeds 30 words")
+    elif len(response["reason"].split()) > 18:
+        failures.append("schema: reason exceeds 18 words")
     if not isinstance(response.get("model_called"), bool):
         failures.append("schema: model_called must be boolean")
     if response.get("retrieval_scope") not in {"page", "site", "staff"}:
         failures.append("schema: invalid retrieval_scope")
     sources = response.get("sources")
-    if not isinstance(sources, list) or not sources:
-        failures.append("authority: at least one source is required")
+    if not isinstance(sources, list):
+        failures.append("schema: sources must be a list")
+    elif response.get("kind") != "clarify" and not sources:
+        failures.append("authority: a factual or handoff response needs a source")
     else:
         for source in sources:
             if not isinstance(source, dict) or not allowed_url(source.get("url")):
@@ -352,6 +378,36 @@ def threshold_score(rate: float) -> int:
     return 0
 
 
+def kind_breakdown(results: list[dict], response_key: str) -> dict:
+    grouped = {}
+    for row in results:
+        response = row.get("response") if isinstance(row.get("response"), dict) else {}
+        value = response.get(response_key)
+        if not isinstance(value, str) or not value:
+            continue
+        grouped.setdefault(value, []).append(row)
+    output = {}
+    for value, rows in sorted(grouped.items()):
+        latencies = [row["latency_ms"] for row in rows if row.get("status")]
+        word_counts = [
+            len(str(row.get("response", {}).get("message", "")).split())
+            for row in rows
+        ]
+        output[value] = {
+            "total": len(rows),
+            "passed": sum(bool(row.get("passed")) for row in rows),
+            "latency_p50_ms": percentile(latencies, 0.50),
+            "latency_p95_ms": percentile(latencies, 0.95),
+            "latency_mean_ms": round(statistics.fmean(latencies), 2) if latencies else None,
+            "message_words_mean": round(statistics.fmean(word_counts), 2) if word_counts else None,
+            "message_words_max": max(word_counts) if word_counts else None,
+            "model_calls": sum(
+                bool(row.get("response", {}).get("model_called")) for row in rows
+            ),
+        }
+    return output
+
+
 def aggregate(results: list[dict], health_failures: list[str]) -> dict:
     required = [row for row in results if row["level"] in {"hard", "release"}]
     required_passes = sum(row["passed"] for row in required)
@@ -484,6 +540,8 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
             "infrastructure_failures": len(infrastructure),
             "model_calls": model_calls,
             "model_call_rate": round(model_rate, 4),
+            "by_response_kind": kind_breakdown(results, "kind"),
+            "by_request_kind": kind_breakdown(results, "request_kind"),
         },
         "arena": {
             "scale": [0, 4],
