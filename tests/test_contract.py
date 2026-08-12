@@ -1000,6 +1000,17 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("staticAnswer", ask)
         self.assertIn("pendingClientEventId", ask)
 
+    def test_sidecar_keeps_reviewed_context_for_routes_missing_from_the_snapshot(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        site = (DEMO / "site.js").read_text(encoding="utf-8")
+        self.assertIn("const GUIDE_CONTEXT_PAGES", site)
+        for route in ("TRAININGS_URL", "INDIVIDUAL_URL", "CONTACT_URL"):
+            self.assertIn(f"url: {route}", site)
+        merge = site.index("GUIDE_CONTEXT_PAGES.forEach")
+        selection = site.index("const page = state.byUrl.get(selectedUrl())", merge)
+        self.assertLess(merge, selection)
+        self.assertIn("site.js?v=20260812-guide-context-1", html)
+
     def test_page_families_keep_specific_prompts_behind_compact_buttons(self):
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
         app = (DEMO / "app.js").read_text(encoding="utf-8")
