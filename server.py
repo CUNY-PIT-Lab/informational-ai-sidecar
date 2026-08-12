@@ -859,8 +859,31 @@ def question_refers_to_current_page(question):
     return any(re.search(pattern, value) for pattern in patterns)
 
 
+def guided_class_sources(question):
+    """Resolve only the guide's explicit class-choice prompts."""
+
+    prompt = " ".join(tokens(question, keep_stopwords=True))
+    destination_by_prompt = {
+        "class topics": RESERVE_URL,
+        "dates locations": CALENDAR_URL,
+        "register": RESERVE_URL,
+        "temas": RESERVE_URL,
+        "fechas y lugares": CALENDAR_URL,
+        "inscribirme": RESERVE_URL,
+    }
+    source_id = SOURCE_ID_BY_URL.get(destination_by_prompt.get(prompt, ""), "")
+    source = SOURCE_BY_ID.get(source_id)
+    if not source or source.get("authority") != "answer" or source.get("status", 200) != 200:
+        return []
+    return [source]
+
+
 def retrieval_plan(question, page_context=None):
     """Choose the narrowest approved evidence scope that can answer a question."""
+    guided = guided_class_sources(question)
+    if guided:
+        return "site", guided
+
     current = approved_current_page_source(page_context)
     if current and (
         question_refers_to_current_page(question)
@@ -914,6 +937,8 @@ def related_links(question, sources, limit=3):
 def ambiguity_response(question, language_code=None):
     lowered = fold_text(question).strip(" ?.!")
     words = set(tokens(lowered, keep_stopwords=True))
+    if guided_class_sources(question):
+        return None
     cases = []
     if language_code == "es":
         if lowered in {"ayuda", "necesito ayuda", "apoyo", "que puedes hacer"}:
@@ -938,13 +963,13 @@ def ambiguity_response(question, language_code=None):
             ))
         elif words.intersection({"clase", "clases", "curso", "taller"}) and len(words) <= 6:
             cases.append((
-                "¿Buscas habilidades básicas, ayuda para el trabajo o un tema específico?",
+                "¿Qué necesitas?",
                 [
-                    ("Habilidades básicas", "Busco una clase básica de habilidades digitales."),
-                    ("Ayuda para el trabajo", "Quiero una clase que ayude con el trabajo."),
-                    ("Un tema específico", "Quiero preguntar por un tema de clase."),
+                    ("Temas", "Temas"),
+                    ("Fechas y lugares", "Fechas y lugares"),
+                    ("Inscribirme", "Inscribirme"),
                 ],
-                ["trainings"],
+                [],
             ))
         elif words.intersection({"internet", "wifi"}) and len(words) <= 6:
             cases.append((
@@ -988,7 +1013,7 @@ def ambiguity_response(question, language_code=None):
         cases.append((
             "What do you want to start with?",
             [
-                ("Take a class", "I want to find a digital skills class."),
+                ("Take a class", "Classes"),
                 ("Get a device", "I need information about getting a device."),
                 ("Talk to staff", "I want to contact Digital Equity staff."),
             ],
@@ -1004,15 +1029,22 @@ def ambiguity_response(question, language_code=None):
             ],
             ["devices", "individual"],
         ))
-    elif words.intersection({"class", "classes", "workshop", "workshops", "training"}) and len(words) <= 6 and not words.intersection({"email", "computer", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where"}):
+    elif (
+        lowered == "i want to find a digital skills class"
+        or (
+            words.intersection({"class", "classes", "workshop", "workshops", "training"})
+            and len(words) <= 6
+            and not words.intersection({"email", "computer", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where"})
+        )
+    ):
         cases.append((
-            "Are you looking for beginner skills, job-related skills, or a particular topic?",
+            "What do you need?",
             [
-                ("Beginner skills", "I am looking for a beginner digital skills class."),
-                ("Job-related skills", "I want a class that can help with work or job searching."),
-                ("A particular topic", "I want to ask about a particular class topic."),
+                ("Class topics", "Class topics"),
+                ("Dates & locations", "Dates & locations"),
+                ("Register", "Register"),
             ],
-            ["trainings"],
+            [],
         ))
     elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing"}):
         cases.append((
