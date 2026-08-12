@@ -232,7 +232,9 @@ def run(args: argparse.Namespace) -> int:
         health_failures.append(f"health: transport error {health_error}")
     if health_status != 200:
         health_failures.append(f"health: expected 200, got {health_status}")
-    health_failures.extend(core.health_boundary_failures(health, allow_capture=False))
+    health_failures.extend(
+        core.health_boundary_failures(health, allow_capture=args.allow_capture)
+    )
     if health_failures:
         for failure in health_failures:
             print(f"error: {failure}")
@@ -372,7 +374,7 @@ def run(args: argparse.Namespace) -> int:
             "delay_seconds": args.delay,
             "retry_transient": bool(args.retry_transient),
             "history_messages": MAX_HISTORY_MESSAGES,
-            "capture_allowed": False,
+            "capture_allowed": args.allow_capture,
         },
         "aggregate": aggregate_result,
         "episodes": episode_results,
@@ -409,6 +411,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--delay", type=float, default=0.15)
     value.add_argument("--retry-transient", type=int, choices=(0, 1), default=1)
     value.add_argument("--retry-delay", type=float, default=1.0)
+    value.add_argument(
+        "--allow-capture",
+        action="store_true",
+        help="allow synthetic evaluation turns in an explicitly approved capture environment",
+    )
     value.add_argument("--validate-only", action="store_true")
     return value
 
