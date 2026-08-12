@@ -521,7 +521,18 @@ class ResponseContractTests(unittest.TestCase):
         )
         self.assertEqual(
             message,
-            "Next: The home page offers a direct route to join a class.",
+            "The home page offers a direct route to join a class.",
+        )
+        self.assertNotIn("Next:", message)
+        self.assertNotIn(
+            "Siguiente paso:",
+            server.grounded_answer_message(
+                question,
+                [home],
+                "page",
+                language_code="es",
+                chat_stage="follow_up",
+            ),
         )
         for value in (evidence, message, excerpt):
             self.assertNotIn("Icon representing", value)

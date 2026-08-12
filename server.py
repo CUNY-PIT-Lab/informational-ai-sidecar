@@ -759,9 +759,9 @@ def grounded_answer_message(
     source = sources[0]
     title = re.sub(r"\s*[|·]\s*FS Digital Equity\s*$", "", source.get("title", "Digital Equity"), flags=re.I)
     if language_code == "es":
-        prefix = "Siguiente paso:" if chat_stage == "follow_up" else "Encontré una página oficial:"
+        prefix = "" if chat_stage == "follow_up" else "Encontré una página oficial: "
         return (
-            f"{prefix} {title}. Ábrela para ver la información actual. "
+            f"{prefix}{title}. Ábrela para ver la información actual. "
             "Si quieres, pregúntame por un paso a la vez."
         )
     evidence = grounded_evidence_sentences(
@@ -771,9 +771,8 @@ def grounded_answer_message(
     )
     if not evidence:
         return participant_copy("missing_message", language_code)
-    if chat_stage == "follow_up":
-        prefix = "Next: "
-    else:
+    prefix = ""
+    if chat_stage != "follow_up":
         prefix = "On this page: " if retrieval_scope == "page" else f"The {title} page says: "
     message = prefix + evidence
     if source.get("volatile"):
