@@ -23,6 +23,27 @@ python3 scripts/run_website_guide_eval.py \
 
 The runner sends only invented questions. It records the API response, timing, deployed health metadata, local commit, and SHA-256 hashes of the specification and case set. Do not point it at production when capture is anything other than `none`.
 
+## Multi-turn retrieval
+
+The sequential suite contains 13 synthetic conversations and 55 turns. It reuses one conversation ID per episode and sends only the latest three user-assistant exchanges, matching the published client. The cases cover explicit retrieval, deictic follow-ups, topic shifts, stale-context eviction, registration, current schedules, Spanish, and model-backed source selection.
+
+Validate it without network access:
+
+```bash
+python3 scripts/run_website_guide_multiturn_eval.py --validate-only
+python3 /Users/milwright/.codex/skills/design-tournament-evals/scripts/eval_spec.py validate evals/website-guide/multiturn-spec.json
+```
+
+Run it against a capture-none deployment:
+
+```bash
+python3 scripts/run_website_guide_multiturn_eval.py \
+  --base-url https://guide-api-production-a1a1.up.railway.app \
+  --output evals/website-guide/results/<date>-production-multiturn.json
+```
+
+An episode passes only when every turn passes. The release gate requires at least 90% of required episodes, every hard episode, at least 85% of context-dependent turns, no infrastructure failure, and production capture still set to `none`.
+
 ## Grades
 
 Each case has one of three levels:

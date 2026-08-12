@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""Run stateful, synthetic Website Guide retrieval conversations."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import pathlib
+import platform
+import statistics
+import time
+import uuid
+
+try:
+    from scripts import run_website_guide_eval as core
+except ModuleNotFoundError:  # Direct execution from the repository root.
+    import run_website_guide_eval as core
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_CASES = ROOT / "evals" / "website-guide" / "multiturn-cases.json"
+DEFAULT_SPEC = ROOT / "evals" / "website-guide" / "multiturn-spec.json"
+MAX_HISTORY_MESSAGES = 6
+LEVELS = {"hard", "release", "diagnostic"}
+
+
+def validate_suite(document: dict) -> list[str]:
+    errors: list[str] = []
+    episodes = document.get("episodes")
+    if not isinstance(episodes, list):
+        return ["episodes must be a list"]
+    if len(episodes) < 10:
+        errors.append(f"suite must contain at least 10 episodes; got {len(episodes)}")
+    episode_ids: set[str] = set()
+    turn_ids: set[str] = set()
+    total_turns = 0
+    contextual_turns = 0
+    for episode_index, episode in enumerate(episodes):
+        prefix = f"episodes[{episode_index}]"
+        if not isinstance(episode, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        episode_id = episode.get("id")
+        if not isinstance(episode_id, str) or not episode_id:
+            errors.append(f"{prefix}.id must be non-empty text")
+        elif episode_id in episode_ids:
+            errors.append(f"duplicate episode id: {episode_id}")
+        else:
+            episode_ids.add(episode_id)
+        if episode.get("level") not in LEVELS:
+            errors.append(f"{prefix}.level must be one of {sorted(LEVELS)}")
+        if not isinstance(episode.get("slice"), str) or not episode.get("slice"):
+            errors.append(f"{prefix}.slice must be non-empty text")
+        turns = episode.get("turns")
+        if not isinstance(turns, list):
+            errors.append(f"{prefix}.turns must be a list")
+            continue
+        if len(turns) < 4:
+            errors.append(f"{prefix} must contain at least 4 turns; got {len(turns)}")
+        total_turns += len(turns)
+        for turn_index, turn in enumerate(turns):
+            turn_prefix = f"{prefix}.turns[{turn_index}]"
+            if not isinstance(turn, dict):
+                errors.append(f"{turn_prefix} must be an object")
+                continue
+            turn_id = turn.get("id")
+            qualified_id = f"{episode_id}/{turn_id}"
+            if not isinstance(turn_id, str) or not turn_id:
+                errors.append(f"{turn_prefix}.id must be non-empty text")
+            elif qualified_id in turn_ids:
+                errors.append(f"duplicate turn id: {qualified_id}")
+            else:
+                turn_ids.add(qualified_id)
+            if not isinstance(turn.get("message"), str) or not turn["message"].strip():
+                errors.append(f"{turn_prefix}.message must be non-empty text")
+            if not isinstance(turn.get("expect"), dict):
+                errors.append(f"{turn_prefix}.expect must be an object")
+            if turn.get("mode") in {"deictic", "elliptical", "topic_shift"}:
+                contextual_turns += 1
+    if total_turns < 40:
+        errors.append(f"suite must contain at least 40 turns; got {total_turns}")
+    if contextual_turns < 10:
+        errors.append(
+            f"suite must contain at least 10 contextual retrieval turns; got {contextual_turns}"
+        )
+    return errors
+
+
+def continuity_failures(
+    *,
+    turn_index: int,
+    response: dict,
+    conversation_id: str,
+    history: list[dict],
+) -> list[str]:
+    failures: list[str] = []
+    expected_stage = "opening" if turn_index == 0 else "follow_up"
+    if response.get("chat_stage") != expected_stage:
+        failures.append(
+            f"continuity: expected {expected_stage} chat stage, got {response.get('chat_stage')!r}"
+        )
+    received_id = str(response.get("conversation_id") or "")
+    if conversation_id and received_id != conversation_id:
+        failures.append(
+            f"continuity: conversation changed from {conversation_id} to {received_id or '<missing>'}"
+        )
+    expected_history = min(turn_index * 2, MAX_HISTORY_MESSAGES)
+    if len(history) != expected_history:
+        failures.append(
+            f"continuity: expected {expected_history} history messages, got {len(history)}"
+        )
+    return failures
+
+
+def percentile(values: list[float], fraction: float) -> float | None:
+    return core.percentile(values, fraction)
+
+
+def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
+    turns = [turn for episode in episodes for turn in episode["turns"]]
+    required_episodes = [
+        episode for episode in episodes if episode["level"] in {"hard", "release"}
+    ]
+    required_passes = sum(bool(episode["passed"]) for episode in required_episodes)
+    required_rate = required_passes / len(required_episodes) if required_episodes else 0.0
+    hard_failures = [
+        episode["id"]
+        for episode in episodes
+        if episode["level"] == "hard" and not episode["passed"]
+    ]
+    contextual = [
+        turn
+        for turn in turns
+        if turn.get("mode") in {"deictic", "elliptical", "topic_shift"}
+    ]
+    contextual_passes = sum(bool(turn["passed"]) for turn in contextual)
+    contextual_rate = contextual_passes / len(contextual) if contextual else 0.0
+    successful_latencies = [turn["latency_ms"] for turn in turns if turn.get("status")]
+    infrastructure = [
+        turn
+        for turn in turns
+        if turn.get("transport_error") or turn.get("status") == 429 or turn.get("status", 0) >= 500
+    ]
+    model_calls = sum(bool(turn.get("response", {}).get("model_called")) for turn in turns)
+    slices: dict[str, dict] = {}
+    for episode in episodes:
+        row = slices.setdefault(episode["slice"], {"episodes": 0, "passed": 0})
+        row["episodes"] += 1
+        row["passed"] += int(episode["passed"])
+    for row in slices.values():
+        row["rate"] = round(row["passed"] / row["episodes"], 4)
+    required_slices_pass = all(row["rate"] >= 0.75 for row in slices.values())
+    complete = len(episodes) >= 10 and len(turns) >= 40 and all(
+        turn.get("status") or turn.get("transport_error") for turn in turns
+    )
+    decision_pass = (
+        complete
+        and not health_failures
+        and not hard_failures
+        and not infrastructure
+        and required_rate >= 0.90
+        and contextual_rate >= 0.85
+        and required_slices_pass
+    )
+    return {
+        "decision": "pass" if decision_pass else "block",
+        "run_complete": complete,
+        "episodes": {
+            "passed": sum(bool(episode["passed"]) for episode in episodes),
+            "total": len(episodes),
+        },
+        "required_episodes": {
+            "passed": required_passes,
+            "total": len(required_episodes),
+            "rate": round(required_rate, 4),
+            "wilson_95": core.wilson_interval(required_passes, len(required_episodes)),
+        },
+        "turns": {
+            "passed": sum(bool(turn["passed"]) for turn in turns),
+            "total": len(turns),
+            "contextual_passed": contextual_passes,
+            "contextual_total": len(contextual),
+            "contextual_rate": round(contextual_rate, 4),
+        },
+        "hard_gate": {
+            "passed": not hard_failures and not health_failures,
+            "failed_episodes": hard_failures,
+            "health_failures": health_failures,
+        },
+        "slices": slices,
+        "operational": {
+            "latency_p50_ms": percentile(successful_latencies, 0.50),
+            "latency_p95_ms": percentile(successful_latencies, 0.95),
+            "latency_mean_ms": (
+                round(statistics.fmean(successful_latencies), 2)
+                if successful_latencies
+                else None
+            ),
+            "infrastructure_failures": len(infrastructure),
+            "model_calls": model_calls,
+            "model_call_rate": round(model_calls / len(turns), 4) if turns else 0.0,
+        },
+    }
+
+
+def run(args: argparse.Namespace) -> int:
+    cases_path = pathlib.Path(args.cases).resolve()
+    spec_path = pathlib.Path(args.spec).resolve()
+    suite = core.load_json(cases_path)
+    spec = core.load_json(spec_path)
+    errors = validate_suite(suite)
+    if errors:
+        for error in errors:
+            print(f"error: {error}")
+        return 2
+    episode_count = len(suite["episodes"])
+    turn_count = sum(len(episode["turns"]) for episode in suite["episodes"])
+    print(f"valid: {episode_count} episodes, {turn_count} turns")
+    if args.validate_only:
+        return 0
+    if not args.base_url:
+        print("error: --base-url is required unless --validate-only is used")
+        return 2
+
+    base_url = args.base_url.rstrip("/")
+    health_status, health, health_latency, health_error = core.json_request(
+        base_url + "/health", timeout=args.timeout
+    )
+    health_failures: list[str] = []
+    if health_error:
+        health_failures.append(f"health: transport error {health_error}")
+    if health_status != 200:
+        health_failures.append(f"health: expected 200, got {health_status}")
+    health_failures.extend(core.health_boundary_failures(health, allow_capture=False))
+    if health_failures:
+        for failure in health_failures:
+            print(f"error: {failure}")
+        print("refusing to send synthetic episodes across an unverified data boundary")
+        return 3
+    capture_mode = health.get("conversation_logging", {}).get("capture_mode", "unknown")
+
+    default_page = suite.get("default_page_context", {})
+    episode_results: list[dict] = []
+    for episode_number, episode in enumerate(suite["episodes"], start=1):
+        history: list[dict] = []
+        conversation_id = ""
+        conversation_token = ""
+        turn_results: list[dict] = []
+        print(f"[{episode_number:02d}/{episode_count}] {episode['id']}")
+        for turn_index, turn in enumerate(episode["turns"]):
+            page_context = turn.get(
+                "page_context", episode.get("page_context", default_page)
+            )
+            event_id = str(uuid.uuid4())
+            payload = {
+                "message": turn["message"],
+                "page_context": page_context,
+                "history": list(history),
+                "client_event_id": event_id,
+                "client_surface": "synthetic",
+            }
+            if conversation_id:
+                payload["conversation_id"] = conversation_id
+            if conversation_token:
+                payload["conversation_token"] = conversation_token
+            status, response, latency_ms, transport_error = core.json_request(
+                base_url + "/api/chat",
+                method="POST",
+                payload=payload,
+                timeout=args.timeout,
+            )
+            if (transport_error or status >= 500) and args.retry_transient:
+                time.sleep(args.retry_delay)
+                status, response, latency_ms, transport_error = core.json_request(
+                    base_url + "/api/chat",
+                    method="POST",
+                    payload=payload,
+                    timeout=args.timeout,
+                )
+            failures = (
+                [f"transport: {transport_error}"]
+                if transport_error
+                else core.expected_failures(turn, status, response, capture_mode)
+            )
+            if not transport_error and status == 200:
+                failures.extend(
+                    continuity_failures(
+                        turn_index=turn_index,
+                        response=response,
+                        conversation_id=conversation_id,
+                        history=history,
+                    )
+                )
+            row = {
+                "id": turn["id"],
+                "mode": turn.get("mode", "explicit"),
+                "message": turn["message"],
+                "page_context": page_context,
+                "history_sent": list(history),
+                "conversation_id_sent": conversation_id or None,
+                "client_event_id_sent": event_id,
+                "status": status,
+                "latency_ms": round(latency_ms, 2),
+                "transport_error": transport_error,
+                "passed": not failures,
+                "failures": failures,
+                "response": response,
+            }
+            turn_results.append(row)
+            marker = "PASS" if row["passed"] else "FAIL"
+            print(
+                f"  {turn_index + 1:02d} {marker} {turn['id']} "
+                f"({latency_ms:.0f} ms, {response.get('kind', 'no-kind')}, "
+                f"model={bool(response.get('model_called'))})"
+            )
+            if status == 200 and isinstance(response.get("message"), str):
+                history = (
+                    history
+                    + [
+                        {"role": "user", "content": turn["message"]},
+                        {"role": "assistant", "content": response["message"]},
+                    ]
+                )[-MAX_HISTORY_MESSAGES:]
+                conversation_id = str(response.get("conversation_id") or conversation_id)
+                conversation_token = str(
+                    response.get("conversation_token") or conversation_token
+                )
+            if status == 429:
+                print("rate limit reached; stopping to avoid affecting other visitors")
+                break
+            if args.delay:
+                time.sleep(args.delay)
+        episode_result = {
+            "id": episode["id"],
+            "slice": episode["slice"],
+            "level": episode["level"],
+            "passed": len(turn_results) == len(episode["turns"])
+            and all(turn["passed"] for turn in turn_results),
+            "turns": turn_results,
+        }
+        episode_results.append(episode_result)
+        if len(turn_results) != len(episode["turns"]):
+            break
+
+    aggregate_result = aggregate(episode_results, health_failures)
+    record = {
+        "schema_version": 1,
+        "run_id": str(uuid.uuid4()),
+        "created_at": dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat(),
+        "suite": suite.get("suite_id"),
+        "suite_version": spec.get("identity", {}).get("version"),
+        "target": {
+            "base_url": base_url,
+            "health_status": health_status,
+            "health_latency_ms": round(health_latency, 2),
+            "health": health,
+            "local_git_commit": core.git_value("rev-parse", "HEAD"),
+            "local_git_status": core.git_value("status", "--short"),
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+        },
+        "lineage": {
+            "cases_sha256": core.file_hash(cases_path),
+            "spec_sha256": core.file_hash(spec_path),
+            "runner_sha256": core.file_hash(pathlib.Path(__file__).resolve()),
+        },
+        "protocol": {
+            "timeout_seconds": args.timeout,
+            "delay_seconds": args.delay,
+            "retry_transient": bool(args.retry_transient),
+            "history_messages": MAX_HISTORY_MESSAGES,
+            "capture_allowed": False,
+        },
+        "aggregate": aggregate_result,
+        "episodes": episode_results,
+    }
+    output_path = pathlib.Path(args.output).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    required = aggregate_result["required_episodes"]
+    turns = aggregate_result["turns"]
+    print(
+        f"{aggregate_result['decision'].upper()}: "
+        f"{required['passed']}/{required['total']} required episodes; "
+        f"{turns['passed']}/{turns['total']} turns; "
+        f"{turns['contextual_passed']}/{turns['contextual_total']} contextual"
+    )
+    print(f"record: {output_path}")
+    return 0 if aggregate_result["decision"] == "pass" else 1
+
+
+def parser() -> argparse.ArgumentParser:
+    value = argparse.ArgumentParser(description=__doc__)
+    value.add_argument("--base-url", default="")
+    value.add_argument("--cases", default=str(DEFAULT_CASES))
+    value.add_argument("--spec", default=str(DEFAULT_SPEC))
+    value.add_argument(
+        "--output",
+        default=str(
+            ROOT / "evals" / "website-guide" / "results" / "multiturn-latest.json"
+        ),
+    )
+    value.add_argument("--timeout", type=float, default=30)
+    value.add_argument("--delay", type=float, default=0.15)
+    value.add_argument("--retry-transient", type=int, choices=(0, 1), default=1)
+    value.add_argument("--retry-delay", type=float, default=1.0)
+    value.add_argument("--validate-only", action="store_true")
+    return value
+
+
+if __name__ == "__main__":
+    raise SystemExit(run(parser().parse_args()))

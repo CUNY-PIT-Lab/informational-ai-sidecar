@@ -65,7 +65,7 @@ MAX_MESSAGE_WORDS = 32
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 24
 MAX_EVIDENCE_SENTENCES = 1
-PROMPT_POLICY_VERSION = "2026-08-12-v3"
+PROMPT_POLICY_VERSION = "2026-08-12-v4"
 
 PAGE_SUMMARIES = {
     "home": "This page explains Fortune’s Digital Equity support and training.",
@@ -437,6 +437,43 @@ STOPWORDS = {
 CORE_IDS = [source_id for source_id in ("home", "trainings", "devices", "individual", "calendar", "contact") if source_id in SOURCE_BY_ID]
 
 
+def source_id_for_path(path):
+    return SOURCE_ID_BY_URL.get(canonical_url(ROOT_URL.rstrip("/") + path), "")
+
+
+CERTIFICATIONS_ID = source_id_for_path("/certifications")
+ASSESSMENTS_ID = source_id_for_path("/assessments")
+PARTNERS_ID = source_id_for_path("/about/partners")
+IMPACT_ID = source_id_for_path("/about/impact")
+INTRO_EMAIL_ID = source_id_for_path("/service-page/intro-to-email")
+ADVANCED_EMAIL_ID = source_id_for_path("/service-page/advanced-email")
+EMAIL_PART_TWO_ID = source_id_for_path("/service-page/intro-to-email-pt-2")
+INTRO_CANVA_ID = source_id_for_path("/service-page/intro-to-canva")
+INTRO_SMARTPHONE_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets")
+SMARTPHONE_PART_TWO_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets-pt-2")
+WORD_CERTIFICATION_ID = source_id_for_path("/service-page/microsoft-word-associate-certification")
+EXCEL_CHARTS_ID = source_id_for_path("/service-page/microsoft-excel-charts")
+RESUME_AI_ID = source_id_for_path("/service-page/resume-writing-in-an-ai-world")
+JOB_SEARCH_ID = source_id_for_path("/service-page/job-searching-online")
+SPANISH_BASIC_ID = source_id_for_path("/service-page/alfabetización-digital-básica-en-español")
+
+SPECIFIC_CLASS_TERMS = {
+    "advanced", "ai", "alfabetizacion", "android", "apple", "assessment",
+    "assessments", "basic", "beginner", "canva", "certification",
+    "certifications", "chart", "charts", "computacion", "correo", "email",
+    "electronico", "excel", "formula", "formulas", "job", "microsoft",
+    "phone", "powerpoint", "practice", "resume", "robotics", "safety",
+    "smartphone", "smartphones", "spanish", "word", "zoom",
+}
+
+HISTORY_TOPIC_TERMS = SPECIFIC_CLASS_TERMS.union({
+    "appointment", "device", "devices", "digital", "distribution", "eligibility",
+    "equity", "impact", "individual", "internet", "laptop", "lifeline",
+    "organizing", "partners", "program", "programs", "support", "tech",
+    "tutoring", "wifi",
+})
+
+
 def fold_text(value):
     normalized = unicodedata.normalize("NFKD", str(value or ""))
     return "".join(character for character in normalized if not unicodedata.combining(character)).lower()
@@ -514,6 +551,7 @@ def clean_evidence_fragment(text):
     """Remove visual-only page scaffolding before it reaches an answer."""
 
     value = re.sub(r"\s+", " ", str(text or "")).strip()
+    value = re.sub(r"^[*#]+\s*", "", value)
     value = re.sub(r"^(?:and|but|however),?\s+", "", value, flags=re.I)
     if not value or any(pattern.search(value) for pattern in _VISUAL_SCAFFOLD):
         return ""
@@ -606,18 +644,85 @@ def clip_words(text, limit):
 
 def likely_source_ids(text, fallback=True):
     lowered = fold_text(semantic_question(text))
+    word_set = set(tokens(lowered, keep_stopwords=True))
     ranked = []
+    def add(source_id):
+        if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
+            ranked.append(source_id)
+
+    if any(term in lowered for term in (
+        "register", "registration", "sign up", "reserve", "registrarme",
+        "registro", "inscribirme",
+    )):
+        add("page-reserve-0f176b4b")
+    schedule_intent = bool(re.search(
+        r"\b(?:calendar|current dates?|class dates?|this week|next class|"
+        r"when (?:is|are|does|do|will)|schedule|offered|locations?|where is|"
+        r"calendario|fechas?|cuando|donde)\b",
+        lowered,
+    ))
+    if schedule_intent:
+        add("calendar")
+    if "word" in word_set and word_set.intersection({"certification", "certifications", "certified"}):
+        add(WORD_CERTIFICATION_ID)
+    if word_set.intersection({"certification", "certifications", "certified"}):
+        add(CERTIFICATIONS_ID)
+    if (
+        word_set.intersection({"smartphone", "smartphones", "android", "apple", "phone"})
+        and word_set.intersection({"after", "next", "part", "two"})
+    ):
+        add(SMARTPHONE_PART_TWO_ID)
+    if (
+        word_set.intersection({"email", "correo", "electronico"})
+        and word_set.intersection({"advanced", "after", "next", "organize", "folders", "templates"})
+    ):
+        add(ADVANCED_EMAIL_ID)
+        add(EMAIL_PART_TWO_ID)
+    if (
+        word_set.intersection({"email", "correo", "electronico"})
+        and word_set.intersection({"beginning", "beginner", "basic", "intro", "introduction"})
+    ):
+        add(INTRO_EMAIL_ID)
+    if "canva" in word_set and word_set.intersection({"beginner", "intro", "introduction"}):
+        add(INTRO_CANVA_ID)
+    if (
+        word_set.intersection({"smartphone", "smartphones", "phone"})
+        and word_set.intersection({"beginner", "class", "learn", "learning", "new"})
+    ):
+        add(INTRO_SMARTPHONE_ID)
+    if "chart" in word_set or "charts" in word_set:
+        add(EXCEL_CHARTS_ID)
+    if "resume" in word_set and "ai" in word_set:
+        add(RESUME_AI_ID)
+    if "job" in word_set and word_set.intersection({"search", "searching", "online"}):
+        add(JOB_SEARCH_ID)
+    if "assessment" in word_set or "assessments" in word_set:
+        add(ASSESSMENTS_ID)
+    if "partner" in word_set or "partners" in word_set:
+        add(PARTNERS_ID)
+    if "impact" in word_set:
+        add(IMPACT_ID)
+    if (
+        word_set.intersection({"espanol", "spanish"})
+        and word_set.intersection({"alfabetizacion", "basic", "basica", "computacion"})
+    ):
+        add(SPANISH_BASIC_ID)
+    if re.search(r"\b(?:what is|about|explain)\b.*\bdigital equity program\b", lowered):
+        add("home")
+
     rules = [
-        ("page-reserve-0f176b4b", ("register", "registration", "sign up", "reserve", "registrarme", "registro", "inscribirme")),
-        ("calendar", ("calendar", "date", "week", "when", "time", "schedule", "next class", "location", "where is", "calendario", "fecha", "cuando", "donde")),
-        ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "repair", "fix", "broken", "ayuda individual", "tutoría")),
+        ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "repair", "fix", "broken", "ayuda individual", "tutoria")),
         ("devices", ("device", "laptop", "computer to keep", "cellphone", "cell phone", "phone service", "lifeline", "ipad", "computadora", "telefono", "dispositivo")),
-        ("trainings", ("class", "workshop", "learn", "email", "resume", "job", "word", "excel", "computer", "digital safety", "robotics", "canva", "clase", "curso", "aprender", "espanol")),
         ("contact", ("contact", "staff", "call", "email address", "not listed", "housing", "health", "parole", "benefit", "contacto", "personal")),
     ]
     for source_id, needles in rules:
-        if source_id in SOURCE_BY_ID and any(needle in lowered for needle in needles):
-            ranked.append(source_id)
+        if any(needle in lowered for needle in needles):
+            add(source_id)
+    generic_class_intent = bool(
+        word_set.intersection({"class", "classes", "workshop", "workshops", "training", "trainings", "course", "courses", "learn", "clase", "clases", "curso", "aprender"})
+    )
+    if generic_class_intent and not word_set.intersection(SPECIFIC_CLASS_TERMS):
+        add("trainings")
     if ranked or not fallback:
         return ranked
     return [source_id for source_id in ("home", "contact") if source_id in SOURCE_BY_ID]
@@ -627,7 +732,12 @@ def source_evidence_score(query, source):
     query = semantic_question(query)
     query_terms = tokens(query)
     expansions = {
+        "advanced": ("advanced", "part", "pt"),
+        "basica": ("basic", "beginner", "intro", "introduction"),
+        "basic": ("beginner", "intro", "introduction"),
+        "beginner": ("basic", "intro", "introduction"),
         "coding": ("coder", "coders", "programming"),
+        "correo": ("email",),
         "robot": ("robotics", "coder", "coders"),
         "spanish": ("espanol", "alfabetizacion"),
         "wifi": ("internet", "browsing", "browser"),
@@ -637,8 +747,13 @@ def source_evidence_score(query, source):
         "computadora": ("computer", "device", "laptop"),
         "curso": ("class", "workshop", "training"),
         "donde": ("where", "location"),
+        "electronico": ("email",),
         "espanol": ("spanish", "alfabetizacion"),
+        "learning": ("learn", "intro", "introduction"),
+        "new": ("intro", "introduction", "beginner"),
         "registrarme": ("register", "reserve", "sign up"),
+        "smartphone": ("smartphones", "tablet", "tablets"),
+        "smartphones": ("smartphone", "tablet", "tablets"),
         "telefono": ("phone", "device", "lifeline"),
     }
     for term in list(query_terms):
@@ -658,6 +773,12 @@ def source_evidence_score(query, source):
         score += title_terms[term] * 5.5 + heading_terms[term] * 2.5
     if source_id in manual:
         score += max(12, 24 - manual.index(source_id) * 3)
+    if (
+        source_id == WORD_CERTIFICATION_ID
+        and "word" in set(query_terms)
+        and set(query_terms).intersection({"certification", "certifications", "certified"})
+    ):
+        score += 30
     title = fold_text(source.get("title"))
     query_folded = fold_text(query).strip()
     if len(query_folded) > 5 and query_folded in title:
@@ -735,8 +856,10 @@ def grounded_evidence_sentences(
     )
     status_terms = {
         "on hold": 18,
-        "not available": 18,
-        "ended": 18,
+        "not available": 24,
+        "can no longer be booked": 24,
+        "no longer be booked": 24,
+        "ended": 20,
         "coming soon": 12,
         "changed": 3,
         "limited": 7,
@@ -747,8 +870,9 @@ def grounded_evidence_sentences(
     status_requested = bool(
         set(tokens(query, keep_stopwords=True)).intersection({
             "available", "availability", "current", "date", "eligible", "eligibility",
-            "free", "get", "schedule", "time", "wait", "week", "when",
+            "free", "get", "schedule", "time", "wait", "week", "when", "booked", "offered",
         })
+        or re.search(r"\b(?:is there|does fortune have|do you have)\b", fold_text(query))
     )
     seen = set()
     short_title = re.sub(
@@ -822,6 +946,7 @@ def grounded_answer_message(
     *,
     language_code="en",
     chat_stage="opening",
+    routing_question=None,
 ):
     """Build the visible factual answer from source text, never model prose."""
     if not sources:
@@ -832,16 +957,29 @@ def grounded_answer_message(
         return f"Encontré: {title}. Abre la página para ver la información actual."
     evidence = ""
     question_words = set(tokens(question, keep_stopwords=True))
-    if source.get("id") == "devices" and "laptop" in question_words and question_words.intersection({"available", "free", "get"}):
+    routing_words = set(tokens(routing_question or question, keep_stopwords=True))
+    if (
+        source.get("id") == "devices"
+        and question_words.intersection({"qualify", "eligible", "eligibility"})
+        and "laptop" in routing_words
+    ):
+        evidence = (
+            "Laptop applicants must be active or former Digital Equity workshop attendees "
+            "and have a case-manager referral."
+        )
+    elif source.get("id") == "devices" and "laptop" in routing_words and question_words.intersection({"available", "free", "get"}):
         evidence = "Laptop distribution is currently on hold."
     elif source.get("id") == "page-reserve-0f176b4b" and question_words.intersection({"register", "registration", "reserve", "sign"}):
         evidence = PAGE_SUMMARIES[source["id"]]
     elif question_refers_to_current_page(question):
         evidence = PAGE_SUMMARIES.get(source.get("id"), "")
     if not evidence:
+        evidence_query = question
+        if question_needs_history_context(question):
+            evidence_query = f"{question} {title}"
         evidence = grounded_evidence_sentences(
             source,
-            question,
+            evidence_query,
             max_sentences=1 if chat_stage == "follow_up" else MAX_EVIDENCE_SENTENCES,
         )
     if not evidence:
@@ -926,12 +1064,59 @@ def question_refers_to_current_page(question):
     patterns = (
         r"\b(?:this|the current) (?:page|class|service|program|event|workshop)\b",
         r"\b(?:on|from) this page\b",
-        r"\bwhat (?:does it|is here|should i take before or after it)\b",
+        r"\bwhat is here\b",
         r"\bwhere should i go next\b",
         r"\bwhat do i do next\b",
         r"\bmain information here\b",
     )
     return any(re.search(pattern, value) for pattern in patterns)
+
+
+def question_needs_history_context(question):
+    """Identify a follow-up whose nouns live in a previous safe user turn."""
+
+    value = fold_text(semantic_question(question))
+    patterns = (
+        r"\b(?:it|its|that|those|they|them|there)\b",
+        r"\b(?:this|that) class\b",
+        r"\b(?:which|is there) one\b",
+        r"\bwhat (?:else|about|are they for|kind of help)\b",
+        r"\bwhen is it offered\b",
+        r"\bhow do i confirm whether i qualify\b",
+        r"\bque aprenderia\b",
+        r"\bque mas\b",
+    )
+    return any(re.search(pattern, value) for pattern in patterns)
+
+
+def history_topic_question(history):
+    """Return the latest explicit topic from the bounded, privacy-clean history."""
+
+    fallback = ""
+    for item in reversed(list(history or [])):
+        if item.get("role") != "user":
+            continue
+        content = semantic_question(item.get("content"))
+        if not content:
+            continue
+        if not fallback:
+            fallback = content
+        word_set = set(tokens(content, keep_stopwords=True))
+        if word_set.intersection(HISTORY_TOPIC_TERMS):
+            return content
+    return fallback
+
+
+def contextual_routing_question(question, history=None):
+    """Add only the latest safe topic to genuinely elliptical retrieval turns."""
+
+    question = semantic_question(question)
+    if not question_needs_history_context(question):
+        return question
+    topic = history_topic_question(history)
+    if not topic or fold_text(topic) == fold_text(question):
+        return question
+    return f"{topic}. Follow-up: {question}"
 
 
 def guided_class_sources(question):
@@ -953,6 +1138,19 @@ def guided_class_sources(question):
     return [source]
 
 
+def registration_sources(question):
+    value = fold_text(semantic_question(question))
+    if not re.search(
+        r"\b(?:register|registration|sign up|reserve|registrarme|registro|inscribirme)\b",
+        value,
+    ):
+        return []
+    source = SOURCE_BY_ID.get("page-reserve-0f176b4b")
+    if not source or source.get("authority") != "answer" or source.get("status", 200) != 200:
+        return []
+    return [source]
+
+
 def retrieval_plan(question, page_context=None):
     """Choose the narrowest approved evidence scope that can answer a question."""
     question = semantic_question(question)
@@ -963,6 +1161,9 @@ def retrieval_plan(question, page_context=None):
     current = approved_current_page_source(page_context)
     if current and question_refers_to_current_page(question):
         return "page", [current]
+    registration = registration_sources(question)
+    if registration:
+        return "site", registration
 
     site_sources = retrieve_sources(question)
     if current and site_sources and site_sources[0]["url"] == current["url"]:
@@ -1058,8 +1259,10 @@ def ambiguity_response(question, language_code=None):
             words.intersection({"clase", "clases", "curso", "taller"})
             and len(words) <= 6
             and not words.intersection({
-                "basica", "basico", "computacion", "computadora", "email", "excel",
-                "fecha", "cuando", "donde", "registro", "registrarme", "inscribirme",
+                "alfabetizacion", "assessment", "basica", "basico", "canva",
+                "computacion", "computadora", "correo", "email", "electronico",
+                "excel", "fecha", "cuando", "donde", "registro", "registrarme",
+                "inscribirme",
             })
         ):
             cases.append((
@@ -1086,7 +1289,10 @@ def ambiguity_response(question, language_code=None):
         "training", "trainings", "course", "courses", "register", "registration", "calendar",
         "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
         "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
-        "eligibility", "eligible", "lifeline",
+        "eligibility", "eligible", "lifeline", "tech", "one-to-one", "certification",
+        "certifications", "microsoft", "assessment", "assessments", "practice", "canva",
+        "excel", "formula", "formulas", "chart", "charts", "smartphone", "smartphones",
+        "digital", "equity", "partners", "impact", "overview", "android", "apple", "phones",
     }
     generic_request_terms = {
         "start", "started", "begin", "help", "support", "assistance", "program", "programs",
@@ -1119,7 +1325,7 @@ def ambiguity_response(question, language_code=None):
             ],
             ["home"],
         ))
-    elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "eligibility", "class", "learn", "fix", "broken", "keep", "repair", "buy"}):
+    elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "eligibility", "class", "learn", "fix", "broken", "keep", "repair", "buy", "program", "programs", "distribution", "list", "listed"}):
         cases.append((
             "Do you need a device, help learning to use one, or help with a problem?",
             [
@@ -1134,7 +1340,7 @@ def ambiguity_response(question, language_code=None):
         or (
             words.intersection({"class", "classes", "workshop", "workshops", "training"})
             and len(words) <= 6
-            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where"})
+            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where", "assessment", "assessments", "certification", "certifications", "practice", "chart", "charts"})
         )
     ):
         cases.append((
@@ -1624,7 +1830,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     headers={"Retry-After": "60"},
                 )
                 return
-            routing_question = semantic_question(question)
+            routing_question = contextual_routing_question(question, safe_history)
             interaction = interaction_context(question, safe_history)
             turn = CONVERSATION_RECORDER.begin_turn(
                 question=question,
@@ -1731,11 +1937,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._chat_json(200, response_contract(
                     kind="answer",
                     message=grounded_answer_message(
-                        routing_question,
+                        question,
                         deterministic,
                         retrieval_scope,
                         language_code=interaction["request_language"],
                         chat_stage=interaction["chat_stage"],
+                        routing_question=routing_question,
                     ),
                     reason=(
                         "La respuesta viene de una página aprobada."
@@ -1743,7 +1950,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         else "From an approved Fortune page."
                     ),
                     sources=deterministic,
-                    question=routing_question,
+                    question=question,
                     model_called=False,
                     retrieval_scope=retrieval_scope,
                 ), turn, question, started_at, interaction=interaction)
@@ -1779,7 +1986,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._chat_json(
                 200,
                 parse_model_json(
-                    raw, routing_question, retrieved, retrieval_scope, interaction
+                    raw, question, retrieved, retrieval_scope, interaction
                 ),
                 turn,
                 question,

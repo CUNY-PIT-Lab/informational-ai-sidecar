@@ -1,0 +1,148 @@
+import pathlib
+import unittest
+
+import server
+from scripts import run_website_guide_eval
+from scripts import run_website_guide_multiturn_eval
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+HOME = {"url": "https://www.fortunedigitalequity.org/"}
+
+
+class MultiTurnRetrievalTests(unittest.TestCase):
+    def test_frozen_suite_has_episode_and_context_coverage(self):
+        document = run_website_guide_eval.load_json(
+            ROOT / "evals" / "website-guide" / "multiturn-cases.json"
+        )
+        self.assertEqual(run_website_guide_multiturn_eval.validate_suite(document), [])
+        self.assertGreaterEqual(len(document["episodes"]), 10)
+        turns = [turn for episode in document["episodes"] for turn in episode["turns"]]
+        self.assertGreaterEqual(len(turns), 40)
+        self.assertGreaterEqual(
+            sum(turn.get("mode") in {"deictic", "elliptical", "topic_shift"} for turn in turns),
+            10,
+        )
+
+    def test_elliptical_follow_up_uses_latest_safe_topic(self):
+        history = [
+            {"role": "user", "content": "Can I get a free laptop?"},
+            {"role": "assistant", "content": "Laptop distribution is on hold."},
+        ]
+        routed = server.contextual_routing_question("Is that available now?", history)
+        self.assertIn("free laptop", routed)
+        scope, sources = server.retrieval_plan(routed, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual(sources[0]["id"], "devices")
+
+    def test_latest_topic_wins_after_a_topic_shift(self):
+        history = [
+            {"role": "user", "content": "Can I get a free laptop?"},
+            {"role": "assistant", "content": "Laptop distribution is on hold."},
+            {"role": "user", "content": "Instead, tell me about Intro to Canva."},
+            {"role": "assistant", "content": "Intro to Canva covers design basics."},
+        ]
+        routed = server.contextual_routing_question("What does that cover?", history)
+        self.assertIn("Intro to Canva", routed)
+        self.assertNotIn("laptop", routed)
+        _, sources = server.retrieval_plan(routed, HOME)
+        self.assertEqual(sources[0]["id"], server.INTRO_CANVA_ID)
+
+    def test_conversational_it_does_not_mean_the_host_page(self):
+        self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
+        self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))
+
+    def test_specific_openings_do_not_trigger_generic_clarification(self):
+        questions = [
+            "Can I get one-on-one tech support?",
+            "Does Fortune help with Microsoft certifications?",
+            "What is Fortune's Digital Equity Program?",
+            "Are there class assessments too?",
+        ]
+        for question in questions:
+            with self.subTest(question=question):
+                self.assertIsNone(
+                    server.ambiguity_response(question, server.detect_language(question))
+                )
+
+    def test_specific_class_questions_prefer_specific_pages(self):
+        expected = {
+            "I want to learn email from the beginning. What class fits?": server.INTRO_EMAIL_ID,
+            "Does Fortune have a beginner Canva class?": server.INTRO_CANVA_ID,
+            "Is there a class for learning a new smartphone?": server.INTRO_SMARTPHONE_ID,
+            "Is there a class about writing resumes with AI?": server.RESUME_AI_ID,
+            "Is there also a class on job searching online?": server.JOB_SEARCH_ID,
+        }
+        for question, source_id in expected.items():
+            with self.subTest(question=question):
+                _, sources = server.retrieval_plan(question, HOME)
+                self.assertEqual(sources[0]["id"], source_id)
+
+    def test_word_certification_follow_up_prefers_word_certification_page(self):
+        history = [
+            {"role": "user", "content": "Which certifications are listed?"},
+            {"role": "assistant", "content": "Microsoft Office certifications are listed."},
+        ]
+        routed = server.contextual_routing_question("Is there one for Word?", history)
+        _, sources = server.retrieval_plan(routed, HOME)
+        self.assertEqual(sources[0]["id"], server.WORD_CERTIFICATION_ID)
+
+    def test_ambiguous_specific_sources_still_reach_the_model_selector(self):
+        question = "Which Excel class covers formatting and organizing data?"
+        scope, sources = server.retrieval_plan(question, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual(
+            {source["id"] for source in sources[:2]},
+            {
+                server.source_id_for_path("/service-page/excel-formatting-data"),
+                server.source_id_for_path("/service-page/excel-organizing-data"),
+            },
+        )
+        self.assertEqual(server.deterministic_answer_sources(question, sources, scope), [])
+
+    def test_follow_up_evidence_uses_the_selected_source_title(self):
+        source = server.SOURCE_BY_ID[server.INTRO_CANVA_ID]
+        message = server.grounded_answer_message(
+            "What would I learn there?",
+            [source],
+            "site",
+            chat_stage="follow_up",
+            routing_question="Does Fortune have a beginner Canva class? What would I learn there?",
+        )
+        self.assertTrue(
+            {"canva", "template", "design", "interface"}.intersection(
+                server.tokens(message, keep_stopwords=True)
+            )
+        )
+
+    def test_device_eligibility_follow_up_advances_past_availability(self):
+        source = server.SOURCE_BY_ID["devices"]
+        message = server.grounded_answer_message(
+            "How do I confirm whether I qualify?",
+            [source],
+            "site",
+            chat_stage="follow_up",
+            routing_question="Can I get a free laptop? How do I confirm whether I qualify?",
+        )
+        self.assertIn("case-manager referral", message)
+        self.assertNotIn("currently on hold", message)
+
+    def test_continuity_grader_accepts_stable_follow_up(self):
+        response = {"chat_stage": "follow_up", "conversation_id": "same"}
+        history = [
+            {"role": "user", "content": "one"},
+            {"role": "assistant", "content": "two"},
+        ]
+        self.assertEqual(
+            run_website_guide_multiturn_eval.continuity_failures(
+                turn_index=1,
+                response=response,
+                conversation_id="same",
+                history=history,
+            ),
+            [],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
