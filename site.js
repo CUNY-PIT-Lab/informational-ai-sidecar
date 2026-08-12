@@ -21,6 +21,38 @@
     byUrl: new Map(),
     current: null,
   };
+  const GUIDE_CONTEXT_PAGES = [
+    {
+      id: "trainings",
+      title: "Regular Workshops",
+      url: TRAININGS_URL,
+      description: "Beginner, intermediate, and advanced digital-skills workshops.",
+      blocks: ["Use the live workshop page for current topics and prerequisites."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+    {
+      id: "individual",
+      title: "Individual Support",
+      url: INDIVIDUAL_URL,
+      description: "One-to-one tutoring, computer-lab access, and technical support.",
+      blocks: ["Use the live support page for current hours and appointments."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+    {
+      id: "contact",
+      title: "Contact Digital Equity",
+      url: CONTACT_URL,
+      description: "Official contact information for Fortune’s Digital Equity team.",
+      blocks: ["Use the official contact page for personal help."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+  ];
   const memberSignedOut = document.querySelector("#member-signed-out");
   const memberProfile = document.querySelector("#member-profile");
 
@@ -407,6 +439,12 @@
     state.index = await response.json();
     state.pages = Array.isArray(state.index.pages) ? state.index.pages : [];
     state.pages.forEach(page => state.byUrl.set(canonicalUrl(page.url), page));
+    GUIDE_CONTEXT_PAGES.forEach(page => {
+      const url = canonicalUrl(page.url);
+      if (state.byUrl.has(url)) return;
+      state.pages.push(page);
+      state.byUrl.set(url, page);
+    });
     const page = state.byUrl.get(selectedUrl()) || state.byUrl.get(`${SITE_ORIGIN}/`) || state.pages[0];
     if (!page) throw new Error("No public page records are available.");
     renderPage(page);
