@@ -30,6 +30,11 @@
     /every website has a story/i,
     /Description UNDER DEVELOPMENT/i,
     /use tab to navigate/i,
+    /^icon representing\b/i,
+    /^(?:image|photo|photograph)\s+(?:of|showing)\b/i,
+    /^a digital navigator helping\b/i,
+    /^participant being helped\b/i,
+    /^the crowd at the annual fortune society tech fair\b/i,
   ];
 
   function canonicalUrl(value) {

@@ -349,6 +349,13 @@ _REASONING_BLOCK = re.compile(
 _CLOSE_TAG = re.compile(r"</think\s*>|</thinking\s*>|◁/think▷", re.IGNORECASE)
 _ORPHAN_OPEN = re.compile(r"<think\b[^>]*>|<thinking\b[^>]*>|◁think▷", re.IGNORECASE)
 _TOKEN = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)?")
+_VISUAL_SCAFFOLD = (
+    re.compile(r"^icon representing\b", re.I),
+    re.compile(r"^(?:image|photo|photograph)\s+(?:of|showing)\b", re.I),
+    re.compile(r"^a digital navigator helping\b", re.I),
+    re.compile(r"^participant being helped\b", re.I),
+    re.compile(r"^the crowd at the annual fortune society tech fair\b", re.I),
+)
 
 _PERSONAL_PATTERNS = [
     re.compile(r"\b(?:social security|ssn|date of birth|dob|password|passcode)\b", re.I),
@@ -454,6 +461,15 @@ def strip_reasoning(text):
     if closes:
         cleaned = cleaned[closes[-1].end():]
     return _ORPHAN_OPEN.sub("", cleaned).strip()
+
+
+def clean_evidence_fragment(text):
+    """Remove visual-only page scaffolding before it reaches an answer."""
+
+    value = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not value or any(pattern.search(value) for pattern in _VISUAL_SCAFFOLD):
+        return ""
+    return value
 
 
 def contains_personal_details(text):
@@ -618,7 +634,7 @@ def source_excerpt(source, query, limit=4200):
     for index, block in enumerate(
         [source.get("description", "")] + list(source.get("facts", [])) + list(source.get("blocks", []))
     ):
-        block = re.sub(r"\s+", " ", str(block or "")).strip()
+        block = clean_evidence_fragment(block)
         if not block:
             continue
         overlap = len(query_terms.intersection(tokens(block)))
@@ -639,7 +655,12 @@ def source_excerpt(source, query, limit=4200):
     return "\n".join(selected)
 
 
-def grounded_evidence_sentences(source, query, limit=MAX_EVIDENCE_WORDS):
+def grounded_evidence_sentences(
+    source,
+    query,
+    limit=MAX_EVIDENCE_WORDS,
+    max_sentences=MAX_EVIDENCE_SENTENCES,
+):
     """Select short factual sentences that already exist in an approved record."""
     query_terms = set(tokens(query))
     rows = []
@@ -676,7 +697,9 @@ def grounded_evidence_sentences(source, query, limit=MAX_EVIDENCE_WORDS):
             continue
         sentences = re.split(r"(?<=[.!?])\s+", value)
         for sentence_index, sentence in enumerate(sentences):
-            sentence = re.sub(r"[\u200b-\u200d\ufeff]", "", sentence).strip()
+            sentence = clean_evidence_fragment(
+                re.sub(r"[\u200b-\u200d\ufeff]", "", sentence)
+            )
             sentence = re.sub(r"^Home Service list\s+", "", sentence, flags=re.I)
             if short_title:
                 sentence = re.sub(
@@ -717,7 +740,7 @@ def grounded_evidence_sentences(source, query, limit=MAX_EVIDENCE_WORDS):
             continue
         selected.append(sentence)
         word_count += len(words)
-        if len(selected) == MAX_EVIDENCE_SENTENCES or word_count >= limit:
+        if len(selected) == max_sentences or word_count >= limit:
             break
     return " ".join(selected)
 
@@ -741,7 +764,11 @@ def grounded_answer_message(
             f"{prefix} {title}. Ábrela para ver la información actual. "
             "Si quieres, pregúntame por un paso a la vez."
         )
-    evidence = grounded_evidence_sentences(source, question)
+    evidence = grounded_evidence_sentences(
+        source,
+        question,
+        max_sentences=1 if chat_stage == "follow_up" else MAX_EVIDENCE_SENTENCES,
+    )
     if not evidence:
         return participant_copy("missing_message", language_code)
     if chat_stage == "follow_up":

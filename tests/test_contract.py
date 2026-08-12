@@ -502,6 +502,36 @@ class ResponseContractTests(unittest.TestCase):
         clipped = server.clip_words(text, 30)
         self.assertTrue(clipped.endswith("clearly."))
 
+    def test_visual_page_scaffolding_cannot_cut_off_a_grounded_answer(self):
+        home = server.SOURCE_BY_ID["home"]
+        question = "I want to find a digital skills class."
+        evidence = server.grounded_evidence_sentences(home, question)
+        message = server.grounded_answer_message(
+            question,
+            [home],
+            "page",
+            chat_stage="follow_up",
+        )
+        excerpt = server.source_excerpt(home, question)
+
+        self.assertTrue(
+            evidence.startswith(
+                "The home page offers a direct route to join a class."
+            )
+        )
+        self.assertEqual(
+            message,
+            "Next: The home page offers a direct route to join a class.",
+        )
+        for value in (evidence, message, excerpt):
+            self.assertNotIn("Icon representing", value)
+            self.assertNotIn("The crowd at the annual fortune society tech fair", value)
+
+    def test_static_fallback_filters_visual_scaffolding_too(self):
+        site = (DEMO / "site.js").read_text(encoding="utf-8")
+        self.assertIn(r"/^icon representing\b/i", site)
+        self.assertIn(r"/^the crowd at the annual fortune society tech fair\b/i", site)
+
     def test_related_routes_use_only_trusted_urls(self):
         for query in ("class", "laptop", "tutoring", "practice", "something else"):
             related = server.related_links(query, server.retrieve_sources(query))
