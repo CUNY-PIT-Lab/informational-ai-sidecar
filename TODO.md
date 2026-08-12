@@ -1,5 +1,18 @@
 # Website Guide — next steps
 
+## Responsiveness and coverage release — 2026-08-12
+
+- [x] Audit the canonical checkout, remote branches, and both GitHub repositories. The demo repository has no open PR; the PIT Lab mirror still has one open sync PR that predates this release.
+- [x] Expand the fixed suite to 41 cases across all six request kinds and all four response kinds.
+- [x] Fix typo routing, page-aware follow-ups, class clarification, prompt-injection cleanup, and the 600-character server boundary.
+- [x] Route confident public-source matches without waiting for the model and remove model warmup from the send path.
+- [x] Cap participant-facing answers at 32 words and keep clarifications, privacy holds, and staff handoffs shorter.
+- [ ] Deploy the exact tested commit to Railway staging and production; require terminal success and a capture-none production health boundary.
+- [ ] Merge the release PR, wait for GitHub Pages to finish, and verify the published asset hash.
+- [ ] Capture successful live runs for clarification, navigation, procedure, retrieval, privacy, and sensitive requests.
+- [ ] Re-run the immutable 41-case benchmark against production and attach its report to the release record.
+- [ ] Review and refresh the open PIT Lab mirror PR after the canonical release is accepted.
+
 ## Released baseline — 2026-08-09
 
 - [x] Release the minimalist Website Guide to Railway and GitHub Pages.

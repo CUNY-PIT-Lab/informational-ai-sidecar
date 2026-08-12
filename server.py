@@ -59,12 +59,22 @@ ALLOWED_ORIGINS = {
 }
 MAX_BODY = 64 * 1024
 MAX_HISTORY = 6
-MAX_RETRIEVED = 7
-MAX_MESSAGE_WORDS = 48
+MAX_QUESTION_CHARS = 600
+MAX_RETRIEVED = 3
+MAX_MESSAGE_WORDS = 32
 MAX_REASON_WORDS = 18
-MAX_EVIDENCE_WORDS = 32
-MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-08-v2"
+MAX_EVIDENCE_WORDS = 24
+MAX_EVIDENCE_SENTENCES = 1
+PROMPT_POLICY_VERSION = "2026-08-12-v3"
+
+PAGE_SUMMARIES = {
+    "home": "This page explains Fortune’s Digital Equity support and training.",
+    "trainings": "This page lists beginner, intermediate, and advanced workshops.",
+    "devices": "This page explains Fortune’s device programs and eligibility details.",
+    "individual": "This page lists tutoring, computer lab, and technical support.",
+    "calendar": "This page lists current class dates, locations, and registration.",
+    "page-reserve-0f176b4b": "This page lists classes and registration links.",
+}
 
 
 def bounded_env_int(name, default, minimum, maximum):
@@ -432,8 +442,45 @@ def fold_text(value):
     return "".join(character for character in normalized if not unicodedata.combining(character)).lower()
 
 
+_QUESTION_ALIASES = {
+    "halp": "help",
+    "labtop": "laptop",
+    "labtops": "laptops",
+    "lern": "learn",
+    "computr": "computer",
+    "whare": "where",
+}
+
+
+def semantic_question(value):
+    """Return the participant's useful intent without markup or prompt attacks."""
+
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = re.sub(r"<[^>]*>", " ", text)
+    text = re.sub(r"\balert\s*\([^)]*\)\s*;?", " ", text, flags=re.I)
+    text = re.sub(
+        r"\bignore\s+(?:all\s+|any\s+|the\s+|your\s+|previous\s+|these\s+)*"
+        r"(?:rules?|instructions?|prompts?)\s*(?:and|,|\.)?\s*",
+        " ",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"\b(?:tell|show|reveal|give)\s+(?:me\s+)?(?:the\s+)?"
+        r"(?:hidden\s+|system\s+|developer\s+|internal\s+)*(?:prompt|instructions?|rules?)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(r"\binvent\b", " ", text, flags=re.I)
+    for typo, replacement in _QUESTION_ALIASES.items():
+        text = re.sub(rf"\b{re.escape(typo)}\b", replacement, text, flags=re.I)
+    return re.sub(r"\s+", " ", text).strip(" ,.;:!?-")
+
+
 def tokens(value, keep_stopwords=False):
     values = _TOKEN.findall(fold_text(value))
+    values = [_QUESTION_ALIASES.get(item, item) for item in values]
     if keep_stopwords:
         return values
     return [value for value in values if len(value) > 1 and value not in STOPWORDS]
@@ -467,6 +514,7 @@ def clean_evidence_fragment(text):
     """Remove visual-only page scaffolding before it reaches an answer."""
 
     value = re.sub(r"\s+", " ", str(text or "")).strip()
+    value = re.sub(r"^(?:and|but|however),?\s+", "", value, flags=re.I)
     if not value or any(pattern.search(value) for pattern in _VISUAL_SCAFFOLD):
         return ""
     return value
@@ -479,6 +527,14 @@ def contains_personal_details(text):
 
 def needs_human_handoff(text):
     return any(pattern.search(text or "") for pattern in _HUMAN_HANDOFF_PATTERNS)
+
+
+def needs_staff_confirmation(text):
+    value = fold_text(semantic_question(text))
+    return bool(re.search(
+        r"\b(?:who\s+(?:is|will be)\s+teach(?:ing)?|teacher|instructor|their phone number)\b",
+        value,
+    ))
 
 
 def detect_language(text):
@@ -507,6 +563,7 @@ def participant_copy(key, language_code):
 
 
 def request_kind(question):
+    question = semantic_question(question)
     value = fold_text(question)
     if contains_personal_details(question):
         return "privacy"
@@ -548,14 +605,15 @@ def clip_words(text, limit):
 
 
 def likely_source_ids(text, fallback=True):
-    lowered = fold_text(text)
+    lowered = fold_text(semantic_question(text))
     ranked = []
     rules = [
+        ("page-reserve-0f176b4b", ("register", "registration", "sign up", "reserve", "registrarme", "registro", "inscribirme")),
+        ("calendar", ("calendar", "date", "week", "when", "time", "schedule", "next class", "location", "where is", "calendario", "fecha", "cuando", "donde")),
+        ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "repair", "fix", "broken", "ayuda individual", "tutoría")),
         ("devices", ("device", "laptop", "computer to keep", "cellphone", "cell phone", "phone service", "lifeline", "ipad", "computadora", "telefono", "dispositivo")),
-        ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "ayuda individual", "tutoría")),
-        ("calendar", ("calendar", "date", "when", "time", "schedule", "next class", "location", "where is", "calendario", "fecha", "cuando", "donde")),
         ("trainings", ("class", "workshop", "learn", "email", "resume", "job", "word", "excel", "computer", "digital safety", "robotics", "canva", "clase", "curso", "aprender", "espanol")),
-        ("contact", ("contact", "staff", "call", "email address", "register", "sign up", "not listed", "housing", "health", "parole", "benefit", "contacto", "personal", "registrarme")),
+        ("contact", ("contact", "staff", "call", "email address", "not listed", "housing", "health", "parole", "benefit", "contacto", "personal")),
     ]
     for source_id, needles in rules:
         if source_id in SOURCE_BY_ID and any(needle in lowered for needle in needles):
@@ -566,6 +624,7 @@ def likely_source_ids(text, fallback=True):
 
 
 def source_evidence_score(query, source):
+    query = semantic_question(query)
     query_terms = tokens(query)
     expansions = {
         "coding": ("coder", "coders", "programming"),
@@ -598,7 +657,7 @@ def source_evidence_score(query, source):
         score += inverse_frequency * (1 + math.log(1 + term_counts[term]))
         score += title_terms[term] * 5.5 + heading_terms[term] * 2.5
     if source_id in manual:
-        score += max(1, 3 - manual.index(source_id))
+        score += max(12, 24 - manual.index(source_id) * 3)
     title = fold_text(source.get("title"))
     query_folded = fold_text(query).strip()
     if len(query_folded) > 5 and query_folded in title:
@@ -628,7 +687,7 @@ def retrieve_sources(query, limit=MAX_RETRIEVED):
     return result
 
 
-def source_excerpt(source, query, limit=4200):
+def source_excerpt(source, query, limit=1800):
     query_terms = set(tokens(query))
     candidates = []
     for index, block in enumerate(
@@ -645,10 +704,10 @@ def source_excerpt(source, query, limit=4200):
     for _, _, block in candidates:
         if block in selected:
             continue
-        addition = min(len(block), 1800)
+        addition = min(len(block), 900)
         if selected and length + addition > limit:
             continue
-        selected.append(block[:1800])
+        selected.append(block[:900])
         length += addition
         if length >= limit:
             break
@@ -662,9 +721,10 @@ def grounded_evidence_sentences(
     max_sentences=MAX_EVIDENCE_SENTENCES,
 ):
     """Select short factual sentences that already exist in an approved record."""
+    query = semantic_question(query)
     query_terms = set(tokens(query))
     rows = []
-    values = list(source.get("facts", [])) + list(source.get("blocks", []))
+    values = [source.get("description", "")] + list(source.get("facts", [])) + list(source.get("blocks", []))
     boilerplate = (
         "double click on the text box",
         "this space is a great opportunity",
@@ -684,6 +744,12 @@ def grounded_evidence_sentences(
         "availability can change": 7,
         "confirm": 2,
     }
+    status_requested = bool(
+        set(tokens(query, keep_stopwords=True)).intersection({
+            "available", "availability", "current", "date", "eligible", "eligibility",
+            "free", "get", "schedule", "time", "wait", "week", "when",
+        })
+    )
     seen = set()
     short_title = re.sub(
         r"\s*[|·]\s*FS Digital Equity\s*$",
@@ -722,7 +788,11 @@ def grounded_evidence_sentences(
                 3 + math.log(1 + len(ANSWER_SOURCES) / (1 + DOCUMENT_FREQUENCY[term]))
                 for term in matched_terms
             )
-            status_bonus = max((bonus for term, bonus in status_terms.items() if term in key), default=0)
+            status_bonus = (
+                max((bonus for term, bonus in status_terms.items() if term in key), default=0)
+                if status_requested
+                else 0
+            )
             status = status_bonus > 0
             title_bonus = title_overlap * 2 if matched_terms else 0
             score = overlap_score + title_bonus + status_bonus - (value_index * 0.01 + sentence_index * 0.001)
@@ -759,24 +829,21 @@ def grounded_answer_message(
     source = sources[0]
     title = re.sub(r"\s*[|·]\s*FS Digital Equity\s*$", "", source.get("title", "Digital Equity"), flags=re.I)
     if language_code == "es":
-        prefix = "" if chat_stage == "follow_up" else "Encontré una página oficial: "
-        return (
-            f"{prefix}{title}. Ábrela para ver la información actual. "
-            "Si quieres, pregúntame por un paso a la vez."
+        return f"Encontré: {title}. Abre la página para ver la información actual."
+    evidence = ""
+    if question_refers_to_current_page(question):
+        evidence = PAGE_SUMMARIES.get(source.get("id"), "")
+    if not evidence:
+        evidence = grounded_evidence_sentences(
+            source,
+            question,
+            max_sentences=1 if chat_stage == "follow_up" else MAX_EVIDENCE_SENTENCES,
         )
-    evidence = grounded_evidence_sentences(
-        source,
-        question,
-        max_sentences=1 if chat_stage == "follow_up" else MAX_EVIDENCE_SENTENCES,
-    )
     if not evidence:
         return participant_copy("missing_message", language_code)
-    prefix = ""
-    if chat_stage != "follow_up":
-        prefix = "On this page: " if retrieval_scope == "page" else f"The {title} page says: "
-    message = prefix + evidence
+    message = evidence
     if source.get("volatile"):
-        message += " Confirm dates, eligibility, location, inventory, and availability on the live page or with staff."
+        message += " Check the live page for current details."
     return message
 
 
@@ -848,12 +915,13 @@ def contextualize_sources(retrieved, page_context):
 
 
 def question_refers_to_current_page(question):
-    value = fold_text(question)
+    value = fold_text(semantic_question(question))
     patterns = (
         r"\b(?:this|the current) (?:page|class|service|program|event|workshop)\b",
         r"\b(?:on|from) this page\b",
         r"\bwhat (?:does it|is here|should i take before or after it)\b",
         r"\bwhere should i go next\b",
+        r"\bwhat do i do next\b",
         r"\bmain information here\b",
     )
     return any(re.search(pattern, value) for pattern in patterns)
@@ -880,21 +948,38 @@ def guided_class_sources(question):
 
 def retrieval_plan(question, page_context=None):
     """Choose the narrowest approved evidence scope that can answer a question."""
+    question = semantic_question(question)
     guided = guided_class_sources(question)
     if guided:
         return "site", guided
 
     current = approved_current_page_source(page_context)
-    if current and (
-        question_refers_to_current_page(question)
-        or source_evidence_score(question, current) > 0
-    ):
+    if current and question_refers_to_current_page(question):
         return "page", [current]
 
     site_sources = retrieve_sources(question)
+    if current and site_sources and site_sources[0]["url"] == current["url"]:
+        return "page", [current]
     if site_sources:
         return "site", site_sources
     return "staff", []
+
+
+def deterministic_answer_sources(question, retrieved, retrieval_scope):
+    """Use the local source index when its top route is unambiguous."""
+
+    retrieved = list(retrieved or [])
+    if not retrieved:
+        return []
+    if retrieval_scope == "page" or guided_class_sources(question):
+        return retrieved[:1]
+    preferred = likely_source_ids(question, fallback=False)
+    if preferred and retrieved[0]["id"] == preferred[0]:
+        return retrieved[:1]
+    scores = [source_evidence_score(question, source) for source in retrieved[:2]]
+    if scores[0] >= 12 and (len(scores) == 1 or scores[0] - scores[1] >= 3):
+        return retrieved[:1]
+    return []
 
 
 def related_links(question, sources, limit=3):
@@ -935,6 +1020,7 @@ def related_links(question, sources, limit=3):
 
 
 def ambiguity_response(question, language_code=None):
+    question = semantic_question(question)
     lowered = fold_text(question).strip(" ?.!")
     words = set(tokens(lowered, keep_stopwords=True))
     if guided_class_sources(question):
@@ -961,7 +1047,14 @@ def ambiguity_response(question, language_code=None):
                 ],
                 ["devices", "individual"],
             ))
-        elif words.intersection({"clase", "clases", "curso", "taller"}) and len(words) <= 6:
+        elif (
+            words.intersection({"clase", "clases", "curso", "taller"})
+            and len(words) <= 6
+            and not words.intersection({
+                "basica", "basico", "computacion", "computadora", "email", "excel",
+                "fecha", "cuando", "donde", "registro", "registrarme", "inscribirme",
+            })
+        ):
             cases.append((
                 "¿Qué necesitas?",
                 [
@@ -1019,7 +1112,7 @@ def ambiguity_response(question, language_code=None):
             ],
             ["home"],
         ))
-    elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "class", "learn", "fix", "broken", "keep", "repair", "buy"}):
+    elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "eligibility", "class", "learn", "fix", "broken", "keep", "repair", "buy"}):
         cases.append((
             "Do you need a device, help learning to use one, or help with a problem?",
             [
@@ -1034,7 +1127,7 @@ def ambiguity_response(question, language_code=None):
         or (
             words.intersection({"class", "classes", "workshop", "workshops", "training"})
             and len(words) <= 6
-            and not words.intersection({"email", "computer", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where"})
+            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where"})
         )
     ):
         cases.append((
@@ -1139,7 +1232,7 @@ Return only this JSON shape:
 Never put a URL in the JSON.
 """
 
-AUDIENCE_SYSTEM_PROMPT = """Reduce cognitive load. The person may be rebuilding routines after incarceration, but never mention, infer, or judge that history. Start with what they can do now. Use ordinary words, one practical step, and one short reason. Define unfamiliar terms. Never say simply, obviously, just, or you should have. Do not use em dashes. Keep the message under 48 words and the reason under 18 words."""
+AUDIENCE_SYSTEM_PROMPT = """Reduce cognitive load. The person may be rebuilding routines after incarceration, but never mention, infer, or judge that history. Start with what they can do now. Use ordinary words and one practical step. Prefer one complete sentence. Define unfamiliar terms. Never say simply, obviously, just, or you should have. Do not use em dashes. Keep the message under 32 words and the reason under 18 words."""
 
 REQUEST_MODE_PROMPTS = {
     "clarification": "Ask exactly one short question with concrete choices. Do not add factual claims.",
@@ -1512,6 +1605,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not question:
                 self._json(400, {"error": "Write a question first."})
                 return
+            if len(question) > MAX_QUESTION_CHARS:
+                self._json(400, {
+                    "error": f"Question must be {MAX_QUESTION_CHARS} characters or fewer."
+                })
+                return
             if not CHAT_REQUEST_BUDGET.claim(self._client_identifier()):
                 self._json(
                     429,
@@ -1519,6 +1617,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     headers={"Retry-After": "60"},
                 )
                 return
+            routing_question = semantic_question(question)
             interaction = interaction_context(question, safe_history)
             turn = CONVERSATION_RECORDER.begin_turn(
                 question=question,
@@ -1581,14 +1680,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     interaction=interaction,
                 )
                 return
-            ambiguous = ambiguity_response(question, interaction["request_language"])
+            if needs_staff_confirmation(question):
+                self._chat_json(
+                    200,
+                    response_contract(
+                        kind="handoff",
+                        message="Fortune staff can confirm the instructor and contact details.",
+                        reason="Use Contact.",
+                        sources=[SOURCE_BY_ID["contact"]],
+                        question=routing_question,
+                        model_called=False,
+                        retrieval_scope="staff",
+                    ),
+                    turn,
+                    question,
+                    started_at,
+                    interaction=interaction,
+                )
+                return
+            ambiguous = ambiguity_response(routing_question, interaction["request_language"])
             if ambiguous:
                 self._chat_json(
                     200, ambiguous, turn, question, started_at,
                     interaction=interaction,
                 )
                 return
-            retrieval_scope, retrieved = retrieval_plan(question, page_context)
+            retrieval_scope, retrieved = retrieval_plan(routing_question, page_context)
             if retrieval_scope == "staff":
                 self._chat_json(200, response_contract(
                     kind="handoff",
@@ -1598,6 +1715,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     question=question,
                     model_called=False,
                     retrieval_scope="staff",
+                ), turn, question, started_at, interaction=interaction)
+                return
+            deterministic = deterministic_answer_sources(
+                routing_question, retrieved, retrieval_scope
+            )
+            if deterministic:
+                self._chat_json(200, response_contract(
+                    kind="answer",
+                    message=grounded_answer_message(
+                        routing_question,
+                        deterministic,
+                        retrieval_scope,
+                        language_code=interaction["request_language"],
+                        chat_stage=interaction["chat_stage"],
+                    ),
+                    reason=(
+                        "La respuesta viene de una página aprobada."
+                        if interaction["request_language"] == "es"
+                        else "From an approved Fortune page."
+                    ),
+                    sources=deterministic,
+                    question=routing_question,
+                    model_called=False,
+                    retrieval_scope=retrieval_scope,
                 ), turn, question, started_at, interaction=interaction)
                 return
             if not KEY:
@@ -1623,15 +1764,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 ), turn, question, started_at, error_code="usage_limit", interaction=interaction)
                 return
             messages = [{"role": "system", "content": retrieval_prompt(
-                question, retrieved, page_context, interaction
+                routing_question, retrieved, page_context, interaction
             )}]
             messages.extend(safe_history)
-            messages.append({"role": "user", "content": question[:2000]})
+            messages.append({"role": "user", "content": routing_question[:MAX_QUESTION_CHARS]})
             raw = self._ollama(messages)
             self._chat_json(
                 200,
                 parse_model_json(
-                    raw, question, retrieved, retrieval_scope, interaction
+                    raw, routing_question, retrieved, retrieval_scope, interaction
                 ),
                 turn,
                 question,

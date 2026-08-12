@@ -25,6 +25,20 @@ class WebsiteGuideEvaluationSuiteTests(unittest.TestCase):
         case_ids = [case["id"] for case in self.document["cases"]]
         self.assertEqual(len(case_ids), len(set(case_ids)))
 
+    def test_suite_explicitly_covers_every_request_and_response_kind(self):
+        response_kinds = {
+            value
+            for case in self.document["cases"]
+            for value in case["expect"].get("kind_in", [])
+        }
+        request_kinds = {
+            value
+            for case in self.document["cases"]
+            for value in case["expect"].get("request_kind_in", [])
+        }
+        self.assertEqual(response_kinds, run_website_guide_eval.RESPONSE_KINDS)
+        self.assertEqual(request_kinds, run_website_guide_eval.REQUEST_KINDS)
+
     def test_question_limit_control_exceeds_the_browser_boundary_by_one(self):
         case = next(
             case for case in self.document["cases"] if case["id"] == "over_client_limit"
@@ -50,6 +64,37 @@ class WebsiteGuideEvaluationSuiteTests(unittest.TestCase):
         self.assertLessEqual(high, 1)
         self.assertLessEqual(low, 26 / 34)
         self.assertGreaterEqual(high, 26 / 34)
+
+    def test_kind_breakdown_reports_latency_copy_and_model_use(self):
+        rows = [
+            {
+                "status": 200,
+                "latency_ms": 100.0,
+                "passed": True,
+                "response": {
+                    "kind": "answer",
+                    "request_kind": "retrieval",
+                    "message": "Open the device page.",
+                    "model_called": False,
+                },
+            },
+            {
+                "status": 200,
+                "latency_ms": 200.0,
+                "passed": True,
+                "response": {
+                    "kind": "answer",
+                    "request_kind": "retrieval",
+                    "message": "Check the current calendar.",
+                    "model_called": True,
+                },
+            },
+        ]
+        breakdown = run_website_guide_eval.kind_breakdown(rows, "kind")["answer"]
+        self.assertEqual(breakdown["total"], 2)
+        self.assertEqual(breakdown["latency_p50_ms"], 150.0)
+        self.assertEqual(breakdown["message_words_max"], 4)
+        self.assertEqual(breakdown["model_calls"], 1)
 
 
 if __name__ == "__main__":
