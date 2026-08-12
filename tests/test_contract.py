@@ -261,6 +261,7 @@ class StagedRetrievalTests(unittest.TestCase):
             [choice["label"] for choice in payload["choices"]],
             ["Take a class", "Get a device", "Talk to staff"],
         )
+        self.assertEqual(payload["choices"][0]["prompt"], "Classes")
         self.assertEqual([source["id"] for source in payload["sources"]], ["home"])
         self.assertFalse(payload["model_called"])
         self.assertEqual(model_calls, [])
@@ -299,8 +300,36 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
             [choice["label"] for choice in response["choices"]],
             ["Take a class", "Get a device", "Talk to staff"],
         )
+        self.assertEqual(response["choices"][0]["prompt"], "Classes")
         self.assertEqual([source["id"] for source in response["sources"]], ["home"])
         self.assertFalse(response["model_called"])
+
+    def test_class_choice_asks_what_the_participant_needs(self):
+        for question in ("Classes", "I want to find a digital skills class."):
+            response = server.ambiguity_response(question)
+            self.assertEqual(response["kind"], "clarify")
+            self.assertEqual(response["message"], "What do you need?")
+            self.assertEqual(
+                [choice["label"] for choice in response["choices"]],
+                ["Class topics", "Dates & locations", "Register"],
+            )
+            self.assertEqual(response["sources"], [])
+            self.assertFalse(response["model_called"])
+
+    def test_class_clarification_choices_bypass_homepage_overlap(self):
+        expected_urls = {
+            "Class topics": server.RESERVE_URL,
+            "Dates & locations": server.CALENDAR_URL,
+            "Register": server.RESERVE_URL,
+        }
+        for question, expected_url in expected_urls.items():
+            self.assertIsNone(server.ambiguity_response(question), question)
+            scope, sources = server.retrieval_plan(
+                question,
+                {"url": "https://www.fortunedigitalequity.org/"},
+            )
+            self.assertEqual(scope, "site")
+            self.assertEqual([source["url"] for source in sources], [expected_url])
 
     def test_clear_requests_skip_deterministic_clarification(self):
         for question in ("Can I get a free laptop?", "I want an Excel pivot table class", "When is the email class?"):
@@ -504,7 +533,7 @@ class ResponseContractTests(unittest.TestCase):
 
     def test_visual_page_scaffolding_cannot_cut_off_a_grounded_answer(self):
         home = server.SOURCE_BY_ID["home"]
-        question = "I want to find a digital skills class."
+        question = "How does the Digital Equity Program help Fortune participants?"
         evidence = server.grounded_evidence_sentences(home, question)
         message = server.grounded_answer_message(
             question,
@@ -516,12 +545,12 @@ class ResponseContractTests(unittest.TestCase):
 
         self.assertTrue(
             evidence.startswith(
-                "The home page offers a direct route to join a class."
+                "The Digital Equity Program is for Fortune Society participants"
             )
         )
         self.assertEqual(
             message,
-            "The home page offers a direct route to join a class.",
+            "The Digital Equity Program is for Fortune Society participants who want technical support and training for navigating a digital world.",
         )
         self.assertNotIn("Next:", message)
         self.assertNotIn(

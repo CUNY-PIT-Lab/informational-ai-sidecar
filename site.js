@@ -196,7 +196,7 @@
     if (broadStartOrHelp) {
       message = "What do you want to start with?";
       choices = [
-        { label: "Take a class", prompt: "I want to find a digital skills class." },
+        { label: "Take a class", prompt: "Classes" },
         { label: "Get a device", prompt: "I need information about getting a device." },
         { label: "Talk to staff", prompt: "I want to contact Digital Equity staff." },
       ];
@@ -207,12 +207,12 @@
         { label: "Learn to use it", prompt: "I want to learn how to use a device." },
         { label: "Solve a problem", prompt: "I need help with a device problem." },
       ];
-    } else if (/^(?:a |the )?(?:class|classes|training|workshop|workshops)$/.test(compact)) {
-      message = "Are you looking for beginner skills, job-related skills, or a particular topic?";
+    } else if (/^(?:(?:a |the )?(?:class|classes|training|workshop|workshops)|i want to find a digital skills class)$/.test(compact)) {
+      message = "What do you need?";
       choices = [
-        { label: "Beginner skills", prompt: "I am looking for a beginner digital skills class." },
-        { label: "Job-related skills", prompt: "I want a class related to work or job searching." },
-        { label: "A topic", prompt: "I want to ask about a particular class topic." },
+        { label: "Class topics", prompt: "Class topics" },
+        { label: "Dates & locations", prompt: "Dates & locations" },
+        { label: "Register", prompt: "Register" },
       ];
     }
     if (!message) return null;
@@ -232,6 +232,32 @@
   function staticAnswer(question, current = state.current) {
     const ambiguous = ambiguityAnswer(question, current);
     if (ambiguous) return ambiguous;
+
+    const guidedPrompt = cleanText(question).toLowerCase().replace(/[?.!&]/g, " ").replace(/\s+/g, " ").trim();
+    const guidedDestination = {
+      "class topics": RESERVE_URL,
+      "dates locations": CALENDAR_URL,
+      register: RESERVE_URL,
+    }[guidedPrompt];
+    if (guidedDestination) {
+      const page = state.byUrl.get(canonicalUrl(guidedDestination));
+      const message = guidedPrompt === "dates locations"
+        ? "The calendar lists current class dates and locations."
+        : guidedPrompt === "register"
+          ? "The class catalog has registration links."
+          : "The class catalog lists current workshop topics.";
+      return {
+        kind: "answer",
+        message,
+        reason: "The answer uses the selected public class page.",
+        choices: [],
+        sources: [linkRecord(guidedDestination)],
+        related: [linkRecord(guidedDestination, page ? cleanTitle(page.title) : "Open class information")],
+        handoff_url: CONTACT_URL,
+        model_called: false,
+        retrieval_scope: "site",
+      };
+    }
 
     const localEvidence = currentPageCanAnswer(question, current);
     const ranked = localEvidence ? [] : rankPages(question, current);
