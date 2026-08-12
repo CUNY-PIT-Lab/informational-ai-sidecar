@@ -488,6 +488,26 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("I know this from elsewhere", result["reason"])
         self.assertIn("distribution is currently on hold", result["message"].lower())
 
+    def test_fast_answers_are_complete_short_sentences(self):
+        devices = server.SOURCE_BY_ID["devices"]
+        reserve = server.SOURCE_BY_ID["page-reserve-0f176b4b"]
+        laptop = server.grounded_answer_message(
+            "Can I get a free laptop?", [devices], "site"
+        )
+        registration = server.grounded_answer_message(
+            "How do I register for a class?", [reserve], "site"
+        )
+        self.assertEqual(
+            laptop,
+            "Laptop distribution is currently on hold. Check the live page for current details.",
+        )
+        self.assertEqual(
+            registration,
+            "This page lists classes and registration links. Check the live page for current details.",
+        )
+        self.assertLessEqual(len(laptop.split()), 16)
+        self.assertLessEqual(len(registration.split()), 16)
+
     def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
         retrieved = server.retrieve_sources("computadora")
         raw = json.dumps({

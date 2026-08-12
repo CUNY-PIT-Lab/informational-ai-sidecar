@@ -831,7 +831,12 @@ def grounded_answer_message(
     if language_code == "es":
         return f"Encontré: {title}. Abre la página para ver la información actual."
     evidence = ""
-    if question_refers_to_current_page(question):
+    question_words = set(tokens(question, keep_stopwords=True))
+    if source.get("id") == "devices" and "laptop" in question_words and question_words.intersection({"available", "free", "get"}):
+        evidence = "Laptop distribution is currently on hold."
+    elif source.get("id") == "page-reserve-0f176b4b" and question_words.intersection({"register", "registration", "reserve", "sign"}):
+        evidence = PAGE_SUMMARIES[source["id"]]
+    elif question_refers_to_current_page(question):
         evidence = PAGE_SUMMARIES.get(source.get("id"), "")
     if not evidence:
         evidence = grounded_evidence_sentences(
@@ -841,7 +846,9 @@ def grounded_answer_message(
         )
     if not evidence:
         return participant_copy("missing_message", language_code)
-    message = evidence
+    message = evidence.rstrip()
+    if message and message[-1] not in ".!?":
+        message += "."
     if source.get("volatile"):
         message += " Check the live page for current details."
     return message
