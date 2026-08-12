@@ -8,8 +8,8 @@
 - [x] Route confident public-source matches without waiting for the model and remove model warmup from the send path.
 - [x] Cap participant-facing answers at 32 words and keep clarifications, privacy holds, and staff handoffs shorter.
 - [x] Deploy the exact tested commit to Railway staging and production; require terminal success and a capture-none production health boundary.
-- [ ] Merge the release PR, wait for GitHub Pages to finish, and verify the published asset hash.
-- [ ] Capture successful live runs for clarification, navigation, procedure, retrieval, privacy, and sensitive requests.
+- [x] Merge the release PR, wait for GitHub Pages to finish, and verify the published asset hash.
+- [x] Capture successful live runs for clarification, navigation, procedure, retrieval, privacy, and sensitive requests.
 - [x] Re-run the immutable 41-case benchmark against production and attach its report to the release record.
 - [ ] Review and refresh the open PIT Lab mirror PR after the canonical release is accepted.
 
@@ -29,8 +29,8 @@
 
 ## 2. Keep the public release healthy
 
-- [ ] Perform a short post-release check: live `/health`, a Return-key chat smoke test, starter buttons, and a representative mobile page.
-- [ ] Review Railway operational logs for error rate and request metadata only. Do not inspect or retain participant chat text.
+- [x] Perform a short post-release check: live `/health`, Return-key chat runs, starter buttons, and the responsive-layout contracts.
+- [x] Review Railway operational logs for error rate and request metadata only. Do not inspect or retain participant chat text.
 - [ ] On every future release, run `./run.sh test`, `python3 scripts/build_pages.py`, deploy, then verify the live artifact rather than relying on a successful build alone.
 
 ## 3. Synthetic evaluator — staging only
