@@ -1452,7 +1452,7 @@ def contextual_routing_question(question, history=None):
     # routes are intentionally excluded because phrases such as "when is it
     # offered?" still need the class named in history.
     explicit_sources = likely_source_ids(question, fallback=False)
-    generic_follow_up_ids = {"calendar", "page-reserve-0f176b4b"}
+    generic_follow_up_ids = {"calendar", "page-reserve-0f176b4b", "trainings"}
     if any(source_id not in generic_follow_up_ids for source_id in explicit_sources):
         return question
     topic = history_topic_question(history)

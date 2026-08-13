@@ -59,6 +59,19 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         _, sources = server.retrieval_plan(routed, HOME)
         self.assertEqual(sources[0]["id"], server.JOB_SEARCH_ID)
 
+    def test_generic_class_words_do_not_override_an_elliptical_follow_up(self):
+        history = [
+            {"role": "user", "content": "Which class teaches Excel formulas?"},
+            {"role": "assistant", "content": "It begins with basic operators."},
+        ]
+        routed = server.contextual_routing_question(
+            "What else does that class cover?",
+            history,
+        )
+        self.assertIn("Excel formulas", routed)
+        _, sources = server.retrieval_plan(routed, HOME)
+        self.assertEqual(sources[0]["id"], server.EXCEL_FORMULAS_ID)
+
     def test_conversational_it_does_not_mean_the_host_page(self):
         self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
         self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))
