@@ -71,6 +71,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "Does Fortune have a beginner Canva class?": server.INTRO_CANVA_ID,
             "Is there a class for learning a new smartphone?": server.INTRO_SMARTPHONE_ID,
             "Is there a class about writing resumes with AI?": server.RESUME_AI_ID,
+            "Now I want to learn Excel formulas.": server.EXCEL_FORMULAS_ID,
             "Is there also a class on job searching online?": server.JOB_SEARCH_ID,
         }
         for question, source_id in expected.items():

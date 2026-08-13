@@ -449,13 +449,13 @@
           "id": "switch-to-team-page",
           "mode": "topic_shift",
           "message": "Who is on the Digital Equity team?",
-          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["/about"], "message_contains_any": ["Adrienne Whaley", "Jacob Schwartz", "Mark Solomon"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["/about"], "message_contains_any": ["Adrienne Whaley", "Jacob Schwartz", "Mark Solomon"]}
         },
         {
           "id": "ask-about-program",
           "mode": "deictic",
           "message": "What does that page say the program does?",
-          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["/about"], "message_contains_any": ["support", "training", "resource", "technical"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["/about"], "message_contains_any": ["support", "training", "resource", "technical"]}
         }
       ]
     }

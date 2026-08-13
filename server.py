@@ -460,9 +460,13 @@ INTRO_SMARTPHONE_ID = source_id_for_path("/service-page/intro-to-smartphones-tab
 SMARTPHONE_PART_TWO_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets-pt-2")
 WORD_CERTIFICATION_ID = source_id_for_path("/service-page/microsoft-word-associate-certification")
 EXCEL_CHARTS_ID = source_id_for_path("/service-page/microsoft-excel-charts")
+EXCEL_FORMULAS_ID = source_id_for_path("/service-page/excel-formulas-functions")
+EXCEL_FORMATTING_ID = source_id_for_path("/service-page/excel-formatting-data")
+EXCEL_ORGANIZING_ID = source_id_for_path("/service-page/excel-organizing-data")
 RESUME_AI_ID = source_id_for_path("/service-page/resume-writing-in-an-ai-world")
 JOB_SEARCH_ID = source_id_for_path("/service-page/job-searching-online")
 TECH_FAIR_QA_ID = source_id_for_path("/techfair/qa")
+PRACTICE_ID = source_id_for_path("/practice")
 SPANISH_BASIC_ID = source_id_for_path("/service-page/alfabetización-digital-básica-en-español")
 
 SPECIFIC_CLASS_TERMS = {
@@ -491,6 +495,7 @@ _QUESTION_ALIASES = {
     "halp": "help",
     "labtop": "laptop",
     "labtops": "laptops",
+    "resumes": "resume",
     "lern": "learn",
     "computr": "computer",
     "whare": "where",
@@ -771,16 +776,32 @@ def likely_source_ids(text, fallback=True):
         add(INTRO_SMARTPHONE_ID)
     if "chart" in word_set or "charts" in word_set:
         add(EXCEL_CHARTS_ID)
+    if "excel" in word_set and word_set.intersection({"formula", "formulas"}):
+        add(EXCEL_FORMULAS_ID)
+    if (
+        "excel" in word_set
+        and word_set.intersection({"date", "dates", "number", "numbers", "readable"})
+    ):
+        add(EXCEL_FORMATTING_ID)
+    if (
+        "excel" in word_set
+        and word_set.intersection({"duplicate", "duplicates", "record", "records", "sorting"})
+    ):
+        add(EXCEL_ORGANIZING_ID)
     if "resume" in word_set and "ai" in word_set:
         add(RESUME_AI_ID)
     if "job" in word_set and word_set.intersection({"search", "searching", "online"}):
         add(JOB_SEARCH_ID)
     if "assessment" in word_set or "assessments" in word_set:
         add(ASSESSMENTS_ID)
+    if "practice" in word_set and word_set.intersection({"class", "exercise", "exercises", "skill", "skills"}):
+        add(PRACTICE_ID)
     if "partner" in word_set or "partners" in word_set:
         add(PARTNERS_ID)
     if "impact" in word_set:
         add(IMPACT_ID)
+    if "team" in word_set and word_set.intersection({"digital", "equity"}):
+        add(PARTNERS_ID)
     if (
         "tech fair" in lowered
         and word_set.intersection({"speaker", "panel"})
@@ -1088,9 +1109,9 @@ def distinctive_query_terms(query):
     """Keep the rare terms that distinguish this request inside the site corpus."""
 
     request_words = {
-        "ask", "asks", "cover", "covered", "covers", "explain", "find", "learn",
-        "its", "need", "offered", "read", "say", "says", "show", "shows",
-        "use", "uses", "who",
+        "after", "ask", "asks", "cover", "covered", "covers", "else", "explain",
+        "find", "learn", "making", "now", "its", "need", "offered", "read",
+        "say", "says", "show", "shows", "teach", "teaches", "use", "uses", "who",
     }
     known = {
         term: DOCUMENT_FREQUENCY[term]
@@ -1118,6 +1139,8 @@ def source_supports_query(source, query):
         "experience": {"background", "prior"},
         "one-on": {"one-to-one"},
         "one-to-one": {"one-on"},
+        "resume": {"resumes"},
+        "resumes": {"resume"},
     }
     return all(
         source_terms.get(term, 0)
@@ -1789,9 +1812,14 @@ def selector_clarification_response(
     interaction = dict(interaction or {})
     language_code = interaction.get("request_language") or "en"
     retrieved = list(retrieved or [])
+    support_query = (
+        question
+        if distinctive_query_terms(question)
+        else (routing_question or question)
+    )
     supported = [
         source for source in retrieved
-        if source_supports_query(source, routing_question or question)
+        if source_supports_query(source, support_query)
     ]
     candidates = (supported or retrieved)[:3]
     class_candidates = bool(candidates) and all(
@@ -1849,7 +1877,12 @@ def parse_model_selection(
             routing_question,
         )
     selected = allowed[selected_id]
-    if not source_supports_query(selected, routing_question or question):
+    support_query = (
+        question
+        if distinctive_query_terms(question)
+        else (routing_question or question)
+    )
+    if not source_supports_query(selected, support_query):
         return selector_clarification_response(
             question,
             retrieved,
