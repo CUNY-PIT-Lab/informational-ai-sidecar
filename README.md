@@ -30,7 +30,7 @@ After a question:
 3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
 4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
 5. The server checks the approved record for the current page first. A strong local match is answered directly from that record without waiting for the model.
-6. When the current page cannot answer, retrieval ranks up to ten complete answer-authority pages from the wider public index. All 145 approved answer pages are addressable by public title. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
+6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 144 substantive records are addressable by public title; one Wix template-only Partners route is excluded from factual retrieval. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
 7. Only uncertain multi-page requests reach GLM-5.2. The model sees the resolved question and bounded candidate records, not raw conversation history, and may return one allowed page ID or `ASK`. The server rejects malformed, unsupported, or weakly grounded picks, then either shows compact clarification buttons or builds the visible answer from the selected website record. Model-written factual prose is never shown.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 

@@ -448,18 +448,21 @@ def source_id_for_path(path):
 
 CERTIFICATIONS_ID = source_id_for_path("/certifications")
 ASSESSMENTS_ID = source_id_for_path("/assessments")
-PARTNERS_ID = source_id_for_path("/about/partners")
+PARTNERS_PLACEHOLDER_ID = source_id_for_path("/about/partners")
+PARTNERS_ID = source_id_for_path("/about")
 IMPACT_ID = source_id_for_path("/about/impact")
 INTRO_EMAIL_ID = source_id_for_path("/service-page/intro-to-email")
 ADVANCED_EMAIL_ID = source_id_for_path("/service-page/advanced-email")
 EMAIL_PART_TWO_ID = source_id_for_path("/service-page/intro-to-email-pt-2")
 INTRO_CANVA_ID = source_id_for_path("/service-page/intro-to-canva")
+CANVA_DESIGN_TOOLS_ID = source_id_for_path("/service-page/canva-design-tools")
 INTRO_SMARTPHONE_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets")
 SMARTPHONE_PART_TWO_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets-pt-2")
 WORD_CERTIFICATION_ID = source_id_for_path("/service-page/microsoft-word-associate-certification")
 EXCEL_CHARTS_ID = source_id_for_path("/service-page/microsoft-excel-charts")
 RESUME_AI_ID = source_id_for_path("/service-page/resume-writing-in-an-ai-world")
 JOB_SEARCH_ID = source_id_for_path("/service-page/job-searching-online")
+TECH_FAIR_QA_ID = source_id_for_path("/techfair/qa")
 SPANISH_BASIC_ID = source_id_for_path("/service-page/alfabetización-digital-básica-en-español")
 
 SPECIFIC_CLASS_TERMS = {
@@ -515,6 +518,7 @@ def semantic_question(value):
         flags=re.I,
     )
     text = re.sub(r"\binvent\b", " ", text, flags=re.I)
+    text = re.sub(r"\bone[- ]on[- ]one\b", "one-to-one", text, flags=re.I)
     for typo, replacement in _QUESTION_ALIASES.items():
         text = re.sub(rf"\b{re.escape(typo)}\b", replacement, text, flags=re.I)
     return re.sub(r"\s+", " ", text).strip(" ,.;:!?-")
@@ -563,6 +567,15 @@ def source_has_template_content(source):
     )
 
 
+def source_is_placeholder_template(source):
+    folded = fold_text("\n".join(str(value) for value in source.get("blocks", [])))
+    return (
+        "every website has a story" in folded
+        and "double click on the text box" in folded
+        and ("don francis" in folded or "ashley jones" in folded)
+    )
+
+
 def searchable_text(source):
     values = [source.get("title", ""), source.get("description", "")]
     values.extend(source.get("headings", []))
@@ -580,7 +593,14 @@ def searchable_text(source):
     )
 
 
-SOURCE_TERMS = {source["id"]: collections.Counter(tokens(searchable_text(source))) for source in ANSWER_SOURCES}
+RETRIEVABLE_SOURCES = [
+    source for source in ANSWER_SOURCES
+    if not source_is_placeholder_template(source)
+]
+SOURCE_TERMS = {
+    source["id"]: collections.Counter(tokens(searchable_text(source)))
+    for source in RETRIEVABLE_SOURCES
+}
 DOCUMENT_FREQUENCY = collections.Counter()
 for source_terms in SOURCE_TERMS.values():
     DOCUMENT_FREQUENCY.update(source_terms.keys())
@@ -710,7 +730,7 @@ def likely_source_ids(text, fallback=True):
         add("page-reserve-0f176b4b")
     schedule_intent = bool(re.search(
         r"\b(?:calendar|current dates?|class dates?|this week|next class|"
-        r"when (?:is|are|does|do|will)|schedule|offered|locations?|where is|"
+        r"when (?:is|are|does|do|will)|schedule|locations?|where is|"
         r"calendario|fechas?|cuando|donde)\b",
         lowered,
     ))
@@ -736,6 +756,12 @@ def likely_source_ids(text, fallback=True):
         and word_set.intersection({"beginning", "beginner", "basic", "intro", "introduction"})
     ):
         add(INTRO_EMAIL_ID)
+    if (
+        "canva" in word_set
+        and "design" in word_set
+        and word_set.intersection({"background", "experience", "prior"})
+    ):
+        add(CANVA_DESIGN_TOOLS_ID)
     if "canva" in word_set and word_set.intersection({"beginner", "intro", "introduction"}):
         add(INTRO_CANVA_ID)
     if (
@@ -755,6 +781,12 @@ def likely_source_ids(text, fallback=True):
         add(PARTNERS_ID)
     if "impact" in word_set:
         add(IMPACT_ID)
+    if (
+        "tech fair" in lowered
+        and word_set.intersection({"speaker", "panel"})
+        and word_set.intersection({"ask", "question", "questions", "submit"})
+    ):
+        add(TECH_FAIR_QA_ID)
     if (
         word_set.intersection({"espanol", "spanish"})
         and word_set.intersection({"alfabetizacion", "basic", "basica", "computacion"})
@@ -814,7 +846,7 @@ def source_evidence_score(query, source):
         query_terms.extend(expansions.get(term, ()))
     manual = likely_source_ids(query, fallback=False)
     source_id = source["id"]
-    term_counts = SOURCE_TERMS[source_id]
+    term_counts = SOURCE_TERMS.get(source_id, collections.Counter())
     title_terms = collections.Counter(tokens(source.get("title", "")))
     heading_terms = collections.Counter(tokens(" ".join(source.get("headings", []))))
     matched_terms = {term for term in query_terms if term in term_counts}
@@ -864,11 +896,20 @@ def source_evidence_score(query, source):
 
 def retrieve_sources(query, limit=MAX_RETRIEVED):
     scored = []
-    for source in ANSWER_SOURCES:
+    for source in RETRIEVABLE_SOURCES:
         score = source_evidence_score(query, source)
         if score > 0:
             scored.append((score, source))
-    scored.sort(key=lambda item: (-item[0], item[1].get("title", "")))
+    preferred = {
+        source_id: index
+        for index, source_id in enumerate(likely_source_ids(query, fallback=False))
+    }
+    scored.sort(key=lambda item: (
+        0 if item[1]["id"] in preferred else 1,
+        preferred.get(item[1]["id"], len(preferred)),
+        -item[0],
+        item[1].get("title", ""),
+    ))
     result = []
     seen_urls = set()
     for _, source in scored:
@@ -947,6 +988,10 @@ def grounded_evidence_sentences(
         })
         or re.search(r"\b(?:is there|does fortune have|do you have)\b", fold_text(query))
     )
+    purpose_requested = bool(re.search(
+        r"\b(?:what does|what is .+ for|purpose)\b",
+        fold_text(query),
+    ))
     seen = set()
     short_title = re.sub(
         r"\s*[|·]\s*FS Digital Equity\s*$",
@@ -997,7 +1042,27 @@ def grounded_evidence_sentences(
             )
             status = status_bonus > 0
             title_bonus = title_overlap * 2 if matched_terms else 0
-            score = overlap_score + title_bonus + status_bonus - (value_index * 0.01 + sentence_index * 0.001)
+            generic_summary_penalty = (
+                8
+                if re.match(r"^(?:detailed\s+)?information\s+(?:about|on)\b", key)
+                else 0
+            )
+            purpose_bonus = (
+                2 * len(sentence_terms.intersection({
+                    "help", "learn", "provide", "provides", "providing", "receive",
+                    "resource", "support", "train", "training", "use",
+                }))
+                if purpose_requested
+                else 0
+            )
+            score = (
+                overlap_score
+                + title_bonus
+                + status_bonus
+                + purpose_bonus
+                - generic_summary_penalty
+                - (value_index * 0.01 + sentence_index * 0.001)
+            )
             rows.append((score, status, sentence))
 
     rows.sort(key=lambda row: (-row[0], not row[1]))
@@ -1024,7 +1089,8 @@ def distinctive_query_terms(query):
 
     request_words = {
         "ask", "asks", "cover", "covered", "covers", "explain", "find", "learn",
-        "read", "say", "says", "show", "shows", "use", "uses", "who",
+        "its", "need", "offered", "read", "say", "says", "show", "shows",
+        "use", "uses", "who",
     }
     known = {
         term: DOCUMENT_FREQUENCY[term]
@@ -1047,7 +1113,17 @@ def source_supports_query(source, query):
     if not focus_terms:
         return True
     source_terms = SOURCE_TERMS.get(source.get("id"), {})
-    return all(source_terms.get(term, 0) for term in focus_terms)
+    support_aliases = {
+        "background": {"experience", "prior"},
+        "experience": {"background", "prior"},
+        "one-on": {"one-to-one"},
+        "one-to-one": {"one-on"},
+    }
+    return all(
+        source_terms.get(term, 0)
+        or any(source_terms.get(alias, 0) for alias in support_aliases.get(term, set()))
+        for term in focus_terms
+    )
 
 
 def named_items_under_heading(source, heading):
@@ -1090,6 +1166,34 @@ def named_items_under_heading(source, heading):
     return names
 
 
+def logo_items_under_heading(source, heading):
+    """Extract organization names from a labeled logo list in a source record."""
+
+    blocks = [clean_evidence_fragment(value) for value in source.get("blocks", [])]
+    headings = {
+        fold_text(clean_evidence_fragment(value))
+        for value in source.get("headings", [])
+    }
+    target = fold_text(heading)
+    names = []
+    active = False
+    for block in blocks:
+        folded = fold_text(block)
+        if folded == target:
+            active = True
+            continue
+        if not active:
+            continue
+        if folded in headings:
+            break
+        if not re.search(r"\sLogo$", block, flags=re.I):
+            continue
+        name = re.sub(r"\s+Logo$", "", block, flags=re.I).strip()
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
 def format_name_list(names):
     if len(names) == 1:
         return names[0]
@@ -1118,13 +1222,30 @@ def grounded_answer_message(
     evidence = ""
     question_words = set(tokens(question, keep_stopwords=True))
     routing_words = set(tokens(routing_question or question, keep_stopwords=True))
-    team_names = (
-        named_items_under_heading(source, "Meet the Team")
-        if question_words.intersection({"staff", "team", "who"})
+    partner_names = (
+        logo_items_under_heading(source, "Partners")
+        if question_words.intersection({"partner", "partners"})
         else []
     )
-    if team_names:
+    team_names = (
+        named_items_under_heading(source, "Meet the Team")
+        if question_words.intersection({"staff", "team"})
+        else []
+    )
+    if partner_names:
+        evidence = f"The page lists {format_name_list(partner_names)} as partners."
+    elif team_names:
         evidence = f"The page names {format_name_list(team_names)}."
+    elif (
+        source.get("id") == CANVA_DESIGN_TOOLS_ID
+        and question_words.intersection({"background", "experience", "need", "prior"})
+    ):
+        evidence = grounded_evidence_sentences(
+            source,
+            "design background needed",
+            max_sentences=1,
+            require_overlap=True,
+        )
     elif (
         source.get("id") == "devices"
         and question_words.intersection({"qualify", "eligible", "eligibility"})
@@ -1229,7 +1350,12 @@ def approved_current_page_source(page_context):
     context = sanitize_page_context(page_context)
     source_id = SOURCE_ID_BY_URL.get(context["url"], "")
     source = SOURCE_BY_ID.get(source_id)
-    if not source or source.get("authority") != "answer" or source.get("status", 200) != 200:
+    if (
+        not source
+        or source.get("authority") != "answer"
+        or source.get("status", 200) != 200
+        or source_is_placeholder_template(source)
+    ):
         return None
     return source
 
@@ -1265,6 +1391,7 @@ def question_needs_history_context(question):
         r"\b(?:which|is there) one\b",
         r"\bwhat (?:else|about|are they for|kind of help)\b",
         r"\bwhen is it offered\b",
+        r"\bdo i need\b",
         r"\bhow do i confirm whether i qualify\b",
         r"\bque aprenderia\b",
         r"\bque mas\b",
@@ -1368,7 +1495,11 @@ def deterministic_answer_sources(question, retrieved, retrieval_scope):
     if preferred and retrieved[0]["id"] == preferred[0]:
         return retrieved[:1]
     scores = [source_evidence_score(question, source) for source in retrieved[:2]]
-    if scores[0] >= 12 and (len(scores) == 1 or scores[0] - scores[1] >= 8):
+    if (
+        scores[0] >= 12
+        and source_supports_query(retrieved[0], question)
+        and (len(scores) == 1 or scores[0] - scores[1] >= 6)
+    ):
         return retrieved[:1]
     return []
 

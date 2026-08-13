@@ -69,8 +69,8 @@ class RetrievalTests(unittest.TestCase):
             for source in server.retrieve_sources(query):
                 self.assertEqual(source["authority"], "answer")
 
-    def test_every_approved_answer_page_is_retrievable_by_its_public_title(self):
-        for source in server.ANSWER_SOURCES:
+    def test_every_usable_answer_page_is_retrievable_by_its_public_title(self):
+        for source in server.RETRIEVABLE_SOURCES:
             title = server.clean_source_title(source)
             with self.subTest(source_id=source["id"], title=title):
                 candidates = server.retrieve_sources(
@@ -172,8 +172,11 @@ class StagedRetrievalTests(unittest.TestCase):
         complete_pages = [
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") == "answer" and page.get("status") == 200
+            and not server.source_is_placeholder_template(
+                server.SOURCE_BY_ID[server.SOURCE_ID_BY_URL[page["url"]]]
+            )
         ]
-        self.assertEqual(len(complete_pages), 143)
+        self.assertEqual(len(complete_pages), 142)
         for page in complete_pages:
             question = f"What does this page say about {page.get('title') or page['id']}?"
             with self.subTest(url=page["url"]):
@@ -204,7 +207,7 @@ class StagedRetrievalTests(unittest.TestCase):
                 self.assertNotIn(page["url"], [source["url"] for source in sources])
 
     def test_model_grounding_excerpts_come_only_from_the_validated_page_record(self):
-        for source in server.ANSWER_SOURCES:
+        for source in server.RETRIEVABLE_SOURCES:
             question = f"What does this page say about {source.get('title') or source['id']}?"
             context = {"url": source["url"], "title": source.get("title", "")}
             with self.subTest(url=source["url"]):
@@ -554,7 +557,7 @@ class ResponseContractTests(unittest.TestCase):
         self.assertIn("Mark Solomon", result["message"])
 
     def test_wix_template_people_never_become_retrieval_evidence(self):
-        partners = server.SOURCE_BY_ID[server.PARTNERS_ID]
+        partners = server.SOURCE_BY_ID[server.PARTNERS_PLACEHOLDER_ID]
         excerpt = server.source_excerpt(
             partners,
             "Who is on the Digital Equity team?",
@@ -563,6 +566,9 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("Don Francis", excerpt)
         self.assertNotIn("Ashley Jones", excerpt)
         self.assertNotIn("Every website has a story", excerpt)
+        self.assertIsNone(
+            server.approved_current_page_source({"url": partners["url"]})
+        )
         self.assertFalse(
             server.source_supports_query(
                 partners,

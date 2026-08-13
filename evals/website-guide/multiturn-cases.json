@@ -350,7 +350,7 @@
           "id": "partners",
           "mode": "deictic",
           "message": "Who are its partners?",
-          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["about-partners"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["/about"], "message_contains_any": ["NYSDEN", "Coursera", "Computers 4 People", "Certiport"]}
         },
         {
           "id": "impact",
@@ -437,13 +437,13 @@
           "id": "find-tech-fair-question-page",
           "mode": "explicit",
           "message": "Where can I ask a Tech Fair speaker a question?",
-          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["techfair/qa"], "message_contains_any": ["speaker", "question"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["techfair/qa"], "message_contains_any": ["speaker", "question"]}
         },
         {
           "id": "ask-what-can-be-submitted",
           "mode": "deictic",
           "message": "What does that page let me submit?",
-          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["techfair/qa"], "message_contains_any": ["submit", "question"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["techfair/qa"], "message_contains_any": ["submit", "question"]}
         },
         {
           "id": "switch-to-team-page",

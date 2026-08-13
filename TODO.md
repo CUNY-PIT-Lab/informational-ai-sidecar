@@ -4,7 +4,7 @@
 
 - [x] Replace the prose-generating model contract with one reusable decision: return one allowed page ID or `ASK`.
 - [x] Keep raw conversation history out of the provider request; send only the server-resolved question and bounded approved candidates.
-- [x] Expand uncertain retrieval from three to ten candidates and prove all 145 answer-authority pages are reachable by public title.
+- [x] Expand uncertain retrieval from three to ten candidates and prove all 144 substantive answer-authority pages are reachable by public title; exclude the Wix template-only Partners route.
 - [x] Reject malformed IDs, unsupported distinctive terms, and model-selected records with no overlapping evidence; use compact clarification buttons instead of a fallback guess.
 - [x] Remove Wix template people and boilerplate from searchable/model evidence while preserving legitimate structured team names from the About page.
 - [x] Correct laptop guidance to match the live Devices page: free refurbished laptops through Computers 4 People have limited supply; the hold applies to mobile-device distribution.
