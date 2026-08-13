@@ -48,6 +48,17 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         _, sources = server.retrieval_plan(routed, HOME)
         self.assertEqual(sources[0]["id"], server.INTRO_CANVA_ID)
 
+    def test_explicit_topic_shift_is_not_rewritten_as_an_elliptical_follow_up(self):
+        history = [
+            {"role": "user", "content": "Is there a class about writing resumes with AI?"},
+            {"role": "assistant", "content": "Resume Writing in an AI World."},
+        ]
+        question = "Is there also a class on job searching online?"
+        routed = server.contextual_routing_question(question, history)
+        self.assertEqual(routed, server.semantic_question(question))
+        _, sources = server.retrieval_plan(routed, HOME)
+        self.assertEqual(sources[0]["id"], server.JOB_SEARCH_ID)
+
     def test_conversational_it_does_not_mean_the_host_page(self):
         self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
         self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))

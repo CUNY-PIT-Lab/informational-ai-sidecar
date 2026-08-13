@@ -1446,6 +1446,15 @@ def contextual_routing_question(question, history=None):
     question = semantic_question(question)
     if not question_needs_history_context(question):
         return question
+    # A turn can contain conversational words such as "there" while still
+    # naming a complete, independently routable topic.  In that case the new
+    # topic must win over the previous exchange.  Calendar and registration
+    # routes are intentionally excluded because phrases such as "when is it
+    # offered?" still need the class named in history.
+    explicit_sources = likely_source_ids(question, fallback=False)
+    generic_follow_up_ids = {"calendar", "page-reserve-0f176b4b"}
+    if any(source_id not in generic_follow_up_ids for source_id in explicit_sources):
+        return question
     topic = history_topic_question(history)
     if not topic or fold_text(topic) == fold_text(question):
         return question
