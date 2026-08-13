@@ -142,6 +142,22 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             )
         )
 
+    def test_email_curriculum_follow_up_advances_beyond_the_opening_summary(self):
+        source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+        message = server.grounded_answer_message(
+            "What would I learn there?",
+            [source],
+            "site",
+            chat_stage="follow_up",
+            routing_question=(
+                "I want to learn email from the beginning. What class fits? "
+                "What would I learn there?"
+            ),
+        )
+        self.assertIn("creating or accessing an email account", message)
+        self.assertNotIn("Email is part of everything", message)
+        self.assertFalse(message.endswith("?"))
+
     def test_device_eligibility_follow_up_advances_past_availability(self):
         source = server.SOURCE_BY_ID["devices"]
         message = server.grounded_answer_message(
@@ -151,7 +167,8 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             chat_stage="follow_up",
             routing_question="Can I get a free laptop? How do I confirm whether I qualify?",
         )
-        self.assertIn("case-manager referral", message)
+        self.assertIn("referral", message)
+        self.assertIn("case manager", message)
         self.assertNotIn("currently on hold", message)
 
     def test_continuity_grader_accepts_stable_follow_up(self):

@@ -66,21 +66,11 @@ MAX_HISTORY = 6
 MAX_QUESTION_CHARS = 600
 MAX_RETRIEVED = 10
 MAX_MODEL_EXCERPT_CHARS = 700
-MAX_MESSAGE_WORDS = 32
+MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
-MAX_EVIDENCE_WORDS = 24
-MAX_EVIDENCE_SENTENCES = 1
-PROMPT_POLICY_VERSION = "2026-08-12-v5"
-
-PAGE_SUMMARIES = {
-    "home": "This page explains Fortune’s Digital Equity support and training.",
-    "trainings": "This page lists beginner, intermediate, and advanced workshops.",
-    "devices": "This page explains Fortune’s device programs and eligibility details.",
-    "individual": "This page lists tutoring, computer lab, and technical support.",
-    "calendar": "This page lists current class dates, locations, and registration.",
-    "page-reserve-0f176b4b": "This page lists classes and registration links.",
-}
-
+MAX_EVIDENCE_WORDS = 40
+MAX_EVIDENCE_SENTENCES = 2
+PROMPT_POLICY_VERSION = "2026-08-13-v6"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -493,6 +483,7 @@ def fold_text(value):
 
 
 _QUESTION_ALIASES = {
+    "emails": "email",
     "halp": "help",
     "labtop": "laptop",
     "labtops": "laptops",
@@ -630,6 +621,8 @@ def clean_evidence_fragment(text):
     value = re.sub(r"^(?:and|but|however),?\s+", "", value, flags=re.I)
     if (
         not value
+        or "©" in value
+        or fold_text(value).startswith("copyright ")
         or is_source_boilerplate(value)
         or any(pattern.search(value) for pattern in _VISUAL_SCAFFOLD)
     ):
@@ -721,6 +714,38 @@ def clip_words(text, limit):
     return prefix.rstrip(".,;:") + "…"
 
 
+def device_use_support_intent(text):
+    """Distinguish help using a device from requests to obtain one."""
+
+    value = fold_text(semantic_question(text))
+    device_terms = {
+        "android", "apple", "computer", "computadora", "device", "dispositivo",
+        "ipad", "laptop", "phone", "smartphone", "tablet", "telefono",
+    }
+    words = set(tokens(value, keep_stopwords=True))
+    if not words.intersection(device_terms):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:help (?:me )?(?:use|using|with)|learn(?:ing)? (?:how )?to use|"
+            r"teach (?:me )?(?:how )?to use|using|set ?up|navigate|personalize|"
+            r"troubleshoot|not working|problem|issue|repair|fix|broken)\b",
+            value,
+        )
+    )
+
+
+def content_detail_intent(text):
+    """Recognize follow-ups asking for concrete topics rather than a page summary."""
+
+    value = fold_text(semantic_question(text))
+    return bool(re.search(
+        r"\b(?:what (?:would|will|do) i learn|what does (?:it|that|the .+?) cover|"
+        r"what (?:is|are) (?:covered|the topics?)|what does (?:it|that) teach)\b",
+        value,
+    ))
+
+
 def likely_source_ids(text, fallback=True):
     lowered = fold_text(semantic_question(text))
     word_set = set(tokens(lowered, keep_stopwords=True))
@@ -729,6 +754,8 @@ def likely_source_ids(text, fallback=True):
         if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
             ranked.append(source_id)
 
+    if device_use_support_intent(lowered):
+        add("individual")
     if any(term in lowered for term in (
         "register", "registration", "sign up", "reserve", "registrarme",
         "registro", "inscribirme",
@@ -992,10 +1019,14 @@ def grounded_evidence_sentences(
     limit=MAX_EVIDENCE_WORDS,
     max_sentences=MAX_EVIDENCE_SENTENCES,
     require_overlap=False,
+    focus_query=None,
 ):
     """Select short factual sentences that already exist in an approved record."""
     query = semantic_question(query)
     query_terms = set(tokens(query))
+    focus_terms = set(tokens(focus_query or query))
+    if device_use_support_intent(query):
+        query_terms.update({"appointment", "lab", "tutoring"})
     rows = []
     values = [source.get("description", "")] + list(source.get("facts", [])) + list(source.get("blocks", []))
     template_contaminated = source_has_template_content(source)
@@ -1013,17 +1044,25 @@ def grounded_evidence_sentences(
         "confirm": 2,
     }
     status_requested = bool(
-        set(tokens(query, keep_stopwords=True)).intersection({
+        set(tokens(focus_query or query, keep_stopwords=True)).intersection({
             "available", "availability", "current", "date", "eligible", "eligibility",
             "free", "get", "schedule", "time", "wait", "week", "when", "booked", "offered",
         })
-        or re.search(r"\b(?:is there|does fortune have|do you have)\b", fold_text(query))
+        or re.search(
+            r"\b(?:is there|does fortune have|do you have)\b",
+            fold_text(focus_query or query),
+        )
     )
     purpose_requested = bool(re.search(
         r"\b(?:what does|what is .+ for|purpose)\b",
         fold_text(query),
     ))
     seen = set()
+    source_labels = {
+        fold_text(clean_evidence_fragment(value)).strip(" .!?:;-")
+        for value in [source.get("title", ""), *source.get("headings", [])]
+        if clean_evidence_fragment(value)
+    }
     short_title = re.sub(
         r"\s*[|·]\s*FS Digital Equity\s*$",
         "",
@@ -1039,7 +1078,7 @@ def grounded_evidence_sentences(
         value = re.sub(r"\s+", " ", str(value or "")).strip()
         if not value or is_source_boilerplate(value):
             continue
-        sentences = re.split(r"(?<=[.!?])\s+", value)
+        sentences = re.split(r"(?<!a\.m\.)(?<!p\.m\.)(?<=[.!?])\s+", value, flags=re.I)
         for sentence_index, sentence in enumerate(sentences):
             sentence = clean_evidence_fragment(
                 re.sub(r"[\u200b-\u200d\ufeff]", "", sentence)
@@ -1055,8 +1094,15 @@ def grounded_evidence_sentences(
             sentence = re.sub(r"\s+Upcoming Sessions All Locations\s*$", "", sentence, flags=re.I)
             if len(sentence.split()) < 4 or len(sentence) > 620:
                 continue
+            if sentence.endswith("?") and re.match(
+                r"^(?:are you|looking for|need |new to|ready to|so what|want )",
+                fold_text(sentence),
+            ):
+                continue
             key = fold_text(sentence)
             if key in seen:
+                continue
+            if key.strip(" .!?:;-") in source_labels:
                 continue
             seen.add(key)
             sentence_terms = set(tokens(sentence))
@@ -1066,9 +1112,10 @@ def grounded_evidence_sentences(
                 3 + math.log(1 + len(ANSWER_SOURCES) / (1 + DOCUMENT_FREQUENCY[term]))
                 for term in matched_terms
             )
+            focus_bonus = 8 * len(focus_terms.intersection(sentence_terms))
             status_bonus = (
                 max((bonus for term, bonus in status_terms.items() if term in key), default=0)
-                if status_requested
+                if status_requested and matched_terms
                 else 0
             )
             status = status_bonus > 0
@@ -1088,6 +1135,7 @@ def grounded_evidence_sentences(
             )
             score = (
                 overlap_score
+                + focus_bonus
                 + title_bonus
                 + status_bonus
                 + purpose_bonus
@@ -1103,12 +1151,22 @@ def grounded_evidence_sentences(
     elif require_overlap:
         return ""
     selected = []
+    selected_term_sets = []
     word_count = 0
     for _, _, sentence in rows:
         words = sentence.split()
+        sentence_term_set = set(tokens(sentence))
+        if any(
+            len(sentence_term_set.intersection(existing))
+            / max(1, min(len(sentence_term_set), len(existing)))
+            >= 0.75
+            for existing in selected_term_sets
+        ):
+            continue
         if selected and word_count + len(words) > limit:
             continue
         selected.append(sentence)
+        selected_term_sets.append(sentence_term_set)
         word_count += len(words)
         if len(selected) == max_sentences or word_count >= limit:
             break
@@ -1254,7 +1312,6 @@ def grounded_answer_message(
         return f"Encontré: {title}. Abre la página para ver la información actual."
     evidence = ""
     question_words = set(tokens(question, keep_stopwords=True))
-    routing_words = set(tokens(routing_question or question, keep_stopwords=True))
     partner_names = (
         logo_items_under_heading(source, "Partners")
         if question_words.intersection({"partner", "partners"})
@@ -1279,53 +1336,34 @@ def grounded_answer_message(
             max_sentences=1,
             require_overlap=True,
         )
-    elif (
-        source.get("id") == "devices"
-        and question_words.intersection({"qualify", "eligible", "eligibility"})
-        and "laptop" in routing_words
-    ):
-        evidence = (
-            "Laptop applicants must be active or former Digital Equity workshop attendees "
-            "and have a case-manager referral."
-        )
-    elif (
-        source.get("id") == "devices"
-        and "laptop" in routing_words
-        and question_words.intersection({"available", "free", "get"})
-    ):
-        evidence = (
-            "Fortune partners with Computers 4 People to provide free refurbished laptops. "
-            "Supply is limited and can take time to acquire."
-        )
-    elif (
-        source.get("id") == "devices"
-        and routing_words.intersection({"cellphone", "lifeline", "mobile", "phone"})
-        and question_words.intersection({"available", "free", "get"})
-    ):
-        evidence = "Mobile-device distribution is currently on hold."
-    elif source.get("id") == "page-reserve-0f176b4b" and question_words.intersection({"register", "registration", "reserve", "sign"}):
-        evidence = PAGE_SUMMARIES[source["id"]]
-    elif question_refers_to_current_page(question):
-        evidence = PAGE_SUMMARIES.get(source.get("id"), "")
     if not evidence:
-        evidence_query = question
-        if question_needs_history_context(question):
+        if routing_question and question_needs_history_context(question):
+            contextual_terms = " ".join(sorted(distinctive_query_terms(routing_question)))
+            evidence_query = f"{question} {title} {contextual_terms}".strip()
+        else:
+            evidence_query = routing_question or question
+        if not routing_question and question_needs_history_context(question):
             evidence_query = f"{evidence_query} {title}"
-        elif routing_question:
-            evidence_query = routing_question
+        device_support = device_use_support_intent(evidence_query)
+        detail_requested = content_detail_intent(question)
         evidence = grounded_evidence_sentences(
             source,
             evidence_query,
-            max_sentences=1 if chat_stage == "follow_up" else MAX_EVIDENCE_SENTENCES,
+            limit=48 if detail_requested else 40 if device_support else MAX_EVIDENCE_WORDS,
+            max_sentences=(
+                2
+                if detail_requested
+                else 1 if chat_stage == "follow_up"
+                else 2 if device_support else MAX_EVIDENCE_SENTENCES
+            ),
             require_overlap=require_evidence_overlap,
+            focus_query=question if routing_question else None,
         )
     if not evidence:
         return participant_copy("missing_message", language_code)
     message = evidence.rstrip()
     if message and message[-1] not in ".!?":
         message += "."
-    if source.get("volatile"):
-        message += " Check the live page for current details."
     return message
 
 

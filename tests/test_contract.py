@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Key-free contract tests for the context-aware Digital Equity guide."""
 
+import copy
 import io
+import inspect
 import json
 import pathlib
 import sys
@@ -138,6 +140,58 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual([source["id"] for source in captured["payload"]["sources"]], ["devices"])
         self.assertFalse(captured["payload"]["model_called"])
         self.assertEqual(model_calls, [])
+
+    def test_help_using_a_device_routes_to_specific_support_not_distribution(self):
+        question = "I need help using a device"
+        scope, sources = server.retrieval_plan(question, {
+            "url": "https://www.fortunedigitalequity.org/",
+        })
+        self.assertEqual(scope, "site")
+        self.assertEqual(sources[0]["id"], "individual")
+
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/",
+        )
+        payload = captured["payload"]
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(payload["kind"], "answer")
+        self.assertEqual(payload["sources"][0]["id"], "individual")
+        retrieved_evidence = server.grounded_evidence_sentences(
+            server.SOURCE_BY_ID["individual"],
+            question,
+            limit=40,
+            max_sentences=2,
+        )
+        self.assertTrue(retrieved_evidence)
+        self.assertTrue(payload["message"].startswith(retrieved_evidence))
+        self.assertIn("one-to-one tutoring", payload["message"].lower())
+        self.assertIn("open computer lab", payload["message"])
+        self.assertNotIn("Laptop supply", payload["message"])
+        self.assertEqual(model_calls, [])
+
+        for support_question in (
+            "Can someone help me use my laptop?",
+            "I need help with my phone",
+            "I want to learn how to use this tablet",
+            "My device is not working",
+        ):
+            with self.subTest(question=support_question):
+                _, support_sources = server.retrieval_plan(support_question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(support_sources[0]["id"], "individual")
+
+        for distribution_question in (
+            "Can I get a free laptop?",
+            "Am I eligible for a device?",
+            "How do I get a phone through Lifeline?",
+        ):
+            with self.subTest(question=distribution_question):
+                _, distribution_sources = server.retrieval_plan(distribution_question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(distribution_sources[0]["id"], "devices")
 
     def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
         captured, _ = self.dispatch_chat(
@@ -595,17 +649,64 @@ class ResponseContractTests(unittest.TestCase):
         registration = server.grounded_answer_message(
             "How do I register for a class?", [reserve], "site"
         )
-        self.assertEqual(
-            laptop,
-            "Fortune partners with Computers 4 People to provide free refurbished laptops. "
-            "Supply is limited and can take time to acquire. Check the live page for current details.",
+        laptop_evidence = server.grounded_evidence_sentences(
+            devices, "Can I get a free laptop?"
         )
-        self.assertEqual(
-            registration,
-            "This page lists classes and registration links. Check the live page for current details.",
+        registration_evidence = server.grounded_evidence_sentences(
+            reserve, "How do I register for a class?"
         )
+        self.assertTrue(laptop.startswith(laptop_evidence))
+        self.assertTrue(registration.startswith(registration_evidence))
+        self.assertIn("laptop", laptop.lower())
+        self.assertIn("registration", registration.lower())
+        self.assertNotIn("currently on hold", laptop.lower())
         self.assertLessEqual(len(laptop.split()), server.MAX_MESSAGE_WORDS)
-        self.assertLessEqual(len(registration.split()), 16)
+        self.assertLessEqual(len(registration.split()), server.MAX_MESSAGE_WORDS)
+
+    def test_factual_answers_are_selected_from_source_records_not_embedded_copy(self):
+        source = inspect.getsource(server.grounded_answer_message)
+        self.assertNotIn("PAGE_SUMMARIES", source)
+        for embedded_fact in (
+            "Laptop applicants must",
+            "Mobile-device distribution",
+            "Fortune partners with Computers 4 People",
+            "This page lists classes",
+        ):
+            self.assertNotIn(embedded_fact, source)
+
+        for question, source_id in (
+            ("Can I get a free laptop?", "devices"),
+            ("How do I register for a class?", "page-reserve-0f176b4b"),
+            ("I need help using a device", "individual"),
+        ):
+            with self.subTest(question=question):
+                selected = server.SOURCE_BY_ID[source_id]
+                answer = server.grounded_answer_message(
+                    question, [selected], "site", routing_question=question
+                )
+                evidence = server.grounded_evidence_sentences(
+                    selected,
+                    question,
+                    limit=40 if server.device_use_support_intent(question) else server.MAX_EVIDENCE_WORDS,
+                    max_sentences=2 if server.device_use_support_intent(question) else server.MAX_EVIDENCE_SENTENCES,
+                )
+                self.assertTrue(evidence)
+                self.assertTrue(answer.startswith(evidence))
+
+        changed_source = copy.deepcopy(server.SOURCE_BY_ID["individual"])
+        changed_source["description"] = ""
+        changed_source["facts"] = [
+            "Device help is available through a newly indexed support desk."
+        ]
+        changed_source["blocks"] = list(changed_source["facts"])
+        changed_answer = server.grounded_answer_message(
+            "I need device help",
+            [changed_source],
+            "site",
+            routing_question="I need device help",
+        )
+        self.assertTrue(changed_answer.startswith(changed_source["facts"][0]))
+        self.assertNotIn("one-to-one tutoring", changed_answer.lower())
 
     def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
         retrieved = server.retrieve_sources("computadora")
