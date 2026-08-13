@@ -886,13 +886,47 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         readme = (DEMO / "README.md").read_text(encoding="utf-8")
         self.assertIn('id="context-window"', html)
-        self.assertIn("Context · this page · 0/3", html)
+        self.assertIn("Context · conversation · 0/3", html)
         self.assertIn("const MAX_CONTEXT_MESSAGES = 6", app)
         self.assertIn("MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2", app)
         self.assertIn(".slice(-MAX_CONTEXT_MESSAGES)", app)
         self.assertIn("updateContextWindow();", app)
         self.assertIn("three recent exchanges (six messages)", readme)
         self.assertEqual(server.MAX_HISTORY, 6)
+
+    def test_conversation_persists_across_page_navigation_in_the_same_tab(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        replica_shell = (DEMO / "replica-shell.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        readme = (DEMO / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("stay in this tab across pages", html)
+        self.assertIn('window.sessionStorage', app)
+        self.assertIn("return window.parent.sessionStorage", app)
+        self.assertIn('"fortune-website-guide:replica:v1"', app)
+        self.assertIn('frameUrl.searchParams.set("v", "20260813-conversation-persistence-1")', replica_shell)
+        self.assertIn("persistConversation();", app)
+        self.assertIn("restoreConversation();", app)
+        self.assertIn("clearPersistedConversation();", app)
+        self.assertNotIn("window.localStorage", app)
+
+        reset = app[app.index("function resetForPage") : app.index("function setEditStatus")]
+        for destructive_reset in (
+            "history = []",
+            "turns = []",
+            'conversationId = ""',
+            'conversationToken = ""',
+            "transcript.replaceChildren()",
+        ):
+            self.assertNotIn(destructive_reset, reset)
+
+        self.assertIn('window.sessionStorage', wix)
+        self.assertIn('"fortune-website-guide:wix:v1"', wix)
+        self.assertIn("this.persistConversation();", wix)
+        self.assertIn("this.restoreConversation()", wix)
+        self.assertNotIn("window.localStorage", wix)
+        self.assertIn("tab-scoped session storage", readme)
 
     def test_guide_starts_compact_and_expands_to_reveal_the_answer(self):
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
