@@ -1,5 +1,27 @@
 # Website Guide — next steps
 
+## Bounded source selector — 2026-08-12
+
+- [x] Replace the prose-generating model contract with one reusable decision: return one allowed page ID or `ASK`.
+- [x] Keep raw conversation history out of the provider request; send only the server-resolved question and bounded approved candidates.
+- [x] Expand uncertain retrieval from three to ten candidates and prove all 144 substantive answer-authority pages are reachable by public title; exclude the Wix template-only Partners route.
+- [x] Reject malformed IDs, unsupported distinctive terms, and model-selected records with no overlapping evidence; use compact clarification buttons instead of a fallback guess.
+- [x] Remove Wix template people and boilerplate from searchable/model evidence while preserving legitimate structured team names from the About page.
+- [x] Correct laptop guidance to match the live Devices page: free refurbished laptops through Computers 4 People have limited supply; the hold applies to mobile-device distribution.
+- [x] Expand the stateful benchmark to 14 conversations and 59 turns, including Tech Fair Q&A and About/team deep-page retrieval.
+- [x] Pass the full fixed and expanded suites against Railway staging with the real model: 41/41 fixed cases and 14/14 conversations, 59/59 turns, and 35/35 contextual turns. One truly ambiguous turn called the model and clarified; the synthetic-capture boundary stayed unchanged.
+- [x] Promote the exact tested commit to production with capture `none`; repeat the capture-none benchmark at 41/41 fixed cases and 14/14 conversations, 59/59 turns, and 35/35 contextual turns; verify Return, a deep-page follow-up, clarification buttons, and source destinations in the published browser UI.
+
+## Multi-turn retrieval release — 2026-08-12
+
+- [x] Add 13 stateful retrieval conversations with 55 turns, including 32 deictic, elliptical, or topic-switch turns and a seven-turn stale-context test.
+- [x] Freeze a pre-fix production baseline: 0/13 complete conversations, 28/55 turns, and 14/32 context-dependent turns passed.
+- [x] Prefer reviewed class, device, certification, practice, support, registration, partner, impact, and Spanish-language sources without weakening privacy or source-authority gates.
+- [x] Carry only the latest explicit safe topic into genuinely elliptical follow-ups; keep explicit topic shifts from reviving stale context.
+- [x] Pass the real-model suite on Railway staging and production: 13/13 conversations, 55/55 turns, and 32/32 context-dependent turns on both.
+- [x] Replay the seven-turn topic-switch conversation in the published browser UI with Return; all 14 visible user/guide messages rendered and the console stayed clean.
+- [ ] Resolve the two stale pending turns reported by the staging aggregate audit before the next evaluator review. Do not alter participant-capture policy or copy staging data settings into production.
+
 ## Responsiveness and coverage release — 2026-08-12
 
 - [x] Audit the canonical checkout, remote branches, and both GitHub repositories. The demo repository has no open PR; the PIT Lab mirror still has one open sync PR that predates this release.

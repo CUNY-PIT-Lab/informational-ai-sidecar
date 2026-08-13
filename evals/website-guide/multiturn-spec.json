@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "name": "Fortune Website Guide multi-turn retrieval evaluation",
+    "version": "1.0.0",
+    "mode": "gym",
+    "owner": "Fortune Website Guide maintainers"
+  },
+  "charter": {
+    "decision": "Determine whether the deployed guide can sustain source-grounded retrieval across longer conversations without losing the latest topic, reviving stale topics, inventing facts, or becoming verbose.",
+    "unitUnderTest": "The deployed Website Guide system, including sequential API state, the three-exchange client history window, retrieval routing, approved-source validation, deterministic answers, and model-backed source selection.",
+    "targetPopulation": "Public visitors asking English or Spanish follow-up questions about device programs, classes, learning resources, individual support, certifications, schedules, registration, and the Digital Equity Program.",
+    "minimumPracticalDifference": "One failed hard episode, a ten-point change in required episode success, or a fifteen-point change in deictic and topic-shift turn success.",
+    "hardConstraints": [
+      "Every source and related link stays on the approved Fortune host.",
+      "The conversation ID remains stable within an episode.",
+      "The first turn is opening and later turns are follow-up.",
+      "Production capture remains none and the evaluator remains disabled.",
+      "A topic shift cannot revive a source from an older topic.",
+      "No visible answer exceeds 32 words."
+    ],
+    "nonGoals": [
+      "Authorize participant transcript capture.",
+      "Evaluate the quality of Fortune services.",
+      "Replace Fortune staff review of facts, Spanish, tone, or participant comprehension.",
+      "Rank the foundation model independently from the retrieval system."
+    ]
+  },
+  "participants": [
+    {
+      "id": "current-production",
+      "version": "recorded-at-run-time",
+      "role": "candidate"
+    }
+  ],
+  "coverage": {
+    "episodes": 13,
+    "minimumTurns": 55,
+    "historyWindow": "The latest three user-assistant exchanges, matching the published browser client.",
+    "scenarioFamilies": [
+      "device availability and eligibility",
+      "specific class content",
+      "class progression",
+      "individual support",
+      "certifications",
+      "practice and assessments",
+      "Spanish retrieval",
+      "topic switching and stale-context eviction",
+      "program information",
+      "model-backed source selection"
+    ],
+    "split": "validation",
+    "hiddenTestAccess": "A Fortune-owned holdout remains future work; this regression suite is reviewable and versioned."
+  },
+  "protocol": {
+    "schedule": "fixed sequential episodes",
+    "seeds": [20260812],
+    "repetitions": 1,
+    "timeoutSeconds": 30,
+    "retryPolicy": {"transientInfrastructureErrors": 1, "semanticFailures": 0},
+    "state": [
+      "Reuse the API conversation ID returned by the first turn.",
+      "Reuse the continuation token only when the deployment returns one.",
+      "Send no more than the latest six safe history messages.",
+      "Use a fresh client event ID for every turn."
+    ]
+  },
+  "graders": [
+    {
+      "id": "contract-and-source-grader",
+      "type": "executable",
+      "version": "1.0.0",
+      "checks": [
+        "HTTP and response schema",
+        "approved source host",
+        "declared source inclusion and exclusion",
+        "conversation and chat-stage continuity",
+        "response length",
+        "expected model-use probes"
+      ],
+      "adjudication": "Manually inspect every failed semantic turn against the approved source record before changing an expectation."
+    },
+    {
+      "id": "fortune-staff-review",
+      "type": "human",
+      "version": "pending",
+      "adjudication": "A named Fortune source owner resolves factual and routing disputes."
+    }
+  ],
+  "metrics": {
+    "primary": {
+      "id": "required_episode_success_rate",
+      "direction": "higher",
+      "unit": "proportion of required episodes passing every turn"
+    },
+    "arenaScale": {
+      "range": [0, 4],
+      "dimensions": [
+        {"id": "outcome_quality", "weight": 0.35, "hard_gate": false},
+        {"id": "robustness", "weight": 0.2, "hard_gate": false},
+        {"id": "reliability", "weight": 0.15, "hard_gate": false},
+        {"id": "safety_integrity", "weight": 0.15, "hard_gate": true},
+        {"id": "efficiency", "weight": 0.1, "hard_gate": false},
+        {"id": "adaptation", "weight": 0.05, "hard_gate": false}
+      ]
+    },
+    "diagnostics": [
+      "turn success",
+      "deictic, elliptical, and topic-shift turn success",
+      "per-slice episode success",
+      "model-call rate",
+      "latency p50, p95, and mean",
+      "infrastructure failures"
+    ],
+    "uncertainty": "Wilson 95 percent interval over required episodes; turns within an episode are not treated as independent samples."
+  },
+  "analysis": {
+    "independentUnit": "episode",
+    "uncertainty": "Wilson 95 percent interval over required episodes.",
+    "ranking": "not_applicable",
+    "tieRule": "not_applicable",
+    "missingDataRule": "A missing, malformed, timed-out, or exhausted turn fails its episode.",
+    "stoppingRule": "Run every frozen episode unless a privacy boundary fails or a shared rate limit is reached."
+  },
+  "releaseGates": [
+    "At least 10 episodes and 40 total turns complete.",
+    "Every hard episode passes.",
+    "At least 90 percent of required episodes pass.",
+    "At least 85 percent of contextual turns pass.",
+    "Every multi-episode slice passes at least 75 percent.",
+    "No infrastructure failure occurs.",
+    "Production capture remains none."
+  ],
+  "lineage": {
+    "parentSuite": "fortune-website-guide-scattershot-v1",
+    "baselineArtifact": "/tmp/fortune-multiturn-exploratory-2026-08-12.json",
+    "recordCodeDataModelPromptAndEnvironment": true
+  },
+  "reproducibility": {
+    "recordCodeHash": true,
+    "recordDataHashes": true,
+    "recordModelAndPromptVersions": true,
+    "recordEnvironment": true,
+    "immutableRawArtifacts": true
+  }
+}

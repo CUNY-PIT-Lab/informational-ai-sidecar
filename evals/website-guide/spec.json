@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "identity": {
     "name": "Fortune Website Guide scattershot evaluation",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "mode": "benchmark",
     "owner": "Fortune Website Guide maintainers"
   },
