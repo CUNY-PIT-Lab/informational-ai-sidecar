@@ -144,17 +144,23 @@
     article.append(meta, body);
 
     if (Array.isArray(options.choices) && options.choices.length) {
-      const choiceList = document.createElement("div");
-      choiceList.className = "answer-choices";
+      const choiceSelect = document.createElement("select");
+      choiceSelect.className = "answer-choice-select";
+      choiceSelect.setAttribute("aria-label", "Choose");
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Choose";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      choiceSelect.append(placeholder);
       options.choices.slice(0, 3).forEach(choice => {
         if (!choice?.label || !choice?.prompt) return;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.prompt = choice.prompt;
-        button.textContent = choice.label;
-        choiceList.append(button);
+        const option = document.createElement("option");
+        option.value = choice.prompt;
+        option.textContent = choice.label;
+        choiceSelect.append(option);
       });
-      article.append(choiceList);
+      if (choiceSelect.options.length > 1) article.append(choiceSelect);
     }
 
     if (options.destination?.url) {
@@ -166,26 +172,6 @@
       action.href = `${baseHref}${connector}open=1`;
       action.textContent = options.destination.title || "Go to the next page";
       article.append(action);
-    }
-
-    const sourceRows = Array.isArray(options.sources) ? options.sources.filter(source => source?.url && source?.title) : [];
-    if (sourceRows.length) {
-      const details = document.createElement("details");
-      details.className = "chat-sources";
-      const summary = document.createElement("summary");
-      summary.textContent = sourceRows.length === 1 ? "Source" : `Sources · ${sourceRows.length}`;
-      const list = document.createElement("ul");
-      sourceRows.slice(0, 3).forEach(source => {
-        const item = document.createElement("li");
-        const link = document.createElement("a");
-        link.dataset.mockUrl = source.url;
-        link.href = window.FortuneMockSite.hrefFor(source.url);
-        link.textContent = source.title;
-        item.append(link);
-        list.append(item);
-      });
-      details.append(summary, list);
-      article.append(details);
     }
 
     transcript.append(article);
@@ -250,6 +236,7 @@
     questionField.readOnly = value;
     editCancel.disabled = value;
     transcript.querySelectorAll(".chat-edit-button").forEach(button => { button.disabled = value; });
+    transcript.querySelectorAll(".answer-choice-select").forEach(select => { select.disabled = value; });
     panel.setAttribute("aria-busy", String(value));
     submitButton.textContent = value ? "Sending…" : editTarget ? "Update" : "Send";
   }
@@ -317,13 +304,6 @@
   }
 
   async function remoteAnswer(question, clientEventId, options = {}) {
-    if (warmupPromise) {
-      try {
-        await warmupPromise;
-      } catch {
-        // The chat request can still succeed when a preload attempt fails.
-      }
-    }
     const response = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -373,7 +353,6 @@
     return appendMessage("assistant", data.message || "I couldn’t confirm that on Fortune’s public pages.", {
       choices: data.choices,
       destination,
-      sources: data.sources,
       scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
       revealStart: true,
     });
@@ -523,6 +502,13 @@
     }
     const button = event.target.closest("[data-prompt]");
     if (button) ask(button.dataset.prompt, { restoreFocus: event.detail === 0 });
+  });
+  transcript.addEventListener("change", event => {
+    const select = event.target.closest(".answer-choice-select");
+    if (!select?.value) return;
+    const prompt = select.value;
+    select.value = "";
+    ask(prompt, { restoreFocus: true });
   });
   editCancel.addEventListener("click", () => {
     pendingClientEventId = "";

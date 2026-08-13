@@ -210,8 +210,7 @@
           }
           .copy { margin: 0; color: var(--guide-ink); font-size: 15.5px; line-height: 1.55; white-space: pre-wrap; text-wrap: pretty; }
           .edit-question { margin: -10px -6px -10px 0; color: var(--guide-ink); }
-          .choices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
-          .choice, .suggestion {
+          .suggestion {
             min-height: 44px;
             padding: 0 12px;
             border: 1px solid var(--guide-line);
@@ -224,8 +223,23 @@
             text-align: left;
             cursor: pointer;
           }
-          .choice:hover, .suggestion:hover { border-color: var(--guide-ink); color: var(--guide-paper); background: var(--guide-ink); }
-          .choice:disabled, .suggestion:disabled { opacity: .55; cursor: wait; }
+          .suggestion:hover { border-color: var(--guide-ink); color: var(--guide-paper); background: var(--guide-ink); }
+          .suggestion:disabled { opacity: .55; cursor: wait; }
+          .choice-select {
+            width: min(100%, 220px);
+            min-height: 40px;
+            margin-top: 3px;
+            padding: 0 4px;
+            border: 0;
+            border-bottom: 1px solid var(--guide-line);
+            border-radius: 0;
+            color: var(--guide-muted);
+            background: transparent;
+            cursor: pointer;
+            font: 700 12px/1.35 "Avenir Next", Avenir, "Segoe UI", sans-serif;
+          }
+          .choice-select:hover { border-color: var(--guide-ink); color: var(--guide-ink); }
+          .choice-select:disabled { opacity: .55; cursor: wait; }
           .destination {
             min-height: 44px;
             display: inline-flex;
@@ -243,20 +257,6 @@
             transition: background .14s ease, color .14s ease;
           }
           .destination:hover { color: var(--guide-ink); background: var(--guide-paper); }
-          .sources { margin-top: 3px; color: var(--guide-muted); font-size: 12px; }
-          .sources summary {
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-          }
-          .sources ul { display: grid; gap: 7px; margin: 2px 0 0; padding-left: 20px; }
-          .sources a { color: var(--guide-ink); font-weight: 700; text-underline-offset: 3px; }
           .suggestions {
             flex: 0 0 auto;
             display: grid;
@@ -457,6 +457,13 @@
         const choice = event.target.closest("[data-prompt]");
         if (choice) this.ask(choice.dataset.prompt, { restoreFocus: event.detail === 0 });
       });
+      this.transcript.addEventListener("change", (event) => {
+        const select = event.target.closest(".choice-select");
+        if (!select?.value) return;
+        const prompt = select.value;
+        select.value = "";
+        this.ask(prompt, { restoreFocus: true });
+      });
       root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !this.panel.hidden) this.close();
       });
@@ -578,6 +585,7 @@
       this.cancelEditButton.disabled = value;
       this.suggestions.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("button").forEach((button) => { button.disabled = value; });
+      this.transcript.querySelectorAll("select").forEach((select) => { select.disabled = value; });
       this.sendButton.textContent = value ? "Sending…" : this.editingQuestion ? "Update" : "Send";
     }
 
@@ -647,7 +655,6 @@
       try {
         if (!this.capturePolicyReady) await this.loadCapturePolicy();
         if (!this.capturePolicyReady) throw new Error("Guide unavailable.");
-        if (this.warmupPromise) await this.warmupPromise;
         const response = await fetch(this.apiUrl("/api/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -803,31 +810,6 @@
         && comparableUrl(item.url) !== current) || null;
     }
 
-    addSources(container, links) {
-      const safeLinks = (Array.isArray(links) ? links : []).filter((item) =>
-        item?.title && isFortuneLink(item.url)
-      ).slice(0, 3);
-      if (!safeLinks.length) return;
-
-      const details = document.createElement("details");
-      details.className = "sources";
-      const summary = document.createElement("summary");
-      summary.textContent = safeLinks.length === 1 ? "Source" : `Sources · ${safeLinks.length}`;
-      const list = document.createElement("ul");
-      safeLinks.forEach((item) => {
-        const listItem = document.createElement("li");
-        const link = document.createElement("a");
-        link.href = item.url;
-        link.textContent = cleanText(item.title);
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        listItem.append(link);
-        list.append(listItem);
-      });
-      details.append(summary, list);
-      container.append(details);
-    }
-
     addAssistantContent(container, turn) {
       const payload = turn.payload || {};
       const copy = document.createElement("p");
@@ -836,20 +818,25 @@
       container.append(copy);
 
       if (payload.kind === "clarify") {
-        const choices = document.createElement("div");
-        choices.className = "choices";
+        const choiceSelect = document.createElement("select");
+        choiceSelect.className = "choice-select";
+        choiceSelect.setAttribute("aria-label", "Choose");
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Choose";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        choiceSelect.append(placeholder);
         (Array.isArray(payload.choices) ? payload.choices : []).slice(0, 3).forEach((choice) => {
           const label = cleanText(choice?.label);
           const prompt = cleanText(choice?.prompt || label);
           if (!label || !prompt) return;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "choice";
-          button.textContent = label;
-          button.dataset.prompt = prompt;
-          choices.append(button);
+          const option = document.createElement("option");
+          option.textContent = label;
+          option.value = prompt;
+          choiceSelect.append(option);
         });
-        if (choices.childElementCount) container.append(choices);
+        if (choiceSelect.options.length > 1) container.append(choiceSelect);
       }
 
       const destination = Array.isArray(payload?.choices) && payload.choices.length
@@ -862,7 +849,6 @@
         link.textContent = destinationLabel(destination.title);
         container.append(link);
       }
-      this.addSources(container, payload.sources);
     }
 
     renderConversation() {

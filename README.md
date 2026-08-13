@@ -79,6 +79,8 @@ python3 scripts/build_pages.py --check-index
 
 The test launcher runs the Python unit suite across retrieval, API contracts, privacy, source authority, grounding, conversation persistence, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 15 browser-core and bridge tests plus 13 snapshot-capture safety tests.
 
+The [Website Guide evaluation suite](evals/website-guide/README.md) adds a fixed 41-case synthetic benchmark across broad and specific intent, typos, multilingual requests, privacy, adversarial input, page awareness, follow-up context, and input boundaries. Its executable gates are stricter than the unit tests and produce a versioned run record for staff review.
+
 Build the static GitHub Pages output:
 
 ```bash
