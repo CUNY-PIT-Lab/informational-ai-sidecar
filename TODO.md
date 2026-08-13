@@ -10,7 +10,7 @@
 - [x] Correct laptop guidance to match the live Devices page: free refurbished laptops through Computers 4 People have limited supply; the hold applies to mobile-device distribution.
 - [x] Expand the stateful benchmark to 14 conversations and 59 turns, including Tech Fair Q&A and About/team deep-page retrieval.
 - [x] Pass the full fixed and expanded suites against Railway staging with the real model: 41/41 fixed cases and 14/14 conversations, 59/59 turns, and 35/35 contextual turns. One truly ambiguous turn called the model and clarified; the synthetic-capture boundary stayed unchanged.
-- [ ] Promote the exact tested commit to production only if capture remains `none`, then repeat the capture-none benchmark and representative browser checks.
+- [x] Promote the exact tested commit to production with capture `none`; repeat the capture-none benchmark at 41/41 fixed cases and 14/14 conversations, 59/59 turns, and 35/35 contextual turns; verify Return, a deep-page follow-up, clarification buttons, and source destinations in the published browser UI.
 
 ## Multi-turn retrieval release — 2026-08-12
 
