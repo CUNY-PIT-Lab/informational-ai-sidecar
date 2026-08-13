@@ -27,7 +27,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
     def test_elliptical_follow_up_uses_latest_safe_topic(self):
         history = [
             {"role": "user", "content": "Can I get a free laptop?"},
-            {"role": "assistant", "content": "Laptop distribution is on hold."},
+            {"role": "assistant", "content": "Laptop supply is limited and can take time."},
         ]
         routed = server.contextual_routing_question("Is that available now?", history)
         self.assertIn("free laptop", routed)
@@ -38,7 +38,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
     def test_latest_topic_wins_after_a_topic_shift(self):
         history = [
             {"role": "user", "content": "Can I get a free laptop?"},
-            {"role": "assistant", "content": "Laptop distribution is on hold."},
+            {"role": "assistant", "content": "Laptop supply is limited and can take time."},
             {"role": "user", "content": "Instead, tell me about Intro to Canva."},
             {"role": "assistant", "content": "Intro to Canva covers design basics."},
         ]

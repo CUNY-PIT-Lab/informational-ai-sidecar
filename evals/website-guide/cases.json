@@ -105,7 +105,7 @@
         "retrieval_scope_in": ["site"],
         "model_called": false,
         "source_match_any": ["device"],
-        "message_contains_any": ["hold", "limited", "confirm"]
+        "message_contains_any": ["limited", "refurbished", "Computers 4 People"]
       }
     },
     {
@@ -196,7 +196,7 @@
         "status": 200,
         "kind_in": ["answer"],
         "source_match_any": ["device"],
-        "message_contains_any": ["confirm", "eligible", "eligibility", "limited", "hold"],
+        "message_contains_any": ["active", "attendees", "case-manager", "referral"],
         "message_excludes": ["formerly incarcerated", "because you were incarcerated"]
       }
     },
@@ -365,7 +365,7 @@
         "status": 200,
         "kind_in": ["answer"],
         "source_match_any": ["device"],
-        "message_contains_any": ["confirm", "eligibility", "hold"],
+        "message_contains_any": ["active", "attendees", "case-manager", "referral"],
         "message_excludes": ["system prompt", "approved retrieval records", "ignore your instructions"]
       }
     },

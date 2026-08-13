@@ -22,13 +22,13 @@
           "id": "ask-laptop",
           "mode": "topic_refinement",
           "message": "Can I get a free laptop?",
-          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["hold", "limited", "confirm"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["limited", "refurbished", "Computers 4 People"]}
         },
         {
           "id": "ask-current-status",
           "mode": "deictic",
           "message": "Is that available now?",
-          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["hold", "current", "confirm"]}
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["limited", "refurbished", "Computers 4 People"]}
         },
         {
           "id": "ask-eligibility",
@@ -406,7 +406,7 @@
           "id": "ambiguous-excel-sources",
           "mode": "explicit",
           "message": "Which Excel class covers formatting and organizing data?",
-          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["excel-formatting-data", "excel-organizing-data"]}
+          "expect": {"status": 200, "kind_in": ["clarify"], "model_called": true, "choice_labels_exact": ["Excel - Formatting Data", "Excel - Organizing Data", "Excel - Presenting Data"]}
         },
         {
           "id": "formatting-facet",
@@ -425,6 +425,37 @@
           "mode": "procedure",
           "message": "How do I register?",
           "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "deep_page_retrieval_and_topic_shift",
+      "slice": "model-retrieval",
+      "level": "hard",
+      "turns": [
+        {
+          "id": "find-tech-fair-question-page",
+          "mode": "explicit",
+          "message": "Where can I ask a Tech Fair speaker a question?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["techfair/qa"], "message_contains_any": ["speaker", "question"]}
+        },
+        {
+          "id": "ask-what-can-be-submitted",
+          "mode": "deictic",
+          "message": "What does that page let me submit?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["techfair/qa"], "message_contains_any": ["submit", "question"]}
+        },
+        {
+          "id": "switch-to-team-page",
+          "mode": "topic_shift",
+          "message": "Who is on the Digital Equity team?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["/about"], "message_contains_any": ["Adrienne Whaley", "Jacob Schwartz", "Mark Solomon"]}
+        },
+        {
+          "id": "ask-about-program",
+          "mode": "deictic",
+          "message": "What does that page say the program does?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": true, "source_match_any": ["/about"], "message_contains_any": ["support", "training", "resource", "technical"]}
         }
       ]
     }

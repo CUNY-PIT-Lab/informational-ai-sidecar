@@ -19,7 +19,7 @@ GitHub Pages route
   -> Ollama Cloud with a server-side key
 ```
 
-The external service holds `OLLAMA_API_KEY` in its environment, enforces the page-first source and privacy rules, and limits browser origins to the Pages URL and approved local development origins. It checks the current page first, searches other approved pages only after a local miss, and skips the model when neither layer contains evidence. The model selects a validated source; visible factual sentences come from that website record. The repository, Pages files, browser requests, and source maps contain no model credential.
+The external service holds `OLLAMA_API_KEY` in its environment, enforces the page-first source and privacy rules, and limits browser origins to the Pages URL and approved local development origins. It checks the current page first, searches up to ten other approved pages only after a local miss, and skips the model when neither layer contains evidence. For uncertain multi-page requests, the model receives bounded candidate records and returns one allowed source ID or `ASK`; it does not write the participant answer. The server validates distinctive query terms before extracting visible text from that website record. The repository, Pages files, browser requests, and source maps contain no model credential.
 
 The current public API base is `https://guide-api-production-a1a1.up.railway.app`. The Railway `guide-api` service uses the exact GitHub Pages origin, a 30-call hourly model limit per client, a 300-call shared daily model limit, a separate bounded chat-request budget, and `/health` as its deployment healthcheck. Public production capture remains off unless Fortune completes the approval gate in [`../CONVERSATION-CAPTURE.md`](../CONVERSATION-CAPTURE.md).
 

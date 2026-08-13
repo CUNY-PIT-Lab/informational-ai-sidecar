@@ -69,6 +69,16 @@ class RetrievalTests(unittest.TestCase):
             for source in server.retrieve_sources(query):
                 self.assertEqual(source["authority"], "answer")
 
+    def test_every_approved_answer_page_is_retrievable_by_its_public_title(self):
+        for source in server.ANSWER_SOURCES:
+            title = server.clean_source_title(source)
+            with self.subTest(source_id=source["id"], title=title):
+                candidates = server.retrieve_sources(
+                    title,
+                    limit=server.MAX_RETRIEVED,
+                )
+                self.assertIn(source["id"], [row["id"] for row in candidates])
+
     def test_page_context_is_canonicalized_and_weighted(self):
         context = server.sanitize_page_context({
             "url": "https://www.fortunedigitalequity.org/trainings?x=1#top",
@@ -101,12 +111,7 @@ class StagedRetrievalTests(unittest.TestCase):
 
         def record_model_call(_handler, messages):
             model_calls.append(messages)
-            return json.dumps({
-                "kind": "answer",
-                "message": "Use the approved page.",
-                "reason": "It contains the matching public information.",
-                "source_ids": [model_source_id],
-            })
+            return json.dumps({"pick": model_source_id})
 
         handler._ollama = record_model_call.__get__(handler, server.Handler)
         original_key = server.KEY
@@ -120,7 +125,7 @@ class StagedRetrievalTests(unittest.TestCase):
     @staticmethod
     def retrieval_records(model_calls):
         system_prompt = model_calls[0][0]["content"]
-        marker = "\nAPPROVED RETRIEVAL RECORDS:\n"
+        marker = "\nCANDIDATE RECORDS:\n"
         return json.loads(system_prompt.split(marker, 1)[1])
 
     def test_current_page_evidence_uses_the_fast_source_backed_path(self):
@@ -206,9 +211,16 @@ class StagedRetrievalTests(unittest.TestCase):
                 scope, sources = server.retrieval_plan(question, context)
                 self.assertEqual(scope, "page")
                 prompt = server.retrieval_prompt(question, sources, context)
-                records = json.loads(prompt.split("\nAPPROVED RETRIEVAL RECORDS:\n", 1)[1])
+                records = json.loads(prompt.split("\nCANDIDATE RECORDS:\n", 1)[1])
                 self.assertEqual([record["id"] for record in records], [source["id"]])
-                self.assertEqual(records[0]["content"], server.source_excerpt(source, question))
+                self.assertEqual(
+                    records[0]["content"],
+                    server.source_excerpt(
+                        source,
+                        question,
+                        limit=server.MAX_MODEL_EXCERPT_CHARS,
+                    ),
+                )
                 for grounded_line in records[0]["content"].splitlines():
                     self.assertIn(grounded_line, server.searchable_text(source))
 
@@ -221,6 +233,25 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
         self.assertFalse(captured["payload"]["model_called"])
         self.assertEqual(model_calls, [])
+
+    def test_model_receives_resolved_question_and_candidates_not_raw_history(self):
+        source_id = server.source_id_for_path("/techfair/qa")
+        captured, model_calls = self.dispatch_chat(
+            "Where can I ask a speaker a question?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "Tell me about the Tech Fair."},
+                {"role": "assistant", "content": "Earlier answer text."},
+            ],
+        )
+        self.assertEqual(captured["payload"]["sources"][0]["id"], source_id)
+        self.assertEqual(len(model_calls), 1)
+        messages = model_calls[0]
+        self.assertEqual([message["role"] for message in messages], ["system", "user"])
+        self.assertNotIn("Earlier answer text", json.dumps(messages))
+        records = self.retrieval_records(model_calls)
+        self.assertIn(source_id, [record["id"] for record in records])
 
     def test_page_reference_uses_only_the_current_page(self):
         captured, model_calls = self.dispatch_chat(
@@ -454,15 +485,23 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
 
 
 class ResponseContractTests(unittest.TestCase):
+    def test_selector_parser_accepts_only_one_allowed_pick_field(self):
+        allowed = {"one", "two"}
+        self.assertEqual(server.parse_selector_pick('{"pick":"one"}', allowed), "one")
+        self.assertEqual(server.parse_selector_pick('{"pick":"ASK"}', allowed), "ASK")
+        self.assertEqual(server.parse_selector_pick('{"pick":"three"}', allowed), "ASK")
+        self.assertEqual(
+            server.parse_selector_pick(
+                '{"pick":"one","message":"invented"}', allowed
+            ),
+            "ASK",
+        )
+        self.assertEqual(server.parse_selector_pick("one", allowed), "ASK")
+
     def test_every_answer_has_source_related_route_handoff_and_continuation(self):
         retrieved = server.retrieve_sources("free laptop")
-        raw = json.dumps({
-            "kind": "answer",
-            "message": "Review the device page and ask staff to confirm current criteria.",
-            "reason": "Eligibility and inventory can change.",
-            "source_ids": [retrieved[0]["id"]],
-        })
-        result = server.parse_model_json(raw, "free laptop", retrieved)
+        raw = json.dumps({"pick": retrieved[0]["id"]})
+        result = server.parse_model_selection(raw, "free laptop", retrieved)
         self.assertTrue(result["sources"])
         self.assertTrue(result["related"])
         self.assertEqual(result["handoff_url"], server.CONTACT_URL)
@@ -470,23 +509,76 @@ class ResponseContractTests(unittest.TestCase):
 
     def test_unknown_model_source_ids_never_become_links(self):
         retrieved = server.retrieve_sources("free laptop")
-        raw = '{"kind":"answer","message":"Use this.","reason":"It fits.","source_ids":["invented"]}'
-        result = server.parse_model_json(raw, "free laptop", retrieved)
+        raw = '{"pick":"invented"}'
+        result = server.parse_model_selection(raw, "free laptop", retrieved)
         self.assertNotIn("invented", [source["id"] for source in result["sources"]])
-        self.assertEqual(result["sources"][0]["id"], retrieved[0]["id"])
+        self.assertEqual(result["kind"], "clarify")
+        self.assertTrue(result["choices"])
+
+    def test_selected_page_must_support_the_questions_distinctive_terms(self):
+        question = "Where can I ask a Tech Fair speaker a question?"
+        retrieved = server.retrieve_sources(question)
+        wrong = server.parse_model_selection(
+            json.dumps({"pick": server.source_id_for_path("/techfair")}),
+            question,
+            retrieved,
+            routing_question=question,
+        )
+        right = server.parse_model_selection(
+            json.dumps({"pick": server.source_id_for_path("/techfair/qa")}),
+            question,
+            retrieved,
+            routing_question=question,
+        )
+        self.assertEqual(wrong["kind"], "clarify")
+        self.assertEqual(
+            [choice["label"] for choice in wrong["choices"]],
+            ["Q&A", "DEI Q&A"],
+        )
+        self.assertEqual(right["kind"], "answer")
+        self.assertIn("speaker", right["message"].lower())
+
+    def test_structured_team_names_are_extracted_from_the_approved_about_page(self):
+        question = "Who is on the Digital Equity team?"
+        retrieved = server.retrieve_sources(question)
+        about_id = server.source_id_for_path("/about")
+        result = server.parse_model_selection(
+            json.dumps({"pick": about_id}),
+            question,
+            retrieved,
+            routing_question=question,
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], about_id)
+        self.assertIn("Adrienne Whaley", result["message"])
+        self.assertIn("Mark Solomon", result["message"])
+
+    def test_wix_template_people_never_become_retrieval_evidence(self):
+        partners = server.SOURCE_BY_ID[server.PARTNERS_ID]
+        excerpt = server.source_excerpt(
+            partners,
+            "Who is on the Digital Equity team?",
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
+        )
+        self.assertNotIn("Don Francis", excerpt)
+        self.assertNotIn("Ashley Jones", excerpt)
+        self.assertNotIn("Every website has a story", excerpt)
+        self.assertFalse(
+            server.source_supports_query(
+                partners,
+                "Who is on the Digital Equity team?",
+            )
+        )
 
     def test_model_prose_cannot_become_an_unsupported_factual_claim(self):
         retrieved = server.retrieve_sources("free laptop")
         raw = json.dumps({
-            "kind": "answer",
+            "pick": "devices",
             "message": "Free laptops are definitely available today with no wait.",
-            "reason": "I know this from elsewhere.",
-            "source_ids": ["devices"],
         })
-        result = server.parse_model_json(raw, "free laptop", retrieved, "page")
+        result = server.parse_model_selection(raw, "free laptop", retrieved, "page")
         self.assertNotIn("definitely available today", result["message"])
-        self.assertNotIn("I know this from elsewhere", result["reason"])
-        self.assertIn("distribution is currently on hold", result["message"].lower())
+        self.assertEqual(result["kind"], "clarify")
 
     def test_fast_answers_are_complete_short_sentences(self):
         devices = server.SOURCE_BY_ID["devices"]
@@ -499,36 +591,32 @@ class ResponseContractTests(unittest.TestCase):
         )
         self.assertEqual(
             laptop,
-            "Laptop distribution is currently on hold. Check the live page for current details.",
+            "Fortune partners with Computers 4 People to provide free refurbished laptops. "
+            "Supply is limited and can take time to acquire. Check the live page for current details.",
         )
         self.assertEqual(
             registration,
             "This page lists classes and registration links. Check the live page for current details.",
         )
-        self.assertLessEqual(len(laptop.split()), 16)
+        self.assertLessEqual(len(laptop.split()), server.MAX_MESSAGE_WORDS)
         self.assertLessEqual(len(registration.split()), 16)
 
     def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
         retrieved = server.retrieve_sources("computadora")
-        raw = json.dumps({
-            "kind": "answer",
-            "message": "Las computadoras son gratis y están disponibles hoy.",
-            "reason": "Lo sé.",
-            "source_ids": [retrieved[0]["id"]],
-        })
+        raw = json.dumps({"pick": retrieved[0]["id"]})
         interaction = {
             "request_language": "es",
             "chat_stage": "opening",
             "request_kind": "retrieval",
         }
-        result = server.parse_model_json(
+        result = server.parse_model_selection(
             raw, "Necesito una computadora", retrieved, "site", interaction
         )
         self.assertIn("Encontré:", result["message"])
         self.assertNotIn("disponibles hoy", result["message"])
         self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 
-    def test_prompt_loads_only_the_selected_mode_stage_and_language_modules(self):
+    def test_prompt_keeps_the_model_job_to_one_source_pick(self):
         retrieved = server.retrieve_sources("computer class")
         interaction = {
             "request_kind": "procedure",
@@ -539,35 +627,40 @@ class ResponseContractTests(unittest.TestCase):
         prompt = server.retrieval_prompt(
             "¿Cómo me registro?", retrieved, None, interaction
         )
-        self.assertIn(server.REQUEST_MODE_PROMPTS["procedure"], prompt)
-        self.assertNotIn(server.REQUEST_MODE_PROMPTS["clarification"], prompt)
-        self.assertIn(server.CHAT_STAGE_PROMPTS["follow_up"], prompt)
-        self.assertNotIn(server.CHAT_STAGE_PROMPTS["opening"], prompt)
-        self.assertIn(server.LANGUAGE_PROMPTS["es"], prompt)
+        self.assertIn('{"pick":"<candidate ID or ASK>"}', prompt)
+        self.assertNotIn("participant-facing text", prompt)
+        self.assertNotIn("rebuilding routines", prompt)
+        self.assertNotIn("request_kind", prompt)
+        records = json.loads(prompt.split("\nCANDIDATE RECORDS:\n", 1)[1])
+        self.assertEqual(
+            [record["id"] for record in records],
+            [source["id"] for source in retrieved],
+        )
 
-    def test_model_clarification_cannot_restate_facts_or_reopen_a_clear_request(self):
+    def test_model_can_abstain_without_generating_participant_copy(self):
         retrieved = server.retrieve_sources("free laptop")
-        raw = json.dumps({
-            "kind": "clarify",
-            "message": "These are definitely the current qualifying rules. Are you eligible?",
-            "reason": "Trust the model.",
-            "source_ids": ["devices"],
-        })
-        result = server.parse_model_json(raw, "Can I get a free laptop?", retrieved, "page")
-        self.assertEqual(result["kind"], "answer")
-        self.assertNotIn("definitely", result["message"])
-        self.assertIn("distribution is currently on hold", result["message"].lower())
+        result = server.parse_model_selection(
+            '{"pick":"ASK"}',
+            "Can I get a free laptop?",
+            retrieved,
+            "page",
+        )
+        self.assertEqual(result["kind"], "clarify")
+        self.assertTrue(result["choices"])
+        self.assertNotIn("qualifying rules", result["message"])
 
-    def test_malformed_model_output_falls_back_to_retrieved_sources(self):
+    def test_malformed_model_output_abstains_instead_of_guessing(self):
         retrieved = server.retrieve_sources("free laptop")
-        result = server.parse_model_json("Please check the device page.", "free laptop", retrieved)
-        self.assertEqual(result["kind"], "answer")
-        self.assertEqual(result["sources"][0]["id"], "devices")
+        result = server.parse_model_selection(
+            "Please check the device page.", "free laptop", retrieved
+        )
+        self.assertEqual(result["kind"], "clarify")
+        self.assertEqual(result["sources"], [])
 
     def test_answer_length_is_capped(self):
         retrieved = server.retrieve_sources("computer class")
-        raw = '{"kind":"answer","message":"' + "word " * 120 + '","reason":"' + "why " * 50 + '","source_ids":["trainings"]}'
-        result = server.parse_model_json(raw, "computer class", retrieved)
+        raw = json.dumps({"pick": retrieved[0]["id"]})
+        result = server.parse_model_selection(raw, "computer class", retrieved)
         self.assertLessEqual(len(result["message"].split()), 90)
         self.assertLessEqual(len(result["reason"].split()), 30)
 

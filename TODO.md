@@ -1,5 +1,17 @@
 # Website Guide — next steps
 
+## Bounded source selector — 2026-08-12
+
+- [x] Replace the prose-generating model contract with one reusable decision: return one allowed page ID or `ASK`.
+- [x] Keep raw conversation history out of the provider request; send only the server-resolved question and bounded approved candidates.
+- [x] Expand uncertain retrieval from three to ten candidates and prove all 145 answer-authority pages are reachable by public title.
+- [x] Reject malformed IDs, unsupported distinctive terms, and model-selected records with no overlapping evidence; use compact clarification buttons instead of a fallback guess.
+- [x] Remove Wix template people and boilerplate from searchable/model evidence while preserving legitimate structured team names from the About page.
+- [x] Correct laptop guidance to match the live Devices page: free refurbished laptops through Computers 4 People have limited supply; the hold applies to mobile-device distribution.
+- [x] Expand the stateful benchmark to 14 conversations and 59 turns, including Tech Fair Q&A and About/team deep-page retrieval.
+- [ ] Pass the full fixed and expanded suites against Railway staging with the real model and record latency, source IDs, clarification behavior, and the unchanged synthetic-capture boundary.
+- [ ] Promote the exact tested commit to production only if capture remains `none`, then repeat the capture-none benchmark and representative browser checks.
+
 ## Multi-turn retrieval release — 2026-08-12
 
 - [x] Add 13 stateful retrieval conversations with 55 turns, including 32 deictic, elliptical, or topic-switch turns and a seven-turn stale-context test.
