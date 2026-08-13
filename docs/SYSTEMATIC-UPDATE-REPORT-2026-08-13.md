@@ -5,7 +5,7 @@ Repositories: `zmuhls/fortune-digital-equity-guide-demo` and `CUNY-PIT-Lab/infor
 
 ## Release decision
 
-Fortune pull request [#13](https://github.com/zmuhls/fortune-digital-equity-guide-demo/pull/13) was merged on explicit operator instruction as `354898eb7a33fa4bd594e790a7ebdda9e84303b3`. The PIT Lab synchronization branch merged that exact Fortune `main` state in `06ab231` while preserving the PIT Lab README attribution banner.
+Fortune pull request [#13](https://github.com/zmuhls/fortune-digital-equity-guide-demo/pull/13) was merged on explicit operator instruction as `354898eb7a33fa4bd594e790a7ebdda9e84303b3`. The PIT Lab synchronization branch merged that exact Fortune `main` state in `06ab231` while preserving the PIT Lab README attribution banner. PIT Lab pull request [#1](https://github.com/CUNY-PIT-Lab/informational-ai-sidecar/pull/1) then merged the synchronized tree to PIT Lab `main` as `979becd1d4ce9f4ac94a224688a7e9466e521b8c`.
 
 At the synchronization point, every implementation and test file in the PIT Lab branch matched Fortune `main` byte-for-byte. The only repository-specific difference was the eight-line PIT Lab attribution and deployment banner in `README.md`; this report is the second intentional PIT Lab-only file.
 
@@ -91,11 +91,12 @@ Read back on 2026-08-13 after the Fortune merge:
 | Fortune GitHub Pages | Workflow `31727135550` succeeded from `354898e` |
 | Railway production | Deployment `b3c91b3f-7b4e-4bd8-9950-4b9f6cc71ec6` is `SUCCESS`; 200 pages; capture off; no database; evaluator disabled |
 | Railway staging | Deployment `743c86df-a0bd-4d01-af5f-355df6ebe826` is `SUCCESS`; 200 pages; synthetic transcript capture ready; schemas 005/006 ready |
-| PIT Lab repository | Synchronization branch contains Fortune merge `354898e` plus the PIT Lab attribution banner and this report |
+| PIT Lab repository | PR #1 merged to `main` as `979becd` |
+| PIT Lab GitHub Pages | Run `31727343295` passed build and deploy; the live sidecar and four shared JS/CSS assets matched Fortune Pages byte-for-byte |
 
 ## Boundaries and unresolved ownership work
 
-- The PIT Lab repository reuses the shared Fortune Pages and Railway deployment configuration. A separate PIT Lab Pages publication must be verified after the synchronization reaches PIT Lab `main`.
+- PIT Lab Pages is enabled with GitHub Actions and publishes the same static Website Guide artifact as Fortune Pages. Both static sites use the shared Railway production API.
 - The Wix reference implementation is current in source, but this repository does not contain the generated private Wix app identifiers or authorization needed to publish it to the Fortune Wix site.
 - Production participant transcript capture remains deliberately disabled. Enabling it still requires an approved purpose, notice, reviewer identities, retention/deletion/export process, and incident owner.
 - The PR #13 merge records the operator's release instruction; it is not independent evidence of a separate Fortune source-owner sign-off.
