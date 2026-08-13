@@ -448,20 +448,6 @@ a:hover { text-decoration-thickness: 2px; }
   transition: background .14s ease, color .14s ease;
 }
 .chat-destination:hover { color: var(--guide-ink); background: var(--guide-paper); }
-.chat-sources { margin-top: 3px; color: var(--guide-muted); font-size: 12px; }
-.chat-sources summary {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-.chat-sources ul { display: grid; gap: 7px; margin: 2px 0 0; padding-left: 20px; }
-.chat-sources a { color: var(--guide-ink); font-weight: 700; }
 
 .chat-suggestions {
   display: grid;

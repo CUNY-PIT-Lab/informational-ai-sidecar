@@ -174,26 +174,6 @@
       article.append(action);
     }
 
-    const sourceRows = Array.isArray(options.sources) ? options.sources.filter(source => source?.url && source?.title) : [];
-    if (sourceRows.length) {
-      const details = document.createElement("details");
-      details.className = "chat-sources";
-      const summary = document.createElement("summary");
-      summary.textContent = sourceRows.length === 1 ? "Source" : `Sources · ${sourceRows.length}`;
-      const list = document.createElement("ul");
-      sourceRows.slice(0, 3).forEach(source => {
-        const item = document.createElement("li");
-        const link = document.createElement("a");
-        link.dataset.mockUrl = source.url;
-        link.href = window.FortuneMockSite.hrefFor(source.url);
-        link.textContent = source.title;
-        item.append(link);
-        list.append(item);
-      });
-      details.append(summary, list);
-      article.append(details);
-    }
-
     transcript.append(article);
     if (options.revealStart) revealResponse(article);
     else scrollConversation();
@@ -373,7 +353,6 @@
     return appendMessage("assistant", data.message || "I couldn’t confirm that on Fortune’s public pages.", {
       choices: data.choices,
       destination,
-      sources: data.sources,
       scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
       revealStart: true,
     });
