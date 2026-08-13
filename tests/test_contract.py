@@ -884,9 +884,20 @@ class FrontendAndDeploymentTests(unittest.TestCase):
 
     def test_frontend_renders_clarification_choices_and_related_links(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
+        styles = (DEMO / "styles.css").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn("data.choices", app)
         self.assertIn("data.related", app)
         self.assertIn("page_context: pageContext()", app)
+        self.assertIn('document.createElement("select")', app)
+        self.assertIn('choiceSelect.setAttribute("aria-label", "Choose")', app)
+        self.assertIn('placeholder.textContent = "Choose"', app)
+        self.assertIn('transcript.addEventListener("change"', app)
+        self.assertIn(".answer-choice-select", styles)
+        self.assertNotIn(".answer-choices button", styles)
+        self.assertIn('choiceSelect.className = "choice-select"', wix)
+        self.assertIn('this.transcript.addEventListener("change"', wix)
+        self.assertNotIn('button.className = "choice"', wix)
 
     def test_edit_update_replaces_only_the_latest_turn_after_the_new_answer_succeeds(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")

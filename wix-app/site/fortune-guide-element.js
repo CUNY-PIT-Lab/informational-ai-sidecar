@@ -210,8 +210,7 @@
           }
           .copy { margin: 0; color: var(--guide-ink); font-size: 15.5px; line-height: 1.55; white-space: pre-wrap; text-wrap: pretty; }
           .edit-question { margin: -10px -6px -10px 0; color: var(--guide-ink); }
-          .choices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
-          .choice, .suggestion {
+          .suggestion {
             min-height: 44px;
             padding: 0 12px;
             border: 1px solid var(--guide-line);
@@ -224,8 +223,23 @@
             text-align: left;
             cursor: pointer;
           }
-          .choice:hover, .suggestion:hover { border-color: var(--guide-ink); color: var(--guide-paper); background: var(--guide-ink); }
-          .choice:disabled, .suggestion:disabled { opacity: .55; cursor: wait; }
+          .suggestion:hover { border-color: var(--guide-ink); color: var(--guide-paper); background: var(--guide-ink); }
+          .suggestion:disabled { opacity: .55; cursor: wait; }
+          .choice-select {
+            width: min(100%, 220px);
+            min-height: 40px;
+            margin-top: 3px;
+            padding: 0 4px;
+            border: 0;
+            border-bottom: 1px solid var(--guide-line);
+            border-radius: 0;
+            color: var(--guide-muted);
+            background: transparent;
+            cursor: pointer;
+            font: 700 12px/1.35 "Avenir Next", Avenir, "Segoe UI", sans-serif;
+          }
+          .choice-select:hover { border-color: var(--guide-ink); color: var(--guide-ink); }
+          .choice-select:disabled { opacity: .55; cursor: wait; }
           .destination {
             min-height: 44px;
             display: inline-flex;
@@ -457,6 +471,13 @@
         const choice = event.target.closest("[data-prompt]");
         if (choice) this.ask(choice.dataset.prompt, { restoreFocus: event.detail === 0 });
       });
+      this.transcript.addEventListener("change", (event) => {
+        const select = event.target.closest(".choice-select");
+        if (!select?.value) return;
+        const prompt = select.value;
+        select.value = "";
+        this.ask(prompt, { restoreFocus: true });
+      });
       root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !this.panel.hidden) this.close();
       });
@@ -578,6 +599,7 @@
       this.cancelEditButton.disabled = value;
       this.suggestions.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("button").forEach((button) => { button.disabled = value; });
+      this.transcript.querySelectorAll("select").forEach((select) => { select.disabled = value; });
       this.sendButton.textContent = value ? "Sending…" : this.editingQuestion ? "Update" : "Send";
     }
 
@@ -835,20 +857,25 @@
       container.append(copy);
 
       if (payload.kind === "clarify") {
-        const choices = document.createElement("div");
-        choices.className = "choices";
+        const choiceSelect = document.createElement("select");
+        choiceSelect.className = "choice-select";
+        choiceSelect.setAttribute("aria-label", "Choose");
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Choose";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        choiceSelect.append(placeholder);
         (Array.isArray(payload.choices) ? payload.choices : []).slice(0, 3).forEach((choice) => {
           const label = cleanText(choice?.label);
           const prompt = cleanText(choice?.prompt || label);
           if (!label || !prompt) return;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "choice";
-          button.textContent = label;
-          button.dataset.prompt = prompt;
-          choices.append(button);
+          const option = document.createElement("option");
+          option.textContent = label;
+          option.value = prompt;
+          choiceSelect.append(option);
         });
-        if (choices.childElementCount) container.append(choices);
+        if (choiceSelect.options.length > 1) container.append(choiceSelect);
       }
 
       const destination = Array.isArray(payload?.choices) && payload.choices.length
