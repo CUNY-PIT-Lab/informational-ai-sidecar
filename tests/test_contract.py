@@ -898,6 +898,10 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn('choiceSelect.className = "choice-select"', wix)
         self.assertIn('this.transcript.addEventListener("change"', wix)
         self.assertNotIn('button.className = "choice"', wix)
+        self.assertNotIn('className = "chat-sources"', app)
+        self.assertNotIn(".chat-sources", styles)
+        self.assertNotIn("addSources(", wix)
+        self.assertNotIn(".sources summary", wix)
 
     def test_edit_update_replaces_only_the_latest_turn_after_the_new_answer_succeeds(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
