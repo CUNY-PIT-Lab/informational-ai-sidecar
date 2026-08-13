@@ -92,11 +92,12 @@ Read back on 2026-08-13 after the Fortune merge:
 | Railway production | Deployment `b3c91b3f-7b4e-4bd8-9950-4b9f6cc71ec6` is `SUCCESS`; 200 pages; capture off; no database; evaluator disabled |
 | Railway staging | Deployment `743c86df-a0bd-4d01-af5f-355df6ebe826` is `SUCCESS`; 200 pages; synthetic transcript capture ready; schemas 005/006 ready |
 | PIT Lab repository | PR #1 merged to `main` as `979becd` |
-| PIT Lab GitHub Pages | Run `31727343295` passed build and deploy; the live sidecar and four shared JS/CSS assets matched Fortune Pages byte-for-byte |
+| PIT Lab hosting | Disabled. This repository links to the single Fortune production deployment rather than publishing a separate site. |
 
 ## Boundaries and unresolved ownership work
 
-- PIT Lab Pages is enabled with GitHub Actions and publishes the same static Website Guide artifact as Fortune Pages. Both static sites use the shared Railway production API.
+- PIT Lab is a code mirror and does not publish a separate Pages site. Its README links to the single Fortune production deployment.
+- A temporary PIT Lab Pages enablement during synchronization was removed immediately at user direction, along with the PIT Lab publishing workflow, so it cannot redeploy on a future push.
 - The Wix reference implementation is current in source, but this repository does not contain the generated private Wix app identifiers or authorization needed to publish it to the Fortune Wix site.
 - Production participant transcript capture remains deliberately disabled. Enabling it still requires an approved purpose, notice, reviewer identities, retention/deletion/export process, and incident owner.
 - The PR #13 merge records the operator's release instruction; it is not independent evidence of a separate Fortune source-owner sign-off.
