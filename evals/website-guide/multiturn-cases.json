@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "suite_id": "fortune-website-guide-multiturn-retrieval-v1",
+  "created_on": "2026-08-12",
+  "default_page_context": {
+    "url": "https://www.fortunedigitalequity.org/",
+    "title": "The Fortune Society | Digital Equity Program"
+  },
+  "episodes": [
+    {
+      "id": "device_availability_and_eligibility",
+      "slice": "device-programs",
+      "level": "hard",
+      "turns": [
+        {
+          "id": "list-programs",
+          "mode": "explicit",
+          "message": "What device programs does Fortune list?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"]}
+        },
+        {
+          "id": "ask-laptop",
+          "mode": "topic_refinement",
+          "message": "Can I get a free laptop?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["limited", "refurbished", "Computers 4 People"]}
+        },
+        {
+          "id": "ask-current-status",
+          "mode": "deictic",
+          "message": "Is that available now?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"], "message_contains_any": ["limited", "refurbished", "Computers 4 People"]}
+        },
+        {
+          "id": "ask-eligibility",
+          "mode": "elliptical",
+          "message": "How do I confirm whether I qualify?",
+          "expect": {"status": 200, "kind_in": ["answer", "handoff"], "source_match_any": ["devices", "contact"], "message_excludes": ["guaranteed", "you qualify"]}
+        }
+      ]
+    },
+    {
+      "id": "email_learning_path",
+      "slice": "class-content",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-intro-email",
+          "mode": "explicit",
+          "message": "I want to learn email from the beginning. What class fits?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-email-19718065"]}
+        },
+        {
+          "id": "ask-coverage",
+          "mode": "deictic",
+          "message": "What does it cover?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-email-19718065"], "message_contains_any": ["email", "inbox", "message", "account"]}
+        },
+        {
+          "id": "ask-next-level",
+          "mode": "deictic",
+          "message": "Is there a more advanced class after that?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["advanced-email", "intro-to-email-pt-2"]}
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "expect": {"status": 200, "kind_in": ["answer"], "request_kind_in": ["procedure"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "excel_formulas_to_charts",
+      "slice": "class-content",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-formulas",
+          "mode": "explicit",
+          "message": "Which class teaches Excel formulas?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-formulas-functions"]}
+        },
+        {
+          "id": "ask-more",
+          "mode": "deictic",
+          "message": "What else does that class cover?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-formulas-functions"], "message_contains_any": ["function", "formula", "cell", "operator"]}
+        },
+        {
+          "id": "switch-to-charts",
+          "mode": "topic_shift",
+          "message": "Is there a class about charts instead?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-charts", "excel-presenting-data"]}
+        },
+        {
+          "id": "register-new-topic",
+          "mode": "elliptical",
+          "message": "How do I sign up for it?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "canva_beginner_path",
+      "slice": "class-content",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-intro-canva",
+          "mode": "explicit",
+          "message": "Does Fortune have a beginner Canva class?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-canva"]}
+        },
+        {
+          "id": "ask-learning",
+          "mode": "deictic",
+          "message": "What would I learn there?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-canva"], "message_contains_any": ["canva", "template", "design", "interface"]}
+        },
+        {
+          "id": "ask-prerequisite",
+          "mode": "elliptical",
+          "message": "Do I need design experience?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["canva-design-tools"], "message_contains_any": ["no design", "background"]}
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "Where do I register?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "individual_support_path",
+      "slice": "individual-support",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-support",
+          "mode": "explicit",
+          "message": "Can I get one-on-one tech support?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["individual"]}
+        },
+        {
+          "id": "ask-help-types",
+          "mode": "elliptical",
+          "message": "What kind of help is offered?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["individual"], "message_contains_any": ["tutor", "support", "lab", "technical"]}
+        },
+        {
+          "id": "ask-repair-boundary",
+          "mode": "topic_refinement",
+          "message": "Can staff repair a broken phone?",
+          "expect": {"status": 200, "kind_in": ["answer", "handoff"], "source_match_any": ["individual", "contact"], "message_excludes": ["will repair", "can repair"]}
+        },
+        {
+          "id": "ask-appointment",
+          "mode": "elliptical",
+          "message": "How do I make an appointment?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["individual"]}
+        }
+      ]
+    },
+    {
+      "id": "certification_path",
+      "slice": "certifications",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-certifications",
+          "mode": "explicit",
+          "message": "Does Fortune help with Microsoft certifications?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["certifications"]}
+        },
+        {
+          "id": "ask-list",
+          "mode": "elliptical",
+          "message": "Which certifications are listed?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["certifications"], "message_contains_any": ["microsoft", "office", "certification"]}
+        },
+        {
+          "id": "ask-word",
+          "mode": "deictic",
+          "message": "Is there one for Word?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["word-associate-certification"]}
+        },
+        {
+          "id": "ask-dates",
+          "mode": "elliptical",
+          "message": "Where do I find current dates?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["calendar"]}
+        }
+      ]
+    },
+    {
+      "id": "practice_and_assessments",
+      "slice": "learning-resources",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-practice",
+          "mode": "explicit",
+          "message": "Where can I practice skills after class?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["practice"]}
+        },
+        {
+          "id": "switch-assessments",
+          "mode": "topic_shift",
+          "message": "Are there class assessments too?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["assessments"]}
+        },
+        {
+          "id": "ask-purpose",
+          "mode": "deictic",
+          "message": "What are they for?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["assessments"], "message_contains_any": ["pre", "post", "assessment", "class"]}
+        },
+        {
+          "id": "find-first-class",
+          "mode": "topic_shift",
+          "message": "How do I find a class to take first?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["trainings", "reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "spanish_learning_path",
+      "slice": "spanish-retrieval",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-basic-class",
+          "mode": "explicit",
+          "message": "Busco una clase básica de computación en español.",
+          "expect": {"status": 200, "kind_in": ["answer"], "request_language_in": ["es"], "response_language_in": ["es"], "source_match_any": ["alfabetizaci", "trainings"]}
+        },
+        {
+          "id": "ask-learning",
+          "mode": "deictic",
+          "message": "¿Qué aprendería?",
+          "expect": {"status": 200, "kind_in": ["answer"], "request_language_in": ["es"], "response_language_in": ["es"], "source_match_any": ["alfabetizaci", "trainings"]}
+        },
+        {
+          "id": "switch-email",
+          "mode": "topic_shift",
+          "message": "¿Hay una clase de correo electrónico?",
+          "expect": {"status": 200, "kind_in": ["answer"], "request_language_in": ["es"], "response_language_in": ["es"], "source_match_any": ["intro-to-email"]}
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "¿Cómo me registro?",
+          "expect": {"status": 200, "kind_in": ["answer"], "request_kind_in": ["procedure"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "smartphone_learning_path",
+      "slice": "class-progression",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-intro-smartphone",
+          "mode": "explicit",
+          "message": "Is there a class for learning a new smartphone?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-smartphones-tablets-28e94905"]}
+        },
+        {
+          "id": "ask-platforms",
+          "mode": "deictic",
+          "message": "Does it cover Android or Apple phones?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-smartphones-tablets-28e94905"], "message_contains_any": ["android", "apple"]}
+        },
+        {
+          "id": "ask-next-class",
+          "mode": "deictic",
+          "message": "What should I take after that?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["smartphones-tablets-pt-2"]}
+        },
+        {
+          "id": "ask-schedule",
+          "mode": "elliptical",
+          "message": "When is it offered?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["calendar"], "message_contains_any": ["calendar", "current", "date"]}
+        }
+      ]
+    },
+    {
+      "id": "topic_switch_and_context_window",
+      "slice": "context-isolation",
+      "level": "hard",
+      "turns": [
+        {
+          "id": "device-topic",
+          "mode": "explicit",
+          "message": "Can I get a free laptop?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"]}
+        },
+        {
+          "id": "device-details",
+          "mode": "topic_refinement",
+          "message": "What device programs are listed?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["devices"]}
+        },
+        {
+          "id": "switch-excel",
+          "mode": "topic_shift",
+          "message": "Now I want to learn Excel formulas.",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-formulas-functions"], "source_excludes": ["devices"]}
+        },
+        {
+          "id": "excel-follow-up",
+          "mode": "deictic",
+          "message": "What else does that class teach?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-formulas-functions"], "source_excludes": ["devices"]}
+        },
+        {
+          "id": "switch-canva",
+          "mode": "topic_shift",
+          "message": "Instead, tell me about Intro to Canva.",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-canva"], "source_excludes": ["excel", "devices"]}
+        },
+        {
+          "id": "canva-follow-up",
+          "mode": "deictic",
+          "message": "What does that cover?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["intro-to-canva"], "source_excludes": ["excel", "devices"]}
+        },
+        {
+          "id": "register-latest-topic",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"], "source_excludes": ["devices"]}
+        }
+      ]
+    },
+    {
+      "id": "program_partners_impact_contact",
+      "slice": "program-information",
+      "level": "release",
+      "turns": [
+        {
+          "id": "program-overview",
+          "mode": "explicit",
+          "message": "What is Fortune's Digital Equity Program?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["home", "intro-to-fortune-digital-equity"]}
+        },
+        {
+          "id": "partners",
+          "mode": "deictic",
+          "message": "Who are its partners?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["/about"], "message_contains_any": ["NYSDEN", "Coursera", "Computers 4 People", "Certiport"]}
+        },
+        {
+          "id": "impact",
+          "mode": "topic_shift",
+          "message": "What does the impact page say?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["about-impact"]}
+        },
+        {
+          "id": "contact",
+          "mode": "topic_shift",
+          "message": "Where can I contact the team?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["contact"]}
+        }
+      ]
+    },
+    {
+      "id": "resume_and_job_search",
+      "slice": "class-content",
+      "level": "release",
+      "turns": [
+        {
+          "id": "find-resume-ai",
+          "mode": "explicit",
+          "message": "Is there a class about writing resumes with AI?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["resume-writing-in-an-ai-world"]}
+        },
+        {
+          "id": "resume-coverage",
+          "mode": "deictic",
+          "message": "What does it cover?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["resume-writing-in-an-ai-world"], "message_contains_any": ["resume", "applicant", "job"]}
+        },
+        {
+          "id": "switch-job-search",
+          "mode": "topic_shift",
+          "message": "Is there also a class on job searching online?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["job-searching-online"]}
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "model_source_selection",
+      "slice": "model-retrieval",
+      "level": "release",
+      "turns": [
+        {
+          "id": "ambiguous-excel-sources",
+          "mode": "explicit",
+          "message": "Which Excel class covers formatting and organizing data?",
+          "expect": {"status": 200, "kind_in": ["clarify"], "model_called": true, "choice_labels_exact": ["Excel - Formatting Data", "Excel - Organizing Data", "Excel - Presenting Data"]}
+        },
+        {
+          "id": "formatting-facet",
+          "mode": "topic_refinement",
+          "message": "Which one covers making numbers and dates easier to read?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-formatting-data"]}
+        },
+        {
+          "id": "organizing-facet",
+          "mode": "topic_shift",
+          "message": "What about sorting and removing duplicate records?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["excel-organizing-data"]}
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "expect": {"status": 200, "kind_in": ["answer"], "source_match_any": ["reserve"]}
+        }
+      ]
+    },
+    {
+      "id": "deep_page_retrieval_and_topic_shift",
+      "slice": "model-retrieval",
+      "level": "hard",
+      "turns": [
+        {
+          "id": "find-tech-fair-question-page",
+          "mode": "explicit",
+          "message": "Where can I ask a Tech Fair speaker a question?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["techfair/qa"], "message_contains_any": ["speaker", "question"]}
+        },
+        {
+          "id": "ask-what-can-be-submitted",
+          "mode": "deictic",
+          "message": "What does that page let me submit?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["techfair/qa"], "message_contains_any": ["submit", "question"]}
+        },
+        {
+          "id": "switch-to-team-page",
+          "mode": "topic_shift",
+          "message": "Who is on the Digital Equity team?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["/about"], "message_contains_any": ["Adrienne Whaley", "Jacob Schwartz", "Mark Solomon"]}
+        },
+        {
+          "id": "ask-about-program",
+          "mode": "deictic",
+          "message": "What does that page say the program does?",
+          "expect": {"status": 200, "kind_in": ["answer"], "model_called": false, "source_match_any": ["/about"], "message_contains_any": ["support", "training", "resource", "technical"]}
+        }
+      ]
+    }
+  ]
+}

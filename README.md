@@ -29,9 +29,9 @@ After a question:
 2. The browser sends the question, a short in-memory history, and the canonical current-page URL, path, and title.
 3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
 4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
-5. The server checks the approved record for the current page. When that record contains matching evidence, it is the only factual record sent to the model.
-6. When the current page cannot answer, retrieval searches the wider approved public index. When that search finds no matching evidence, the model is not called and the guide sends the visitor to staff.
-7. GLM-5.2 on Ollama Cloud selects from the supplied source IDs. The server validates that choice and builds the visible factual answer from sentences in the selected website record. Model-written factual prose is never shown.
+5. The server checks the approved record for the current page first. A strong local match is answered directly from that record without waiting for the model.
+6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 144 substantive records are addressable by public title; one Wix template-only Partners route is excluded from factual retrieval. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
+7. Only uncertain multi-page requests reach GLM-5.2. The model sees the resolved question and bounded candidate records, not raw conversation history, and may return one allowed page ID or `ASK`. The server rejects malformed, unsupported, or weakly grounded picks, then either shows compact clarification buttons or builds the visible answer from the selected website record. Model-written factual prose is never shown.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
 The latest completed user question includes **Edit**. The original question and answer stay visible while the visitor edits. **Update** branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. The Wix element follows the same latest-question behavior.

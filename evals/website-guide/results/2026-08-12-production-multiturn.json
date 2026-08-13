@@ -1,0 +1,4736 @@
+{
+  "schema_version": 1,
+  "run_id": "5a349569-6468-451a-a8db-48d8d0c132b6",
+  "created_at": "2026-08-12T23:34:39+00:00",
+  "suite": "fortune-website-guide-multiturn-retrieval-v1",
+  "suite_version": "1.0.0",
+  "target": {
+    "base_url": "https://guide-api-production-a1a1.up.railway.app",
+    "health_status": 200,
+    "health_latency_ms": 269.74,
+    "health": {
+      "status": "ok",
+      "model": "glm-5.2",
+      "model_enabled": true,
+      "index_loaded": true,
+      "indexed_pages": 200,
+      "answer_sources": 145,
+      "authority_counts": {
+        "answer": 143,
+        "excluded": 27,
+        "archive": 21,
+        "navigation": 9
+      },
+      "index_generated_at": "2026-08-08T19:34:51+00:00",
+      "sources_reviewed_on": "2026-07-20",
+      "model_call_limits": {
+        "per_client_hour": 30,
+        "shared_day": 300
+      },
+      "chat_request_limits": {
+        "per_client_hour": 120,
+        "shared_day": 2000,
+        "max_turns_per_conversation": 50
+      },
+      "model_warmup": {
+        "status": "ready",
+        "cooldown_seconds": 900,
+        "keep_alive": "30m"
+      },
+      "conversation_logging": {
+        "capture_mode": "none",
+        "database_configured": false,
+        "database_ready": false,
+        "enabled": false,
+        "retention_days": 90,
+        "schema_version": "005_interaction_context"
+      },
+      "evaluation": {
+        "enabled": false,
+        "ready": false,
+        "total_slots": 4,
+        "claimed_slots": 0,
+        "unassigned_slots": 4,
+        "schema_version": "006_transcript_annotations"
+      }
+    },
+    "local_git_commit": "92abe757d94c66ead1e1c62f668a9edb24d18ebb",
+    "local_git_status": "",
+    "python": "3.9.6",
+    "platform": "macOS-15.7.8-arm64-arm-64bit"
+  },
+  "lineage": {
+    "cases_sha256": "32c010ce556e7103548430215ff33711a417d39fbfaee51cfda0ee32ec47ec8a",
+    "spec_sha256": "a135238b8d875fb5de08cfb69dd7517c9539816cc0f58d2b617f939bbf4a8c67",
+    "runner_sha256": "1cfaa95766c81ae8e1d8c5420080d7afa5ffac01aefc1feda90332b3c3b21db5"
+  },
+  "protocol": {
+    "timeout_seconds": 30,
+    "delay_seconds": 0.15,
+    "retry_transient": true,
+    "history_messages": 6,
+    "capture_allowed": false
+  },
+  "aggregate": {
+    "decision": "pass",
+    "run_complete": true,
+    "episodes": {
+      "passed": 13,
+      "total": 13
+    },
+    "required_episodes": {
+      "passed": 13,
+      "total": 13,
+      "rate": 1.0,
+      "wilson_95": [
+        0.7719,
+        1.0
+      ]
+    },
+    "turns": {
+      "passed": 55,
+      "total": 55,
+      "contextual_passed": 32,
+      "contextual_total": 32,
+      "contextual_rate": 1.0
+    },
+    "hard_gate": {
+      "passed": true,
+      "failed_episodes": [],
+      "health_failures": []
+    },
+    "slices": {
+      "device-programs": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "class-content": {
+        "episodes": 4,
+        "passed": 4,
+        "rate": 1.0
+      },
+      "individual-support": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "certifications": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "learning-resources": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "spanish-retrieval": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "class-progression": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "context-isolation": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "program-information": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      },
+      "model-retrieval": {
+        "episodes": 1,
+        "passed": 1,
+        "rate": 1.0
+      }
+    },
+    "operational": {
+      "latency_p50_ms": 372.28,
+      "latency_p95_ms": 657.23,
+      "latency_mean_ms": 421.57,
+      "infrastructure_failures": 0,
+      "model_calls": 2,
+      "model_call_rate": 0.0364
+    }
+  },
+  "episodes": [
+    {
+      "id": "device_availability_and_eligibility",
+      "slice": "device-programs",
+      "level": "hard",
+      "passed": true,
+      "turns": [
+        {
+          "id": "list-programs",
+          "mode": "explicit",
+          "message": "What device programs does Fortune list?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "7b0ac20f-2de0-405a-adb7-5a1a319c3b79",
+          "status": 200,
+          "latency_ms": 372.28,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              },
+              {
+                "title": "Impact | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/impact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+            "turn_id": "a10a707d-99d1-4071-ac46-c7070515aeaa",
+            "client_event_id": "7b0ac20f-2de0-405a-adb7-5a1a319c3b79",
+            "message_ids": {
+              "user": "a9a5e41a-a702-4bb9-bec7-fcb639727161",
+              "assistant": "6cefe98f-1bd9-4ffc-b922-7824a582c43e"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-laptop",
+          "mode": "topic_refinement",
+          "message": "Can I get a free laptop?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What device programs does Fortune list?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+          "client_event_id_sent": "49aea426-0601-4523-8465-ab6a9f25ff07",
+          "status": 200,
+          "latency_ms": 360.63,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Laptop distribution is currently on hold. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              },
+              {
+                "title": "Impact | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/impact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+            "turn_id": "e273a7e1-8c8e-4657-b8fb-c477314a9f81",
+            "client_event_id": "49aea426-0601-4523-8465-ab6a9f25ff07",
+            "message_ids": {
+              "user": "1dbfb77f-fbe7-4bd3-be59-aa79289f4367",
+              "assistant": "b4b12258-6f3e-4b71-99fd-dc15e98c6ae3"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-current-status",
+          "mode": "deictic",
+          "message": "Is that available now?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What device programs does Fortune list?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Can I get a free laptop?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+          "client_event_id_sent": "f634e2e5-7f2e-4248-b9a0-7f2cec3a9aac",
+          "status": 200,
+          "latency_ms": 850.4,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Laptop distribution is currently on hold. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "See individual support",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              },
+              {
+                "title": "Check current hours",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "clarification",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+            "turn_id": "7b277e7a-794a-4e39-8924-506abb31288f",
+            "client_event_id": "f634e2e5-7f2e-4248-b9a0-7f2cec3a9aac",
+            "message_ids": {
+              "user": "c26c7047-3407-4cc0-95a3-082f5c872aae",
+              "assistant": "80d8bf43-1b96-4dc8-9b1a-85b2b6cd5428"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-eligibility",
+          "mode": "elliptical",
+          "message": "How do I confirm whether I qualify?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What device programs does Fortune list?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Can I get a free laptop?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Is that available now?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+          "client_event_id_sent": "609478ee-7b8a-4c25-ba8c-7535d21a01f3",
+          "status": 200,
+          "latency_ms": 262.03,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Laptop applicants must be active or former Digital Equity workshop attendees and have a case-manager referral. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "523e9b64-c198-4d4b-9384-95647a5df7e7",
+            "turn_id": "dd7e52f2-d1a6-4499-a06d-aae48a725316",
+            "client_event_id": "609478ee-7b8a-4c25-ba8c-7535d21a01f3",
+            "message_ids": {
+              "user": "70377d4c-ea7b-4abd-95c1-6ddd74a2c56b",
+              "assistant": "3b8aa3bd-a4cb-4f23-b55e-5626e88aa996"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "email_learning_path",
+      "slice": "class-content",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-intro-email",
+          "mode": "explicit",
+          "message": "I want to learn email from the beginning. What class fits?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "511999ed-9172-4ba4-8611-d0b729bd0769",
+          "status": 200,
+          "latency_ms": 367.28,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Email is part of everything from appointments and applications to work and everyday communication, and this class will help you use it with greater ease. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-email-19718065",
+                "title": "Intro to Email | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-email"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+            "turn_id": "90bb1fcc-9c05-40f4-b06f-70f85638cad2",
+            "client_event_id": "511999ed-9172-4ba4-8611-d0b729bd0769",
+            "message_ids": {
+              "user": "56b4c928-35f9-431d-9323-64f97adb780b",
+              "assistant": "cd79a19f-cead-4049-893d-5d56f082557c"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-coverage",
+          "mode": "deictic",
+          "message": "What does it cover?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "I want to learn email from the beginning. What class fits?"
+            },
+            {
+              "role": "assistant",
+              "content": "Email is part of everything from appointments and applications to work and everyday communication, and this class will help you use it with greater ease. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+          "client_event_id_sent": "65101447-ff2b-4756-94b8-4cff13d6bc88",
+          "status": 200,
+          "latency_ms": 365.91,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "New to email, or ready to feel more comfortable using it? Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-email-19718065",
+                "title": "Intro to Email | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-email"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+            "turn_id": "682717d9-54ca-4fa8-ba7f-69078a6a75d6",
+            "client_event_id": "65101447-ff2b-4756-94b8-4cff13d6bc88",
+            "message_ids": {
+              "user": "c93e11df-10b1-4df5-a8c3-3a9d2da5925a",
+              "assistant": "7ba3f823-979f-41f4-a83f-7e2f3cf775bc"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-next-level",
+          "mode": "deictic",
+          "message": "Is there a more advanced class after that?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "I want to learn email from the beginning. What class fits?"
+            },
+            {
+              "role": "assistant",
+              "content": "Email is part of everything from appointments and applications to work and everyday communication, and this class will help you use it with greater ease. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What does it cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "New to email, or ready to feel more comfortable using it? Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+          "client_event_id_sent": "9366c5a8-90c8-42ef-b7dc-4be22583e8d3",
+          "status": 200,
+          "latency_ms": 374.14,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This service is not available, please contact for more information. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-advanced-email-521306d7",
+                "title": "Advanced Email | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/advanced-email"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+            "turn_id": "c4845af4-18a0-4cd5-a67f-b7fd4edd4e8b",
+            "client_event_id": "9366c5a8-90c8-42ef-b7dc-4be22583e8d3",
+            "message_ids": {
+              "user": "886a25df-a355-48b7-8e21-561df39f9f7f",
+              "assistant": "02b4aaaf-2f0f-49eb-a0bf-55e677fd5d44"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "I want to learn email from the beginning. What class fits?"
+            },
+            {
+              "role": "assistant",
+              "content": "Email is part of everything from appointments and applications to work and everyday communication, and this class will help you use it with greater ease. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What does it cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "New to email, or ready to feel more comfortable using it? Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Is there a more advanced class after that?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+          "client_event_id_sent": "04053279-d71c-4642-be6a-7a18d27dac21",
+          "status": 200,
+          "latency_ms": 363.61,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "74a89926-ed72-4fcc-8252-10d51f25c4e3",
+            "turn_id": "6a7ce51c-dc71-4c19-b78b-af96c9023975",
+            "client_event_id": "04053279-d71c-4642-be6a-7a18d27dac21",
+            "message_ids": {
+              "user": "64d0423d-36ce-4be0-a760-5bbbe337e97b",
+              "assistant": "acf2d33b-e451-4c45-b774-8ab14266ab76"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "excel_formulas_to_charts",
+      "slice": "class-content",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-formulas",
+          "mode": "explicit",
+          "message": "Which class teaches Excel formulas?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "f02af4cb-817a-4431-abc1-b2d31d051917",
+          "status": 200,
+          "latency_ms": 196.97,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formulas-functions-ef3359ca",
+                "title": "Excel - Formulas & Functions | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formulas-functions"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "navigation",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+            "turn_id": "0502cad0-801a-4467-b96c-56683f037f8c",
+            "client_event_id": "f02af4cb-817a-4431-abc1-b2d31d051917",
+            "message_ids": {
+              "user": "fedaa3b7-73a4-4925-b2bf-c69a75dca31d",
+              "assistant": "9f71541f-22f8-4019-906c-45243e970389"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-more",
+          "mode": "deictic",
+          "message": "What else does that class cover?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which class teaches Excel formulas?"
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            }
+          ],
+          "conversation_id_sent": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+          "client_event_id_sent": "1d8014ba-ed62-4f76-87ad-024b6a17b20f",
+          "status": 200,
+          "latency_ms": 253.37,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Excel - Formulas & Functions. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formulas-functions-ef3359ca",
+                "title": "Excel - Formulas & Functions | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formulas-functions"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "clarification",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+            "turn_id": "e74983c2-2914-4414-b935-b58d0b239aa6",
+            "client_event_id": "1d8014ba-ed62-4f76-87ad-024b6a17b20f",
+            "message_ids": {
+              "user": "7628587b-6f23-4da0-b8d7-d55a3147d310",
+              "assistant": "5c51ee8e-c765-4477-8f8b-2e92ac36ba55"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-to-charts",
+          "mode": "topic_shift",
+          "message": "Is there a class about charts instead?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which class teaches Excel formulas?"
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            },
+            {
+              "role": "user",
+              "content": "What else does that class cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formulas & Functions. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+          "client_event_id_sent": "4e9d8a71-28bf-4bf8-8e76-c86eaee88651",
+          "status": 200,
+          "latency_ms": 305.47,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This service is not available, please contact for more information. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-microsoft-excel-charts-af3e701b",
+                "title": "Microsoft Excel - Charts | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/microsoft-excel-charts"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+            "turn_id": "ad51c939-af3c-420c-8173-5a95fb16f0a9",
+            "client_event_id": "4e9d8a71-28bf-4bf8-8e76-c86eaee88651",
+            "message_ids": {
+              "user": "7d24ad26-5891-4d39-bcd4-0d2db9ab3c96",
+              "assistant": "6f97a519-3ca9-4048-a21f-028d901c61df"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register-new-topic",
+          "mode": "elliptical",
+          "message": "How do I sign up for it?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which class teaches Excel formulas?"
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            },
+            {
+              "role": "user",
+              "content": "What else does that class cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formulas & Functions. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Is there a class about charts instead?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+          "client_event_id_sent": "e6cc2774-885a-49ed-b5e9-0cf293fd48a2",
+          "status": 200,
+          "latency_ms": 339.49,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8f5c910-bf9d-46ee-80e8-e7cd03e7bd66",
+            "turn_id": "eb927aa4-7861-43aa-98e2-609392da33ec",
+            "client_event_id": "e6cc2774-885a-49ed-b5e9-0cf293fd48a2",
+            "message_ids": {
+              "user": "cbe76f16-02c6-4ab6-82a5-a7d51f350918",
+              "assistant": "ce591939-6f98-452f-ab1f-68dbc9608b48"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canva_beginner_path",
+      "slice": "class-content",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-intro-canva",
+          "mode": "explicit",
+          "message": "Does Fortune have a beginner Canva class?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "0afaec0f-4a67-472f-845e-df33972fbd58",
+          "status": 200,
+          "latency_ms": 379.19,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This service is not available, please contact for more information. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-canva-10a4ab7c",
+                "title": "Intro to Canva | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-canva"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+            "turn_id": "ab269a9e-9664-441a-965c-b67b943c8aa5",
+            "client_event_id": "0afaec0f-4a67-472f-845e-df33972fbd58",
+            "message_ids": {
+              "user": "2ba5acbb-403e-4a22-8bbf-39db785e4b9a",
+              "assistant": "a2f2b16d-2b36-41f0-87cc-1b13db6cb483"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-learning",
+          "mode": "deictic",
+          "message": "What would I learn there?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune have a beginner Canva class?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+          "client_event_id_sent": "8af53831-11d4-4f33-96c0-274b1a4e85cb",
+          "status": 200,
+          "latency_ms": 477.96,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-canva-10a4ab7c",
+                "title": "Intro to Canva | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-canva"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+            "turn_id": "dcfecbce-00f6-45f2-b545-8e718dd4761d",
+            "client_event_id": "8af53831-11d4-4f33-96c0-274b1a4e85cb",
+            "message_ids": {
+              "user": "9aea026d-a7d7-42ba-b099-e96814f7930a",
+              "assistant": "56ef6a9a-48d1-43a8-aa9a-4119dfe65d95"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-prerequisite",
+          "mode": "elliptical",
+          "message": "Do I need design experience?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune have a beginner Canva class?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What would I learn there?"
+            },
+            {
+              "role": "assistant",
+              "content": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+          "client_event_id_sent": "0490c513-3f1c-46bb-9b62-70fb4c7ae3a5",
+          "status": 200,
+          "latency_ms": 1269.18,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "No design background is needed. Check the live page for current details.",
+            "reason": "The visible facts come from the approved page record.",
+            "sources": [
+              {
+                "id": "service-service-page-canva-design-tools-61911b2b",
+                "title": "Canva Design Tools | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/canva-design-tools"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": true,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+            "turn_id": "351378d6-ad17-4961-840e-04794ef985f5",
+            "client_event_id": "0490c513-3f1c-46bb-9b62-70fb4c7ae3a5",
+            "message_ids": {
+              "user": "5574fa11-8944-41cd-a66c-2dd21a80dea0",
+              "assistant": "0a25d86e-397a-4819-a011-1caa7b72ff02"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "Where do I register?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune have a beginner Canva class?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What would I learn there?"
+            },
+            {
+              "role": "assistant",
+              "content": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Do I need design experience?"
+            },
+            {
+              "role": "assistant",
+              "content": "No design background is needed. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+          "client_event_id_sent": "dd2b3bdb-d3f6-4acf-939a-3adc5e9c5844",
+          "status": 200,
+          "latency_ms": 572.23,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "0cdac2a6-7fb5-4ff2-851b-1acf1430a5a9",
+            "turn_id": "8a4df639-0c3d-482b-abe4-ecd071e2d911",
+            "client_event_id": "dd2b3bdb-d3f6-4acf-939a-3adc5e9c5844",
+            "message_ids": {
+              "user": "77a9131b-3f42-465f-befe-2b73c4790df5",
+              "assistant": "45fc13e5-0029-4245-bae8-c2a85141ba44"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "individual_support_path",
+      "slice": "individual-support",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-support",
+          "mode": "explicit",
+          "message": "Can I get one-on-one tech support?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "a4e4ffe9-e469-4bb1-a1a7-410ffb710616",
+          "status": 200,
+          "latency_ms": 546.76,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "One-to-one tutoring is available online or in person by appointment. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "individual",
+                "title": "Individual Support",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "related": [
+              {
+                "title": "Check current hours",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+            "turn_id": "c1af9062-efdb-42f0-b633-07cadfba08ab",
+            "client_event_id": "a4e4ffe9-e469-4bb1-a1a7-410ffb710616",
+            "message_ids": {
+              "user": "21ae79e0-bbdf-4612-b0b2-53c6ea8ee687",
+              "assistant": "22850362-3c62-4e5a-a34f-b985b73df9d1"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-help-types",
+          "mode": "elliptical",
+          "message": "What kind of help is offered?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get one-on-one tech support?"
+            },
+            {
+              "role": "assistant",
+              "content": "One-to-one tutoring is available online or in person by appointment. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+          "client_event_id_sent": "ae0afaf3-bfd1-4e36-b75c-e4f7c0a7f832",
+          "status": 200,
+          "latency_ms": 574.44,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Technical support is listed at Long Island City Tuesday and Thursday from 11:30 a.m. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "individual",
+                "title": "Individual Support",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "clarification",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+            "turn_id": "9fd98acf-fe4f-4234-b30a-960ebca8af2b",
+            "client_event_id": "ae0afaf3-bfd1-4e36-b75c-e4f7c0a7f832",
+            "message_ids": {
+              "user": "f37a341d-38b9-4ab3-8ada-daa87c62026c",
+              "assistant": "6730c2f3-b3de-4685-86c2-d3b31b03c7c0"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-repair-boundary",
+          "mode": "topic_refinement",
+          "message": "Can staff repair a broken phone?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get one-on-one tech support?"
+            },
+            {
+              "role": "assistant",
+              "content": "One-to-one tutoring is available online or in person by appointment. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What kind of help is offered?"
+            },
+            {
+              "role": "assistant",
+              "content": "Technical support is listed at Long Island City Tuesday and Thursday from 11:30 a.m. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+          "client_event_id_sent": "fb38bc64-7e6d-495f-90fc-bb8c0fb85351",
+          "status": 200,
+          "latency_ms": 529.3,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Hours and staff availability can change, so the current page and staff should confirm them. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "individual",
+                "title": "Individual Support",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "related": [
+              {
+                "title": "Review device programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              },
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+            "turn_id": "ee20f597-2240-475b-81be-b21166851dac",
+            "client_event_id": "fb38bc64-7e6d-495f-90fc-bb8c0fb85351",
+            "message_ids": {
+              "user": "b796c1fa-f284-4e31-b742-45549c87abea",
+              "assistant": "9f21ec48-0add-4590-ae07-c6e7861e4547"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-appointment",
+          "mode": "elliptical",
+          "message": "How do I make an appointment?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get one-on-one tech support?"
+            },
+            {
+              "role": "assistant",
+              "content": "One-to-one tutoring is available online or in person by appointment. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What kind of help is offered?"
+            },
+            {
+              "role": "assistant",
+              "content": "Technical support is listed at Long Island City Tuesday and Thursday from 11:30 a.m. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Can staff repair a broken phone?"
+            },
+            {
+              "role": "assistant",
+              "content": "Hours and staff availability can change, so the current page and staff should confirm them. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+          "client_event_id_sent": "3418215f-0aea-4992-8e5a-e232ef0de258",
+          "status": 200,
+          "latency_ms": 524.81,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "One-to-one tutoring is available online or in person by appointment. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "individual",
+                "title": "Individual Support",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "related": [
+              {
+                "title": "Check current hours",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a8149446-57da-47cb-8f43-0711bd50a3bd",
+            "turn_id": "072f7472-459a-4878-90c3-9c0eeeaebb02",
+            "client_event_id": "3418215f-0aea-4992-8e5a-e232ef0de258",
+            "message_ids": {
+              "user": "3b519d6f-4099-4419-a074-cebe7e724b9c",
+              "assistant": "71e4bbbe-5c0e-4dd1-8af6-02f0e9bff907"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "certification_path",
+      "slice": "certifications",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-certifications",
+          "mode": "explicit",
+          "message": "Does Fortune help with Microsoft certifications?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "3a571e59-7c3d-4058-9b25-01a8e81ada39",
+          "status": 200,
+          "latency_ms": 484.1,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Includes Microsoft Office certifications.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-certifications-df2337b0",
+                "title": "Microsoft Certifications | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/certifications"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "afca671f-809b-48c6-b791-61b628439d6f",
+            "turn_id": "b1b56bc5-c491-4dbb-a436-87a46ab0928d",
+            "client_event_id": "3a571e59-7c3d-4058-9b25-01a8e81ada39",
+            "message_ids": {
+              "user": "41c0368b-9129-44a6-ba1d-bbd40e40441e",
+              "assistant": "481312e6-9000-441d-91eb-d9872a56177a"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-list",
+          "mode": "elliptical",
+          "message": "Which certifications are listed?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune help with Microsoft certifications?"
+            },
+            {
+              "role": "assistant",
+              "content": "Includes Microsoft Office certifications."
+            }
+          ],
+          "conversation_id_sent": "afca671f-809b-48c6-b791-61b628439d6f",
+          "client_event_id_sent": "cadefaf8-a962-4ddf-8290-877f53f5fadf",
+          "status": 200,
+          "latency_ms": 373.96,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Includes Microsoft Office certifications.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-certifications-df2337b0",
+                "title": "Microsoft Certifications | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/certifications"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "afca671f-809b-48c6-b791-61b628439d6f",
+            "turn_id": "8efe42f9-393b-4abb-9cac-52ff024a6296",
+            "client_event_id": "cadefaf8-a962-4ddf-8290-877f53f5fadf",
+            "message_ids": {
+              "user": "efef36cf-e1af-4959-a36e-de1e424ca112",
+              "assistant": "320cdf34-2197-4b0b-b949-ce39ed55ea73"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-word",
+          "mode": "deictic",
+          "message": "Is there one for Word?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune help with Microsoft certifications?"
+            },
+            {
+              "role": "assistant",
+              "content": "Includes Microsoft Office certifications."
+            },
+            {
+              "role": "user",
+              "content": "Which certifications are listed?"
+            },
+            {
+              "role": "assistant",
+              "content": "Includes Microsoft Office certifications."
+            }
+          ],
+          "conversation_id_sent": "afca671f-809b-48c6-b791-61b628439d6f",
+          "client_event_id_sent": "67728ca9-a325-4ca6-a054-8acd9e80955e",
+          "status": 200,
+          "latency_ms": 421.54,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Microsoft Word Associate Certification. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-microsoft-word-associate-certification-2205b5b0",
+                "title": "Microsoft Word Associate Certification | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/microsoft-word-associate-certification"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "afca671f-809b-48c6-b791-61b628439d6f",
+            "turn_id": "2b6ef47b-52e5-460b-bc72-0da3b28a0d16",
+            "client_event_id": "67728ca9-a325-4ca6-a054-8acd9e80955e",
+            "message_ids": {
+              "user": "b5fc4725-ecf3-41b5-abea-54bfb9de7572",
+              "assistant": "4faaf5fe-4ad7-4a0b-9516-886dcd65ba0f"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-dates",
+          "mode": "elliptical",
+          "message": "Where do I find current dates?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Does Fortune help with Microsoft certifications?"
+            },
+            {
+              "role": "assistant",
+              "content": "Includes Microsoft Office certifications."
+            },
+            {
+              "role": "user",
+              "content": "Which certifications are listed?"
+            },
+            {
+              "role": "assistant",
+              "content": "Includes Microsoft Office certifications."
+            },
+            {
+              "role": "user",
+              "content": "Is there one for Word?"
+            },
+            {
+              "role": "assistant",
+              "content": "Microsoft Word Associate Certification. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "afca671f-809b-48c6-b791-61b628439d6f",
+          "client_event_id_sent": "288b1892-52ad-4c84-8462-76456a295c7d",
+          "status": 200,
+          "latency_ms": 425.84,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "The live calendar is the source for current dates and availability. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "calendar",
+                "title": "Digital Equity calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "navigation",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "afca671f-809b-48c6-b791-61b628439d6f",
+            "turn_id": "7dd8056c-9c78-400a-99b5-4ce5ec02c05f",
+            "client_event_id": "288b1892-52ad-4c84-8462-76456a295c7d",
+            "message_ids": {
+              "user": "f13b7c6e-d529-4483-8c63-fd13f7cb7be4",
+              "assistant": "ab81b7e6-4be7-43a8-813c-fa4e28062579"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "practice_and_assessments",
+      "slice": "learning-resources",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-practice",
+          "mode": "explicit",
+          "message": "Where can I practice skills after class?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "05852362-942b-4696-8e67-0c0d2843657d",
+          "status": 200,
+          "latency_ms": 296.37,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Resources and handouts for practicing computer skills covered in Fortune Digital Equity classes.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-practice-e0d2da64",
+                "title": "Practice Your Skills | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "navigation",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+            "turn_id": "c415e4d3-5226-4f96-b0c4-7ff194eda123",
+            "client_event_id": "05852362-942b-4696-8e67-0c0d2843657d",
+            "message_ids": {
+              "user": "91f853c1-53a3-4951-8f4b-afe861fd6320",
+              "assistant": "d65a6636-3733-40a7-804c-e2e6ef9f9928"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-assessments",
+          "mode": "topic_shift",
+          "message": "Are there class assessments too?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Where can I practice skills after class?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resources and handouts for practicing computer skills covered in Fortune Digital Equity classes."
+            }
+          ],
+          "conversation_id_sent": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+          "client_event_id_sent": "3aeeb86d-2601-4e2e-8b19-0f20045e348d",
+          "status": 200,
+          "latency_ms": 371.06,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Pre and Post Class assessments for Fortune Digital Equity Program trainings.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-assessments-9b0ee976",
+                "title": "Class Assessments | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/assessments"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+            "turn_id": "de0b1a44-c5ce-42ff-9708-887097ef3685",
+            "client_event_id": "3aeeb86d-2601-4e2e-8b19-0f20045e348d",
+            "message_ids": {
+              "user": "039a7806-b71e-4c60-a3e8-06d582bbcac7",
+              "assistant": "e3db736d-bad3-4377-8eb1-c3a9c0c823fb"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-purpose",
+          "mode": "deictic",
+          "message": "What are they for?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Where can I practice skills after class?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resources and handouts for practicing computer skills covered in Fortune Digital Equity classes."
+            },
+            {
+              "role": "user",
+              "content": "Are there class assessments too?"
+            },
+            {
+              "role": "assistant",
+              "content": "Pre and Post Class assessments for Fortune Digital Equity Program trainings."
+            }
+          ],
+          "conversation_id_sent": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+          "client_event_id_sent": "11ad5ba2-7f16-4f3c-a1b6-30663d2098c9",
+          "status": 200,
+          "latency_ms": 388.66,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Pre and Post Class assessments for Fortune Digital Equity Program trainings.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-assessments-9b0ee976",
+                "title": "Class Assessments | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/assessments"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+            "turn_id": "24aaedc9-60d6-46a9-9a52-0236519aa3a6",
+            "client_event_id": "11ad5ba2-7f16-4f3c-a1b6-30663d2098c9",
+            "message_ids": {
+              "user": "4a645cf0-f0ad-40e8-8a7b-24465688ca31",
+              "assistant": "f2ef52c5-6faf-4b42-bbf9-7988037654f6"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "find-first-class",
+          "mode": "topic_shift",
+          "message": "How do I find a class to take first?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Where can I practice skills after class?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resources and handouts for practicing computer skills covered in Fortune Digital Equity classes."
+            },
+            {
+              "role": "user",
+              "content": "Are there class assessments too?"
+            },
+            {
+              "role": "assistant",
+              "content": "Pre and Post Class assessments for Fortune Digital Equity Program trainings."
+            },
+            {
+              "role": "user",
+              "content": "What are they for?"
+            },
+            {
+              "role": "assistant",
+              "content": "Pre and Post Class assessments for Fortune Digital Equity Program trainings."
+            }
+          ],
+          "conversation_id_sent": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+          "client_event_id_sent": "244da0d8-e087-4f56-81a6-0c0127add9c2",
+          "status": 200,
+          "latency_ms": 359.39,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Beginner workshops are Introduction to Computers, Introduction to Windows, File and Print Management, Introduction to Email, Introduction to Smartphones and Tablets, Introduction to the Cloud, Introduction to LinkedIn, PantrySoft, and Coursera.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "trainings",
+                "title": "Regular Workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "ab126506-8be2-4c02-9b50-fc09d9cdbd58",
+            "turn_id": "c32ea067-81b1-44eb-ad87-ac3c4608aefe",
+            "client_event_id": "244da0d8-e087-4f56-81a6-0c0127add9c2",
+            "message_ids": {
+              "user": "962ecdbc-86dd-4cb0-94eb-28fcbf5bb0fe",
+              "assistant": "6e3ea65a-1345-4f60-bacc-c35a9a78f1f0"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "spanish_learning_path",
+      "slice": "spanish-retrieval",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-basic-class",
+          "mode": "explicit",
+          "message": "Busco una clase básica de computación en español.",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "fc4f780b-92fc-4874-8d65-72ffc7f203f9",
+          "status": 200,
+          "latency_ms": 437.6,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual.",
+            "reason": "La respuesta viene de una página aprobada.",
+            "sources": [
+              {
+                "id": "service-service-page-alfabetizaci-n-digital-b-sica-en-espa-ol-c9f72881",
+                "title": "Alfabetización Digital Básica en Español | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/alfabetización-digital-básica-en-español"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "es",
+            "response_language": "es",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+            "turn_id": "d6e639d6-c6b5-4f68-a98e-ed1800a458f6",
+            "client_event_id": "fc4f780b-92fc-4874-8d65-72ffc7f203f9",
+            "message_ids": {
+              "user": "748a9dff-df74-44b9-b763-5f09e307c26c",
+              "assistant": "37cbe7e0-705c-43c8-b5c8-c81a8b427868"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-learning",
+          "mode": "deictic",
+          "message": "¿Qué aprendería?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Busco una clase básica de computación en español."
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual."
+            }
+          ],
+          "conversation_id_sent": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+          "client_event_id_sent": "7c3ab10c-9319-440e-a60b-a8c45ff1bba1",
+          "status": 200,
+          "latency_ms": 420.4,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual.",
+            "reason": "La respuesta viene de una página aprobada.",
+            "sources": [
+              {
+                "id": "service-service-page-alfabetizaci-n-digital-b-sica-en-espa-ol-c9f72881",
+                "title": "Alfabetización Digital Básica en Español | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/alfabetización-digital-básica-en-español"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "es",
+            "response_language": "es",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+            "turn_id": "b85ab9ff-1fc8-4570-abbe-4983088334d1",
+            "client_event_id": "7c3ab10c-9319-440e-a60b-a8c45ff1bba1",
+            "message_ids": {
+              "user": "17dd436b-5838-4c5b-b5b7-7d8a315508ec",
+              "assistant": "a9098559-59f4-47c1-b401-b95a84f7bafa"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-email",
+          "mode": "topic_shift",
+          "message": "¿Hay una clase de correo electrónico?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Busco una clase básica de computación en español."
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual."
+            },
+            {
+              "role": "user",
+              "content": "¿Qué aprendería?"
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual."
+            }
+          ],
+          "conversation_id_sent": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+          "client_event_id_sent": "d71ce997-19db-4c47-9a1c-491e9075a8f2",
+          "status": 200,
+          "latency_ms": 218.14,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Encontré: Intro to Email. Abre la página para ver la información actual.",
+            "reason": "La respuesta viene de una página aprobada.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-email-19718065",
+                "title": "Intro to Email | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-email"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "es",
+            "response_language": "es",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+            "turn_id": "6543c3f3-4c57-47f5-a108-35ef2bd5b887",
+            "client_event_id": "d71ce997-19db-4c47-9a1c-491e9075a8f2",
+            "message_ids": {
+              "user": "797efd45-9ab0-4fe1-b284-5231d0f1a209",
+              "assistant": "984ca949-109f-4c6c-9705-7b9ced1df806"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "¿Cómo me registro?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Busco una clase básica de computación en español."
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual."
+            },
+            {
+              "role": "user",
+              "content": "¿Qué aprendería?"
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Alfabetización Digital Básica en Español. Abre la página para ver la información actual."
+            },
+            {
+              "role": "user",
+              "content": "¿Hay una clase de correo electrónico?"
+            },
+            {
+              "role": "assistant",
+              "content": "Encontré: Intro to Email. Abre la página para ver la información actual."
+            }
+          ],
+          "conversation_id_sent": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+          "client_event_id_sent": "b4a0b665-03cf-4188-b364-18cc5923cee4",
+          "status": 200,
+          "latency_ms": 458.06,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Encontré: Reserve A Class. Abre la página para ver la información actual.",
+            "reason": "La respuesta viene de una página aprobada.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "es",
+            "response_language": "es",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "148da2d7-5da6-4e1d-9759-bacd081f9681",
+            "turn_id": "5ab39ad1-6b92-4766-943d-05a4fa9e5f20",
+            "client_event_id": "b4a0b665-03cf-4188-b364-18cc5923cee4",
+            "message_ids": {
+              "user": "13a37d6a-eea7-4480-b3ef-448044f74b2f",
+              "assistant": "ec6945f9-5d9c-412a-b0fb-56b0e2dd9325"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "smartphone_learning_path",
+      "slice": "class-progression",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-intro-smartphone",
+          "mode": "explicit",
+          "message": "Is there a class for learning a new smartphone?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "dfc0df57-6075-4739-9e21-f4c88439c8ba",
+          "status": 200,
+          "latency_ms": 467.82,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This service is not available, please contact for more information. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-smartphones-tablets-28e94905",
+                "title": "Intro to Smartphones/Tablets | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-smartphones-tablets"
+              }
+            ],
+            "related": [
+              {
+                "title": "Review device programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              },
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+            "turn_id": "58f4d9dd-3525-4415-a040-a2ee79ede892",
+            "client_event_id": "dfc0df57-6075-4739-9e21-f4c88439c8ba",
+            "message_ids": {
+              "user": "644d67e2-b4b7-471a-a1b0-963d922af673",
+              "assistant": "547adc7b-7474-4d4f-9707-1edaa9f9961a"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-platforms",
+          "mode": "deictic",
+          "message": "Does it cover Android or Apple phones?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class for learning a new smartphone?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+          "client_event_id_sent": "8743c56e-aca1-4c53-91bc-01ca6750a266",
+          "status": 200,
+          "latency_ms": 326.7,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This class does lean toward Android based devices, but Apple devices are welcome! Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-smartphones-tablets-28e94905",
+                "title": "Intro to Smartphones/Tablets | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-smartphones-tablets"
+              }
+            ],
+            "related": [
+              {
+                "title": "Review device programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              },
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+            "turn_id": "8f992a84-4dc2-4eb1-92d5-8b34a1dc3922",
+            "client_event_id": "8743c56e-aca1-4c53-91bc-01ca6750a266",
+            "message_ids": {
+              "user": "7f4d3c40-8384-49c0-802e-58a9e3a3efc8",
+              "assistant": "c317853a-b193-4703-9724-7c26a01dc8f2"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-next-class",
+          "mode": "deictic",
+          "message": "What should I take after that?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class for learning a new smartphone?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Does it cover Android or Apple phones?"
+            },
+            {
+              "role": "assistant",
+              "content": "This class does lean toward Android based devices, but Apple devices are welcome! Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+          "client_event_id_sent": "659634f1-4dbd-42f1-8864-fe5b080d9250",
+          "status": 200,
+          "latency_ms": 321.05,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Intro to Smartphones/Tablets pt 2. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-smartphones-tablets-pt-2-e43f4eb5",
+                "title": "Intro to Smartphones/Tablets pt 2 | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-smartphones-tablets-pt-2"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+            "turn_id": "0c56c415-c1ab-406d-b304-100cd8ed0c93",
+            "client_event_id": "659634f1-4dbd-42f1-8864-fe5b080d9250",
+            "message_ids": {
+              "user": "42bd219c-15d6-4a6b-99e2-c7e6ffe8df9f",
+              "assistant": "544235b9-e4e3-45b7-ba90-23be3b0fa7cd"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "ask-schedule",
+          "mode": "elliptical",
+          "message": "When is it offered?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class for learning a new smartphone?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Does it cover Android or Apple phones?"
+            },
+            {
+              "role": "assistant",
+              "content": "This class does lean toward Android based devices, but Apple devices are welcome! Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What should I take after that?"
+            },
+            {
+              "role": "assistant",
+              "content": "Intro to Smartphones/Tablets pt 2. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+          "client_event_id_sent": "b378c9e4-e4c7-4d84-8d9b-34f9e5655976",
+          "status": 200,
+          "latency_ms": 334.45,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Detailed information on upcoming trainings being offered by the Fortune Society Digital Equity Program. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "calendar",
+                "title": "Digital Equity calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "clarification",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "9aab336a-1f9d-4512-bcf2-b320c4c22ed3",
+            "turn_id": "be0b8a88-dce7-4d7a-89ea-f331facdd9e0",
+            "client_event_id": "b378c9e4-e4c7-4d84-8d9b-34f9e5655976",
+            "message_ids": {
+              "user": "7ba51ffa-47a0-4a66-b063-ffc1444bc44c",
+              "assistant": "e6e26684-e90d-44f0-bc94-47be10436e73"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "topic_switch_and_context_window",
+      "slice": "context-isolation",
+      "level": "hard",
+      "passed": true,
+      "turns": [
+        {
+          "id": "device-topic",
+          "mode": "explicit",
+          "message": "Can I get a free laptop?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "f619ae74-2a02-47f9-95c4-e4081724d69b",
+          "status": 200,
+          "latency_ms": 395.76,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Laptop distribution is currently on hold. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              },
+              {
+                "title": "Impact | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/impact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "06e0a6d5-423f-46c9-a34f-cedb87af1270",
+            "client_event_id": "f619ae74-2a02-47f9-95c4-e4081724d69b",
+            "message_ids": {
+              "user": "e4dd6678-073e-40b4-8d0c-8d914bbc4b24",
+              "assistant": "d8260d78-cd40-474d-b928-2bec3626baad"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "device-details",
+          "mode": "topic_refinement",
+          "message": "What device programs are listed?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get a free laptop?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "c887db19-57a7-443a-990c-1845bc8ca100",
+          "status": 200,
+          "latency_ms": 422.87,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "devices",
+                "title": "Device Distribution Programs",
+                "url": "https://www.fortunedigitalequity.org/devices"
+              }
+            ],
+            "related": [
+              {
+                "title": "Confirm eligibility with staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              },
+              {
+                "title": "Find device help",
+                "url": "https://www.fortunedigitalequity.org/individual"
+              },
+              {
+                "title": "Impact | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/impact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "0c662692-8270-41e9-8073-c03b2a267fdd",
+            "client_event_id": "c887db19-57a7-443a-990c-1845bc8ca100",
+            "message_ids": {
+              "user": "d2f3020e-08fa-48ad-ab61-f420ca6850d9",
+              "assistant": "80880af4-47bf-48c6-8b68-0c8fc085721d"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-excel",
+          "mode": "topic_shift",
+          "message": "Now I want to learn Excel formulas.",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get a free laptop?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What device programs are listed?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "3184c5d5-9c76-4d8d-a776-020f6f80637d",
+          "status": 200,
+          "latency_ms": 284.25,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formulas-functions-ef3359ca",
+                "title": "Excel - Formulas & Functions | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formulas-functions"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "96971b80-1e0d-4c81-a998-5079f4ff1f6f",
+            "client_event_id": "3184c5d5-9c76-4d8d-a776-020f6f80637d",
+            "message_ids": {
+              "user": "c5fdf603-4855-42f9-9690-1d2d1f48a6e3",
+              "assistant": "e6534886-d5cf-4d61-91bd-49673623d605"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "excel-follow-up",
+          "mode": "deictic",
+          "message": "What else does that class teach?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Can I get a free laptop?"
+            },
+            {
+              "role": "assistant",
+              "content": "Laptop distribution is currently on hold. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What device programs are listed?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Now I want to learn Excel formulas."
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "5810cf6f-5cb8-4854-bc82-a1f4df2a4a6d",
+          "status": 200,
+          "latency_ms": 347.24,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Excel - Formulas & Functions. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formulas-functions-ef3359ca",
+                "title": "Excel - Formulas & Functions | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formulas-functions"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "clarification",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "9e58a40d-e006-4513-9e77-2ffebde557c9",
+            "client_event_id": "5810cf6f-5cb8-4854-bc82-a1f4df2a4a6d",
+            "message_ids": {
+              "user": "5b2c48c8-d3f7-4df4-a49f-8dc53dc8a1f5",
+              "assistant": "597d59a4-7b30-4001-a32d-733518558289"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-canva",
+          "mode": "topic_shift",
+          "message": "Instead, tell me about Intro to Canva.",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What device programs are listed?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information on the various digital device distribution programs that interface with the Fortune Society Digital Equity Program. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Now I want to learn Excel formulas."
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            },
+            {
+              "role": "user",
+              "content": "What else does that class teach?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formulas & Functions. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "0b39435e-e7c7-4aa0-9019-8c6ef56cdda5",
+          "status": 200,
+          "latency_ms": 449.54,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-canva-10a4ab7c",
+                "title": "Intro to Canva | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-canva"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "df527b33-7dd5-49de-9f9a-938b2bc6ded0",
+            "client_event_id": "0b39435e-e7c7-4aa0-9019-8c6ef56cdda5",
+            "message_ids": {
+              "user": "6966c2a2-7d81-43b6-b63a-9e5ba2b8aac8",
+              "assistant": "00a83d53-f873-45ff-b386-d7663060328c"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "canva-follow-up",
+          "mode": "deictic",
+          "message": "What does that cover?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Now I want to learn Excel formulas."
+            },
+            {
+              "role": "assistant",
+              "content": "Formulas can look intimidating at first, but this class breaks them into manageable pieces, beginning with the basic operators, and the order Excel follows when calculating a result."
+            },
+            {
+              "role": "user",
+              "content": "What else does that class teach?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formulas & Functions. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Instead, tell me about Intro to Canva."
+            },
+            {
+              "role": "assistant",
+              "content": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "5ead926d-2475-4513-9df0-e8783ddc761b",
+          "status": 200,
+          "latency_ms": 368.51,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-intro-to-canva-10a4ab7c",
+                "title": "Intro to Canva | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/intro-to-canva"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "ef058b00-9ff7-43b2-a600-cafc6002cf9d",
+            "client_event_id": "5ead926d-2475-4513-9df0-e8783ddc761b",
+            "message_ids": {
+              "user": "4fafb942-22fd-4bee-9b8a-022006db6d5e",
+              "assistant": "e9f45d72-8c29-45b7-a171-c5885882dfe4"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register-latest-topic",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What else does that class teach?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formulas & Functions. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Instead, tell me about Intro to Canva."
+            },
+            {
+              "role": "assistant",
+              "content": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What does that cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "Join this two-part class, where you'll discover what Canva is and why it has become a go-to tool for graphic design. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+          "client_event_id_sent": "df9cef01-0c1b-40ad-81e1-1037a46f519d",
+          "status": 200,
+          "latency_ms": 221.49,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "fbe1ea9a-9453-4938-b12a-eb89e5a7a6f1",
+            "turn_id": "62ee88b6-b3fa-4dc7-a46c-b5342c3612f6",
+            "client_event_id": "df9cef01-0c1b-40ad-81e1-1037a46f519d",
+            "message_ids": {
+              "user": "1460cf9d-00dc-44ce-af96-2f77e6cc5eb3",
+              "assistant": "0274c77e-4d07-40d2-9b5c-b9febae15a59"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "program_partners_impact_contact",
+      "slice": "program-information",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "program-overview",
+          "mode": "explicit",
+          "message": "What is Fortune's Digital Equity Program?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "8a1a76e0-4ce7-4b37-bab2-8633c1a8e605",
+          "status": 200,
+          "latency_ms": 453.0,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "The Digital Equity Program is a resource for the participants of The Fortune Society to receive the support and training necessary for inclusion in our digital world.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "home",
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "page",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+            "turn_id": "5d9f0ce1-a753-459d-bcf5-6de03b7da920",
+            "client_event_id": "8a1a76e0-4ce7-4b37-bab2-8633c1a8e605",
+            "message_ids": {
+              "user": "c39aa793-140e-433d-8c4d-1ffd65c48d33",
+              "assistant": "e95984b2-d5c2-4a78-9b26-165bce9aa471"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "partners",
+          "mode": "deictic",
+          "message": "Who are its partners?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What is Fortune's Digital Equity Program?"
+            },
+            {
+              "role": "assistant",
+              "content": "The Digital Equity Program is a resource for the participants of The Fortune Society to receive the support and training necessary for inclusion in our digital world."
+            }
+          ],
+          "conversation_id_sent": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+          "client_event_id_sent": "91576c37-be38-484e-b028-c613419d434c",
+          "status": 200,
+          "latency_ms": 415.41,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Information about Fortune Digital Equity Program partners.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-about-partners-61dc359f",
+                "title": "Partners | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/partners"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+            "turn_id": "78c3c7b2-b6db-470a-b459-1353033347b7",
+            "client_event_id": "91576c37-be38-484e-b028-c613419d434c",
+            "message_ids": {
+              "user": "cced8dea-ddbd-4efc-a134-590c5c228fb2",
+              "assistant": "756326cc-0731-4ae6-9833-99590960608e"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "impact",
+          "mode": "topic_shift",
+          "message": "What does the impact page say?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What is Fortune's Digital Equity Program?"
+            },
+            {
+              "role": "assistant",
+              "content": "The Digital Equity Program is a resource for the participants of The Fortune Society to receive the support and training necessary for inclusion in our digital world."
+            },
+            {
+              "role": "user",
+              "content": "Who are its partners?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information about Fortune Digital Equity Program partners."
+            }
+          ],
+          "conversation_id_sent": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+          "client_event_id_sent": "694f6110-4821-4ad5-8fba-43408ffccc9c",
+          "status": 200,
+          "latency_ms": 331.72,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Information about the impact and funding of the Fortune Society Digital Equity Program.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-about-impact-4bd24a44",
+                "title": "Impact | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/about/impact"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "navigation",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+            "turn_id": "dde91d74-6e26-441d-83e3-4a93db1aa82b",
+            "client_event_id": "694f6110-4821-4ad5-8fba-43408ffccc9c",
+            "message_ids": {
+              "user": "0328120d-5098-4446-bb1d-aadf1ac24502",
+              "assistant": "886aa795-3aa6-4858-8cfa-4d3381703643"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "contact",
+          "mode": "topic_shift",
+          "message": "Where can I contact the team?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "What is Fortune's Digital Equity Program?"
+            },
+            {
+              "role": "assistant",
+              "content": "The Digital Equity Program is a resource for the participants of The Fortune Society to receive the support and training necessary for inclusion in our digital world."
+            },
+            {
+              "role": "user",
+              "content": "Who are its partners?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information about Fortune Digital Equity Program partners."
+            },
+            {
+              "role": "user",
+              "content": "What does the impact page say?"
+            },
+            {
+              "role": "assistant",
+              "content": "Information about the impact and funding of the Fortune Society Digital Equity Program."
+            }
+          ],
+          "conversation_id_sent": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+          "client_event_id_sent": "90826f0a-275e-4073-934e-0f1d115bf6a7",
+          "status": 200,
+          "latency_ms": 315.27,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Contact information for the Fortune Society Digital Equity Program. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "contact",
+                "title": "Contact Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Digital Equity calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "navigation",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "a06656ab-20f9-42bf-9e9f-319ac377f115",
+            "turn_id": "933eb42a-3e67-495e-b499-7c05471501b0",
+            "client_event_id": "90826f0a-275e-4073-934e-0f1d115bf6a7",
+            "message_ids": {
+              "user": "eb25bb1d-a58b-40ee-a81f-e583b243cdf9",
+              "assistant": "d74cc638-5592-4865-9100-89cba397a689"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "resume_and_job_search",
+      "slice": "class-content",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "find-resume-ai",
+          "mode": "explicit",
+          "message": "Is there a class about writing resumes with AI?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "47a8ba26-2245-401e-bff3-403b0846a43c",
+          "status": 200,
+          "latency_ms": 314.19,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Resume Writing in an AI World. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-resume-writing-in-an-ai-world-3ba97332",
+                "title": "Resume Writing in an AI World | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/resume-writing-in-an-ai-world"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "b1493e7e-6e05-40c0-a612-5f4997962545",
+            "turn_id": "13b7ae9e-1dfe-4eb7-8ad1-72e245e3cbf4",
+            "client_event_id": "47a8ba26-2245-401e-bff3-403b0846a43c",
+            "message_ids": {
+              "user": "1808d2aa-5dda-401c-81a4-607c4e40a7f2",
+              "assistant": "dc9fd43c-c0b3-49ba-9f6b-e63ae0881846"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "resume-coverage",
+          "mode": "deictic",
+          "message": "What does it cover?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class about writing resumes with AI?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resume Writing in an AI World. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "b1493e7e-6e05-40c0-a612-5f4997962545",
+          "client_event_id_sent": "a3fa3aba-3d0e-4853-aa66-d945fcdc56c5",
+          "status": 200,
+          "latency_ms": 380.34,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Resume Writing in an AI World. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-resume-writing-in-an-ai-world-3ba97332",
+                "title": "Resume Writing in an AI World | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/resume-writing-in-an-ai-world"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "b1493e7e-6e05-40c0-a612-5f4997962545",
+            "turn_id": "42b0b01f-f306-441e-8470-7a1f50ed2b2f",
+            "client_event_id": "a3fa3aba-3d0e-4853-aa66-d945fcdc56c5",
+            "message_ids": {
+              "user": "c93d9e33-2ef9-4d4d-9fc4-815de42f55a2",
+              "assistant": "86b9c4c6-2ba2-47b6-be9b-81635a59d0a5"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "switch-job-search",
+          "mode": "topic_shift",
+          "message": "Is there also a class on job searching online?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class about writing resumes with AI?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resume Writing in an AI World. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What does it cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resume Writing in an AI World. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "b1493e7e-6e05-40c0-a612-5f4997962545",
+          "client_event_id_sent": "bc023f52-6ca3-4c0f-be4c-4cb79994d8d4",
+          "status": 200,
+          "latency_ms": 347.33,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This service is not available, please contact for more information. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-job-searching-online-d936362e",
+                "title": "Job Searching Online | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/job-searching-online"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "b1493e7e-6e05-40c0-a612-5f4997962545",
+            "turn_id": "cf9051cc-d75f-40bb-947f-f5f983f5add0",
+            "client_event_id": "bc023f52-6ca3-4c0f-be4c-4cb79994d8d4",
+            "message_ids": {
+              "user": "70579589-a134-49e9-a8dd-d115fc2cdbc2",
+              "assistant": "696711d9-7a7e-4993-aa7f-8412d7bd6702"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Is there a class about writing resumes with AI?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resume Writing in an AI World. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What does it cover?"
+            },
+            {
+              "role": "assistant",
+              "content": "Resume Writing in an AI World. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Is there also a class on job searching online?"
+            },
+            {
+              "role": "assistant",
+              "content": "This service is not available, please contact for more information. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "b1493e7e-6e05-40c0-a612-5f4997962545",
+          "client_event_id_sent": "46c434b1-3970-4b09-99c3-d1d0f89a8898",
+          "status": 200,
+          "latency_ms": 336.88,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "b1493e7e-6e05-40c0-a612-5f4997962545",
+            "turn_id": "900f9289-90cf-4d68-9722-fe7e7c9c2102",
+            "client_event_id": "46c434b1-3970-4b09-99c3-d1d0f89a8898",
+            "message_ids": {
+              "user": "8b832b85-a951-4dbe-81f6-06988375a13d",
+              "assistant": "800f2dc7-70bf-410d-a746-f97e0543e463"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_source_selection",
+      "slice": "model-retrieval",
+      "level": "release",
+      "passed": true,
+      "turns": [
+        {
+          "id": "ambiguous-excel-sources",
+          "mode": "explicit",
+          "message": "Which Excel class covers formatting and organizing data?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [],
+          "conversation_id_sent": null,
+          "client_event_id_sent": "312a454e-9db6-4fb7-876d-3cf5ab59ec51",
+          "status": 200,
+          "latency_ms": 1309.08,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "Excel - Formatting Data. Check the live page for current details.",
+            "reason": "The visible facts come from the approved page record.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formatting-data-6b619834",
+                "title": "Excel - Formatting Data | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formatting-data"
+              },
+              {
+                "id": "service-service-page-excel-organizing-data-29daccf5",
+                "title": "Excel - Organizing Data | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-organizing-data"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Register for a class",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": true,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "opening",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+            "turn_id": "9aa70b57-c433-4359-891b-6ffcbe1a8c94",
+            "client_event_id": "312a454e-9db6-4fb7-876d-3cf5ab59ec51",
+            "message_ids": {
+              "user": "76f4a238-9fbf-49c6-a044-3dac9e7e9ad1",
+              "assistant": "53c55fb5-f7b6-4481-8c85-42e727c7f7d5"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "formatting-facet",
+          "mode": "topic_refinement",
+          "message": "Which one covers making numbers and dates easier to read?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which Excel class covers formatting and organizing data?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formatting Data. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+          "client_event_id_sent": "f8dc20f1-e969-4a00-bb78-97e6cd5c2a51",
+          "status": 200,
+          "latency_ms": 365.24,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "You’ll practice formatting titles, headers, text, numbers, dates, times, currency, and percentages, while exploring alignment, wrapping, merging, fills, borders, and cell styles. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-formatting-data-6b619834",
+                "title": "Excel - Formatting Data | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-formatting-data"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+            "turn_id": "db67bd43-7593-495d-b573-faeb20d9ef48",
+            "client_event_id": "f8dc20f1-e969-4a00-bb78-97e6cd5c2a51",
+            "message_ids": {
+              "user": "6f7b5ed5-2e4c-4f74-a21a-6f76b8f8e6d2",
+              "assistant": "025f37d7-ece3-4588-a806-b091245111f7"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "organizing-facet",
+          "mode": "topic_shift",
+          "message": "What about sorting and removing duplicate records?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which Excel class covers formatting and organizing data?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formatting Data. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Which one covers making numbers and dates easier to read?"
+            },
+            {
+              "role": "assistant",
+              "content": "You’ll practice formatting titles, headers, text, numbers, dates, times, currency, and percentages, while exploring alignment, wrapping, merging, fills, borders, and cell styles. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+          "client_event_id_sent": "8fc87205-b777-4ec5-91e2-1812ea483bfb",
+          "status": 200,
+          "latency_ms": 373.79,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "You’ll also practice clearing filters, converting a table back to a range, and removing duplicate records so your information stays useful rather than overwhelming. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "service-service-page-excel-organizing-data-29daccf5",
+                "title": "Excel - Organizing Data | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/service-page/excel-organizing-data"
+              }
+            ],
+            "related": [
+              {
+                "title": "Browse workshops",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Practice digital skills",
+                "url": "https://www.fortunedigitalequity.org/practice"
+              },
+              {
+                "title": "Ask Digital Equity staff",
+                "url": "https://www.fortunedigitalequity.org/contact"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "retrieval",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+            "turn_id": "707e5fa8-1ef9-4cfb-b65b-d20766696c9e",
+            "client_event_id": "8fc87205-b777-4ec5-91e2-1812ea483bfb",
+            "message_ids": {
+              "user": "9d9d4c6c-bf65-48a6-b727-234aa04ba72d",
+              "assistant": "da33fe81-8357-4b8c-80ee-86f487d80c2f"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        },
+        {
+          "id": "register",
+          "mode": "procedure",
+          "message": "How do I register?",
+          "page_context": {
+            "url": "https://www.fortunedigitalequity.org/",
+            "title": "The Fortune Society | Digital Equity Program"
+          },
+          "history_sent": [
+            {
+              "role": "user",
+              "content": "Which Excel class covers formatting and organizing data?"
+            },
+            {
+              "role": "assistant",
+              "content": "Excel - Formatting Data. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "Which one covers making numbers and dates easier to read?"
+            },
+            {
+              "role": "assistant",
+              "content": "You’ll practice formatting titles, headers, text, numbers, dates, times, currency, and percentages, while exploring alignment, wrapping, merging, fills, borders, and cell styles. Check the live page for current details."
+            },
+            {
+              "role": "user",
+              "content": "What about sorting and removing duplicate records?"
+            },
+            {
+              "role": "assistant",
+              "content": "You’ll also practice clearing filters, converting a table back to a range, and removing duplicate records so your information stays useful rather than overwhelming. Check the live page for current details."
+            }
+          ],
+          "conversation_id_sent": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+          "client_event_id_sent": "9ea3a1f2-3710-451e-b463-dedd19682e6b",
+          "status": 200,
+          "latency_ms": 364.03,
+          "transport_error": null,
+          "passed": true,
+          "failures": [],
+          "response": {
+            "kind": "answer",
+            "message": "This page lists classes and registration links. Check the live page for current details.",
+            "reason": "From an approved Fortune page.",
+            "sources": [
+              {
+                "id": "page-reserve-0f176b4b",
+                "title": "Reserve A Class | FS Digital Equity",
+                "url": "https://www.fortunedigitalequity.org/reserve"
+              }
+            ],
+            "related": [
+              {
+                "title": "View the current calendar",
+                "url": "https://www.fortunedigitalequity.org/calendar"
+              },
+              {
+                "title": "Browse workshop levels",
+                "url": "https://www.fortunedigitalequity.org/trainings"
+              },
+              {
+                "title": "Digital Equity home",
+                "url": "https://www.fortunedigitalequity.org/"
+              }
+            ],
+            "choices": [],
+            "handoff_url": "https://www.fortunedigitalequity.org/contact",
+            "model": "glm-5.2",
+            "model_called": false,
+            "retrieval_scope": "site",
+            "continuation": {
+              "label": "Ask the live guide",
+              "available": true
+            },
+            "chat_stage": "follow_up",
+            "request_kind": "procedure",
+            "request_language": "en",
+            "response_language": "en",
+            "prompt_policy_version": "2026-08-12-v4",
+            "conversation_id": "8dce2693-a2b9-4227-86e9-c6c6b636f12b",
+            "turn_id": "a8ce2f00-bab9-4903-8044-147bc69f87f5",
+            "client_event_id": "9ea3a1f2-3710-451e-b463-dedd19682e6b",
+            "message_ids": {
+              "user": "cacc9d58-6ba9-4604-ab67-059ed6b9c9d0",
+              "assistant": "77b45029-6686-433e-8bb5-2b4bf9ea0420"
+            },
+            "capture": {
+              "mode": "none",
+              "stored": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

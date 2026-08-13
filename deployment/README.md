@@ -61,6 +61,6 @@ The server returns this response shape:
 }
 ```
 
-The first request omits `conversation_id` and `conversation_token`. The server issues both; subsequent turns return them unchanged. A client retains one random `client_event_id` until it receives a definitive result, making network retries idempotent. An ambiguous request returns `kind: "clarify"`, one short question in `message`, and two or three `{ "label", "prompt" }` choices. Every response includes at least one approved source and one related route. The interface keeps the question form available and offers `handoff_url` when the guide cannot resolve the request.
+The first request omits `conversation_id` and `conversation_token`. The server issues both; subsequent turns return them unchanged. A client retains one random `client_event_id` until it receives a definitive result, making network retries idempotent. An ambiguous request returns `kind: "clarify"`, one short question in `message`, and two or three `{ "label", "prompt" }` choices. Factual answers include an approved source; clarification can omit sources when its validated buttons are the safer next step. The interface keeps the question form available and offers `handoff_url` when the guide cannot resolve the request.
 
 Conversation capture, Railway staging, retention, and the evaluator-dashboard sequence are defined in [CONVERSATION-CAPTURE.md](CONVERSATION-CAPTURE.md).
