@@ -454,6 +454,7 @@ IMPACT_ID = source_id_for_path("/about/impact")
 INTRO_EMAIL_ID = source_id_for_path("/service-page/intro-to-email")
 ADVANCED_EMAIL_ID = source_id_for_path("/service-page/advanced-email")
 EMAIL_PART_TWO_ID = source_id_for_path("/service-page/intro-to-email-pt-2")
+INTRO_COMPUTERS_ID = source_id_for_path("/service-page/intro-to-computers")
 INTRO_CANVA_ID = source_id_for_path("/service-page/intro-to-canva")
 CANVA_DESIGN_TOOLS_ID = source_id_for_path("/service-page/canva-design-tools")
 INTRO_SMARTPHONE_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets")
@@ -762,6 +763,11 @@ def likely_source_ids(text, fallback=True):
     ):
         add(INTRO_EMAIL_ID)
     if (
+        "computer" in word_set
+        and word_set.intersection({"barely", "beginner", "basic", "intro", "introduction", "starting"})
+    ):
+        add(INTRO_COMPUTERS_ID)
+    if (
         "canva" in word_set
         and "design" in word_set
         and word_set.intersection({"background", "experience", "prior"})
@@ -809,8 +815,12 @@ def likely_source_ids(text, fallback=True):
     ):
         add(TECH_FAIR_QA_ID)
     if (
-        word_set.intersection({"espanol", "spanish"})
-        and word_set.intersection({"alfabetizacion", "basic", "basica", "computacion"})
+        (
+            word_set.intersection({"espanol", "spanish"})
+            and word_set.intersection({"alfabetizacion", "basic", "basica", "computacion"})
+        )
+        or word_set.intersection({"alfabetizacion", "computacion"})
+        and word_set.intersection({"basic", "basica"})
     ):
         add(SPANISH_BASIC_ID)
     if re.search(r"\b(?:what is|about|explain)\b.*\bdigital equity program\b", lowered):

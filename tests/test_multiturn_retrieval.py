@@ -91,12 +91,14 @@ class MultiTurnRetrievalTests(unittest.TestCase):
 
     def test_specific_class_questions_prefer_specific_pages(self):
         expected = {
+            "I barely know how to use a computer. Is there a beginner class?": server.INTRO_COMPUTERS_ID,
             "I want to learn email from the beginning. What class fits?": server.INTRO_EMAIL_ID,
             "Does Fortune have a beginner Canva class?": server.INTRO_CANVA_ID,
             "Is there a class for learning a new smartphone?": server.INTRO_SMARTPHONE_ID,
             "Is there a class about writing resumes with AI?": server.RESUME_AI_ID,
             "Now I want to learn Excel formulas.": server.EXCEL_FORMULAS_ID,
             "Is there also a class on job searching online?": server.JOB_SEARCH_ID,
+            "Busco una clase básica de computación.": server.SPANISH_BASIC_ID,
         }
         for question, source_id in expected.items():
             with self.subTest(question=question):
