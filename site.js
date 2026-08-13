@@ -21,6 +21,38 @@
     byUrl: new Map(),
     current: null,
   };
+  const GUIDE_CONTEXT_PAGES = [
+    {
+      id: "trainings",
+      title: "Regular Workshops",
+      url: TRAININGS_URL,
+      description: "Beginner, intermediate, and advanced digital-skills workshops.",
+      blocks: ["Use the live workshop page for current topics and prerequisites."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+    {
+      id: "individual",
+      title: "Individual Support",
+      url: INDIVIDUAL_URL,
+      description: "One-to-one tutoring, computer-lab access, and technical support.",
+      blocks: ["Use the live support page for current hours and appointments."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+    {
+      id: "contact",
+      title: "Contact Digital Equity",
+      url: CONTACT_URL,
+      description: "Official contact information for Fortune’s Digital Equity team.",
+      blocks: ["Use the official contact page for personal help."],
+      authority: "answer",
+      status: 200,
+      volatile: true,
+    },
+  ];
   const memberSignedOut = document.querySelector("#member-signed-out");
   const memberProfile = document.querySelector("#member-profile");
 
@@ -30,6 +62,11 @@
     /every website has a story/i,
     /Description UNDER DEVELOPMENT/i,
     /use tab to navigate/i,
+    /^icon representing\b/i,
+    /^(?:image|photo|photograph)\s+(?:of|showing)\b/i,
+    /^a digital navigator helping\b/i,
+    /^participant being helped\b/i,
+    /^the crowd at the annual fortune society tech fair\b/i,
   ];
 
   function canonicalUrl(value) {
@@ -162,14 +199,38 @@
 
   function ambiguityAnswer(question, current) {
     const compact = cleanText(question).toLowerCase().replace(/[?.!]/g, "");
+    const words = new Set(compact.match(/[a-z0-9]+/g) || []);
+    const specificRequestTerms = new Set([
+      "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
+      "training", "trainings", "course", "courses", "register", "registration", "calendar",
+      "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
+      "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
+      "eligibility", "eligible", "lifeline",
+    ]);
+    const genericRequestTerms = new Set([
+      "start", "started", "begin", "help", "support", "assistance", "program", "programs",
+      "service", "services", "option", "options", "available", "offered", "offer",
+    ]);
     let message = "";
     let choices = [];
-    if (["help", "i need help", "support", "i need support"].includes(compact)) {
-      message = "What would you like help with: learning a skill, using a device, or reaching staff?";
+    const broadStartOrHelp = [
+      "help", "i need help", "i want help", "can i get help", "support", "i need support",
+      "how can you help me", "what can you help with", "how do i get started", "how can i get started",
+      "i want to get started", "i want to start", "where do i start", "where do i begin",
+      "where should i begin", "what can i do", "what can i do here", "what are the options",
+      "what is available", "what is offered", "what programs are available", "what services are available",
+      "what is the program", "what does the program do",
+    ].includes(compact) || /^(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)$/.test(compact)
+      || /^how (?:can|do) i (?:get )?(?:started|begin)$/.test(compact)
+      || (words.size <= 13
+        && [...words].some(word => genericRequestTerms.has(word))
+        && ![...words].some(word => specificRequestTerms.has(word)));
+    if (broadStartOrHelp) {
+      message = "What do you want to start with?";
       choices = [
-        { label: "Learn a skill", prompt: "I want to learn a digital skill." },
-        { label: "Use a device", prompt: "I need help using a device." },
-        { label: "Reach staff", prompt: "I want to contact Digital Equity staff." },
+        { label: "Take a class", prompt: "Classes" },
+        { label: "Get a device", prompt: "I need information about getting a device." },
+        { label: "Talk to staff", prompt: "I want to contact Digital Equity staff." },
       ];
     } else if (/^(?:a |the )?(?:device|computer|phone|laptop)$/.test(compact)) {
       message = "Do you need a device, help learning to use one, or help with a problem?";
@@ -178,12 +239,12 @@
         { label: "Learn to use it", prompt: "I want to learn how to use a device." },
         { label: "Solve a problem", prompt: "I need help with a device problem." },
       ];
-    } else if (/^(?:a |the )?(?:class|classes|training|workshop|workshops)$/.test(compact)) {
-      message = "Are you looking for beginner skills, job-related skills, or a particular topic?";
+    } else if (/^(?:(?:a |the )?(?:class|classes|training|workshop|workshops)|i want to find a digital skills class)$/.test(compact)) {
+      message = "What do you need?";
       choices = [
-        { label: "Beginner skills", prompt: "I am looking for a beginner digital skills class." },
-        { label: "Job-related skills", prompt: "I want a class related to work or job searching." },
-        { label: "A topic", prompt: "I want to ask about a particular class topic." },
+        { label: "Class topics", prompt: "Class topics" },
+        { label: "Dates & locations", prompt: "Dates & locations" },
+        { label: "Register", prompt: "Register" },
       ];
     }
     if (!message) return null;
@@ -203,6 +264,32 @@
   function staticAnswer(question, current = state.current) {
     const ambiguous = ambiguityAnswer(question, current);
     if (ambiguous) return ambiguous;
+
+    const guidedPrompt = cleanText(question).toLowerCase().replace(/[?.!&]/g, " ").replace(/\s+/g, " ").trim();
+    const guidedDestination = {
+      "class topics": RESERVE_URL,
+      "dates locations": CALENDAR_URL,
+      register: RESERVE_URL,
+    }[guidedPrompt];
+    if (guidedDestination) {
+      const page = state.byUrl.get(canonicalUrl(guidedDestination));
+      const message = guidedPrompt === "dates locations"
+        ? "The calendar lists current class dates and locations."
+        : guidedPrompt === "register"
+          ? "The class catalog has registration links."
+          : "The class catalog lists current workshop topics.";
+      return {
+        kind: "answer",
+        message,
+        reason: "The answer uses the selected public class page.",
+        choices: [],
+        sources: [linkRecord(guidedDestination)],
+        related: [linkRecord(guidedDestination, page ? cleanTitle(page.title) : "Open class information")],
+        handoff_url: CONTACT_URL,
+        model_called: false,
+        retrieval_scope: "site",
+      };
+    }
 
     const localEvidence = currentPageCanAnswer(question, current);
     const ranked = localEvidence ? [] : rankPages(question, current);
@@ -282,7 +369,7 @@
     const blocks = document.querySelector("#page-blocks");
     const liveLink = document.querySelector("#live-page-link");
 
-    document.title = `${title} · Digital Equity guide demonstration`;
+    document.title = `${title} · Website Guide demo`;
     document.body.dataset.page = pathFor(page.url);
     document.body.dataset.sourceUrl = page.url;
     heading.textContent = title;
@@ -352,6 +439,12 @@
     state.index = await response.json();
     state.pages = Array.isArray(state.index.pages) ? state.index.pages : [];
     state.pages.forEach(page => state.byUrl.set(canonicalUrl(page.url), page));
+    GUIDE_CONTEXT_PAGES.forEach(page => {
+      const url = canonicalUrl(page.url);
+      if (state.byUrl.has(url)) return;
+      state.pages.push(page);
+      state.byUrl.set(url, page);
+    });
     const page = state.byUrl.get(selectedUrl()) || state.byUrl.get(`${SITE_ORIGIN}/`) || state.pages[0];
     if (!page) throw new Error("No public page records are available.");
     renderPage(page);

@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 
 const require = createRequire(import.meta.url);
 const TESTS = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +14,50 @@ const index = JSON.parse(readFileSync(join(DEMO, "site-index.json"), "utf8"));
 const pages = index.pages;
 const byPath = new Map(pages.map(page => [new URL(page.url).pathname, page]));
 
+function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
+  const messages = [];
+  let clickHandler = null;
+  const panel = { hidden: panelHidden };
+  const parent = {
+    postMessage(message, origin) { messages.push({ message, origin }); },
+  };
+  const location = {
+    search: "?embed=1",
+    origin: "https://zmuhls.github.io",
+    href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?embed=1",
+  };
+  const window = {
+    parent,
+    location,
+    addEventListener() {},
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector === "#guide-panel") return panel;
+      return null;
+    },
+    addEventListener(type, handler) {
+      if (type === "click") clickHandler = handler;
+    },
+  };
+  class MutationObserver {
+    constructor() {}
+    observe() {}
+  }
+  runInNewContext(
+    readFileSync(join(DEMO, "embed-frame.js"), "utf8"),
+    { window, document, MutationObserver, URL, URLSearchParams },
+  );
+  if (anchor && clickHandler) {
+    clickHandler({
+      target: { closest: () => anchor },
+      preventDefault() {},
+      stopImmediatePropagation() {},
+    });
+  }
+  return messages;
+}
+
 test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.canonicalUrl("https://fortunedigitalequity.org/devices/?x=1#top"), "https://www.fortunedigitalequity.org/devices");
   assert.equal(Core.canonicalUrl("/about/"), "https://www.fortunedigitalequity.org/about");
@@ -20,7 +65,7 @@ test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.pathFor("https://www.fortunedigitalequity.org/"), "/");
 });
 
-test("all 184 routes receive one of the reviewed page families", () => {
+test("all 200 routes receive one of the reviewed page families", () => {
   const counts = {};
   for (const page of pages) {
     const family = Core.pageFamily(page);
@@ -28,16 +73,16 @@ test("all 184 routes receive one of the reviewed page families", () => {
   }
   assert.deepEqual(counts, {
     program: 4,
-    excluded: 17,
+    excluded: 27,
     action: 6,
-    directory: 8,
-    support: 2,
-    event: 7,
-    archive: 13,
-    news: 7,
-    service: 120,
+    directory: 7,
+    support: 1,
+    event: 6,
+    archive: 21,
+    news: 9,
+    service: 119,
   });
-  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 184);
+  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 200);
 });
 
 test("every page has a tailored heading, placeholder, and exactly two prompts", () => {
@@ -53,13 +98,29 @@ test("every page has a tailored heading, placeholder, and exactly two prompts", 
   assert.equal(Core.starterFor(byPath.get("/service-page/intro-to-computers")).suggestions[0], "What does this class cover?");
 });
 
+test("starter prompts keep their full question while exposing compact button labels", () => {
+  assert.equal(Core.suggestionLabel("What is the main information here?"), "Page summary");
+  assert.equal(Core.suggestionLabel("Where should I go next?"), "Next step");
+  assert.equal(Core.suggestionLabel("What does this class cover?"), "Class details");
+  assert.equal(Core.suggestionLabel("I need information about getting a device"), "Get a device");
+  assert.equal(Core.suggestionLabel("Where and when are current classes?"), "Class times");
+
+  for (const page of pages) {
+    for (const prompt of Core.starterFor(page).suggestions) {
+      const label = Core.suggestionLabel(prompt);
+      assert.ok(label.length > 0 && label.length <= 32, `${page.url}: ${label}`);
+      assert.equal(/[?!.]$/.test(label), false, `${page.url}: ${label}`);
+    }
+  }
+});
+
 test("current-page evidence is recognized before a wider search", () => {
   const devices = byPath.get("/devices");
-  const trainings = byPath.get("/trainings");
+  const calendar = byPath.get("/calendar");
   assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", devices), true);
-  assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", trainings), false);
-  assert.equal(Core.currentPageCanAnswer("What does this page say?", trainings), true);
-  assert.equal(Core.currentPageCanAnswer("What is the zzyzx quasar permit policy?", trainings), false);
+  assert.equal(Core.currentPageCanAnswer("Can I get a free laptop?", calendar), false);
+  assert.equal(Core.currentPageCanAnswer("What does this page say?", calendar), true);
+  assert.equal(Core.currentPageCanAnswer("What is the zzyzx quasar permit policy?", calendar), false);
 });
 
 test("excluded, archived, and partial records can never become current-page evidence", () => {
@@ -72,6 +133,8 @@ test("six-digit Fortune ID patterns are detected after Unicode normalization", (
   for (const value of [
     "123456",
     "123-456",
+    "123–456",
+    "123—456",
     "123 456",
     "１２３４５６",
     "١٢٣٤٥٦",
@@ -96,12 +159,24 @@ test("other obvious personal-information forms are held", () => {
 });
 
 test("redaction removes every six-digit representation from display text", () => {
-  for (const value of ["123456", "123-456", "123 456", "１２３４５６", "١٢٣٤٥٦"]) {
+  for (const value of ["123456", "123-456", "123–456", "123—456", "123 456", "１２３４５６", "١٢٣٤٥٦"]) {
     const redacted = Core.redactSixDigitValues(`ID ${value}`);
     assert.equal(redacted.includes("123456"), false, value);
     assert.equal(redacted.includes("123-456"), false, value);
     assert.match(redacted, /\[six-digit ID removed\]/);
   }
+});
+
+test("editing the latest exchange branches from the preceding bounded history", () => {
+  const history = [
+    { role: "user", content: "First question" },
+    { role: "assistant", content: "First answer" },
+    { role: "user", content: "Latest question" },
+    { role: "assistant", content: "Latest answer" },
+  ];
+  assert.deepEqual(Core.historyBeforeLatestExchange(history), history.slice(0, 2));
+  assert.deepEqual(Core.historyBeforeLatestExchange([]), []);
+  assert.deepEqual(Core.historyBeforeLatestExchange(null), []);
 });
 
 test("mock hrefs preserve the repository base for root and nested routes", () => {
@@ -123,4 +198,29 @@ test("destination labels stay grammatical", () => {
 test("public text cleanup removes duplicated sentences and source-title suffixes", () => {
   assert.equal(Core.cleanText("Great , start here.  Great , start here."), "Great, start here.");
   assert.equal(Core.cleanTitle("Devices | FS Digital Equity"), "Devices");
+});
+
+test("embedded guide reports an open panel before an answer expands it", () => {
+  const messages = runEmbedBridge({ panelHidden: false });
+  assert.equal(messages[0].message.type, "fortune-sidecar-state");
+  assert.equal(messages[0].message.expanded, true);
+  assert.equal(messages[0].origin, "https://zmuhls.github.io");
+});
+
+test("embedded guide sends source and query-based destinations to its parent", () => {
+  const declared = runEmbedBridge({
+    anchor: {
+      href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?page=%2Fabout&open=1",
+      dataset: { mockUrl: "https://www.fortunedigitalequity.org/about" },
+    },
+  });
+  assert.equal(declared.at(-1).message.url, "https://www.fortunedigitalequity.org/about?open=1");
+
+  const queryFallback = runEmbedBridge({
+    anchor: {
+      href: "https://zmuhls.github.io/fortune-digital-equity-guide-demo/sidecar.html?page=%2Fcalendar",
+      dataset: {},
+    },
+  });
+  assert.equal(queryFallback.at(-1).message.url, "https://www.fortunedigitalequity.org/calendar");
 });

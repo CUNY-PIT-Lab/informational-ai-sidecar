@@ -1,0 +1,16 @@
+{
+  "name": "fortune-digital-equity-guide-demo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "capture:replica": "node scripts/capture_replica.mjs",
+    "test:snapshots": "node --test tests/test_snapshot_generator.mjs"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "playwright": "1.62.1"
+  }
+}

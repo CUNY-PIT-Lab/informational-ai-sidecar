@@ -22,6 +22,36 @@
     "my", "of", "on", "or", "please", "the", "this", "to", "want", "what",
     "when", "where", "which", "with", "you", "your",
   ]);
+  const SUGGESTION_LABELS = Object.freeze({
+    "What is the main information here?": "Page summary",
+    "Where should I go next?": "Next step",
+    "What does this class cover?": "Class details",
+    "What should I take before or after it?": "Related classes",
+    "Help me choose an option": "Choose an option",
+    "What should I do next?": "Next step",
+    "I need information about getting a device": "Get a device",
+    "I need help using a device": "Device help",
+    "What individual support is available?": "Available support",
+    "Where can I check current hours?": "Current hours",
+    "Where and when are current classes?": "Class times",
+    "Which class should I look for?": "Choose a class",
+    "How does registration work?": "Registration",
+    "Where can I confirm current sessions?": "Current sessions",
+    "How can I reach Digital Equity staff?": "Contact staff",
+    "Which page should I use first?": "Start here",
+    "How do I use this page?": "Use this page",
+    "Where can I confirm current information?": "Current information",
+    "What does this event page describe?": "Event details",
+    "Where can I confirm current details?": "Current details",
+    "Where is the current version?": "Current version",
+    "Take me to current Digital Equity information": "Current information",
+    "Take me to current services": "Current services",
+    "How do I contact Digital Equity staff?": "Contact staff",
+    "Where are current programs listed?": "Current programs",
+    "Take me to the current calendar": "Calendar",
+    "What does the program offer?": "Program overview",
+    "How can I get started?": "Get started",
+  });
 
   function canonicalUrl(value) {
     try {
@@ -150,6 +180,11 @@
     };
   }
 
+  function suggestionLabel(value) {
+    const prompt = cleanText(value);
+    return SUGGESTION_LABELS[prompt] || prompt.replace(/[?!.]+$/, "").slice(0, 32);
+  }
+
   function normalizeTokens(value) {
     return (String(value || "").normalize("NFKD").toLowerCase().match(/[a-z0-9]+/g) || [])
       .filter(token => token.length > 1 && !STOPWORDS.has(token));
@@ -202,7 +237,7 @@
     const normalized = normalizeDigits(value);
     const patterns = [
       /(?<!\d)\d{6}(?!\d)/,
-      /(?<!\d)\d{3}[-. ]\d{3}(?!\d)/,
+      /(?<!\d)\d{3}[-‐‑‒–—.\s]?\d{3}(?!\d)/,
       /\b\d{3}[-. ]?\d{2}[-. ]?\d{4}\b/,
       /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i,
       /\b(?:my|their|participant'?s?)\s+(?:fortune\s+)?(?:id|case number|name|address|phone|email)\b/i,
@@ -214,8 +249,12 @@
 
   function redactSixDigitValues(value) {
     return normalizeDigits(value)
-      .replace(/(?<!\d)\d{3}[-. ]\d{3}(?!\d)/g, "[six-digit ID removed]")
+      .replace(/(?<!\d)\d{3}[-‐‑‒–—.\s]?\d{3}(?!\d)/g, "[six-digit ID removed]")
       .replace(/(?<!\d)\d{6}(?!\d)/g, "[six-digit ID removed]");
+  }
+
+  function historyBeforeLatestExchange(value) {
+    return Array.isArray(value) ? value.slice(0, -2) : [];
   }
 
   function hrefFor(value, options = {}) {
@@ -246,6 +285,7 @@
     deicticPageQuestion,
     destinationLabel,
     evidenceFor,
+    historyBeforeLatestExchange,
     hrefFor,
     normalizeDigits,
     normalizeTokens,
@@ -254,5 +294,6 @@
     personalInformationDetected,
     redactSixDigitValues,
     starterFor,
+    suggestionLabel,
   };
 });

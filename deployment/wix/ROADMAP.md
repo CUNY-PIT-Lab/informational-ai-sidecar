@@ -31,7 +31,7 @@ The browser sends the visitor's question, up to six recent in-memory messages, a
 }
 ```
 
-The backend resolves `page_context` against the approved site index and never treats browser-supplied text as a factual source. It sanitizes `history`, checks the current page first, and sends only that page record to the model when it can answer the question. It searches the broader approved index only when the current page lacks the required information. If neither scope contains evidence, it skips the model call and returns a staff route.
+The backend resolves `page_context` against the approved site index and never treats browser-supplied text as a factual source. It sanitizes `history`, checks the current page first, and searches the broader approved index only when that page lacks the required information. A reusable selector may see the resolved question and bounded approved candidates, but it can return only one allowed source ID or `ASK`; raw history and participant-facing answer prose stay outside that contract. If neither scope contains evidence, the backend skips the model call and returns a staff route.
 
 ## Optional Copilot Studio evaluation
 
@@ -59,7 +59,7 @@ This bridge does not run the source-first retrieval ladder or privacy hold imple
 - Add a safe related route when the response lacks one. Use a page-specific continuation when available and the Digital Equity contact page for unresolved questions.
 - Return staff handoff for low-confidence, eligibility, enrollment, schedule, and case-specific questions.
 - Avoid query logging by default. If Fortune later approves evaluation logging, document purpose, fields, retention, access, and deletion before enabling it.
-- Return the exact shared fields: `kind`, `message`, `reason`, `sources`, `related`, `choices`, `handoff_url`, `model`, `model_called`, and `continuation`.
+- Return the shared answer fields plus server-issued conversation, turn, event, and message IDs, the signed continuation token, and capture status described in [`../CONVERSATION-CAPTURE.md`](../CONVERSATION-CAPTURE.md).
 - Use `model_called` for status. A response can name the configured `model` while reporting that no model call occurred.
 
 ## No-dead-end interface checks
@@ -78,7 +78,7 @@ Automated tests should fail when an evidence-backed response has an empty `sourc
 
 ### 1. Local and hosted demonstration
 
-Complete the page-first retrieval ladder, broader-site fallback, ambiguity fixtures, source validation, and no-dead-end tests in the current demo. The static GitHub Pages demonstration can use the source-backed browser fallback; enabling the live model on the public demonstration also requires a reachable backend with the Pages origin explicitly allowed.
+Complete the page-first retrieval ladder, broader-site routing, ambiguity fixtures, source validation, and no-dead-end tests in the current demo. The static GitHub Pages remain readable when chat is unavailable, but the browser must not substitute an unlogged chat answer. Enabling the live model on the public demonstration also requires a reachable backend with the Pages origin explicitly allowed.
 
 ### 2. Wix test installation
 
