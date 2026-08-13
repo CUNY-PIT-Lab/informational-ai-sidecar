@@ -402,8 +402,6 @@ a:hover { text-decoration-thickness: 2px; }
   font-weight: 700;
 }
 .chat-edit-button:hover { border-color: var(--guide-line); background: var(--guide-paper); }
-.answer-choices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
-.answer-choices button,
 .chat-suggestions button {
   min-height: 44px;
   padding: 0 12px;
@@ -417,8 +415,22 @@ a:hover { text-decoration-thickness: 2px; }
   line-height: 1.35;
   text-align: left;
 }
-.answer-choices button:hover,
 .chat-suggestions button:hover { border-color: var(--guide-ink); color: var(--guide-paper); background: var(--guide-ink); }
+.answer-choice-select {
+  width: min(100%, 220px);
+  min-height: 40px;
+  margin-top: 3px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--guide-line);
+  border-radius: 0;
+  color: var(--guide-muted);
+  background: transparent;
+  cursor: pointer;
+  font: 700 12px/1.35 "Avenir Next", Avenir, "Segoe UI", sans-serif;
+}
+.answer-choice-select:hover { border-color: var(--guide-ink); color: var(--guide-ink); }
+.answer-choice-select:disabled { opacity: .55; cursor: wait; }
 .chat-destination {
   min-height: 44px;
   display: inline-flex;

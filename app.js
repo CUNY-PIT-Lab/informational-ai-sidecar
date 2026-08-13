@@ -144,17 +144,23 @@
     article.append(meta, body);
 
     if (Array.isArray(options.choices) && options.choices.length) {
-      const choiceList = document.createElement("div");
-      choiceList.className = "answer-choices";
+      const choiceSelect = document.createElement("select");
+      choiceSelect.className = "answer-choice-select";
+      choiceSelect.setAttribute("aria-label", "Choose");
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Choose";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      choiceSelect.append(placeholder);
       options.choices.slice(0, 3).forEach(choice => {
         if (!choice?.label || !choice?.prompt) return;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.prompt = choice.prompt;
-        button.textContent = choice.label;
-        choiceList.append(button);
+        const option = document.createElement("option");
+        option.value = choice.prompt;
+        option.textContent = choice.label;
+        choiceSelect.append(option);
       });
-      article.append(choiceList);
+      if (choiceSelect.options.length > 1) article.append(choiceSelect);
     }
 
     if (options.destination?.url) {
@@ -250,6 +256,7 @@
     questionField.readOnly = value;
     editCancel.disabled = value;
     transcript.querySelectorAll(".chat-edit-button").forEach(button => { button.disabled = value; });
+    transcript.querySelectorAll(".answer-choice-select").forEach(select => { select.disabled = value; });
     panel.setAttribute("aria-busy", String(value));
     submitButton.textContent = value ? "Sending…" : editTarget ? "Update" : "Send";
   }
@@ -516,6 +523,13 @@
     }
     const button = event.target.closest("[data-prompt]");
     if (button) ask(button.dataset.prompt, { restoreFocus: event.detail === 0 });
+  });
+  transcript.addEventListener("change", event => {
+    const select = event.target.closest(".answer-choice-select");
+    if (!select?.value) return;
+    const prompt = select.value;
+    select.value = "";
+    ask(prompt, { restoreFocus: true });
   });
   editCancel.addEventListener("click", () => {
     pendingClientEventId = "";
