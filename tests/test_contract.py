@@ -1170,6 +1170,29 @@ class ResponseContractTests(unittest.TestCase):
         self.assertTrue(server.model_answer_is_grounded("The workshop lasts 2 months.", timed))
         self.assertFalse(server.model_answer_is_grounded("The workshop lasts 2 days.", timed))
 
+    def test_grounded_limitation_may_repeat_a_user_named_item_without_licensing_it(self):
+        calendar = server.SOURCE_BY_ID["calendar"]
+        question = "Is there an Intro to Email class tomorrow?"
+        limitation = (
+            "I can't confirm whether an Intro to Email class is scheduled tomorrow. "
+            "The calendar lets you click a date to see available classes."
+        )
+        self.assertFalse(server.model_answer_is_grounded(limitation, calendar))
+        self.assertTrue(
+            server.model_answer_is_grounded(limitation, calendar, question)
+        )
+
+        devices = server.SOURCE_BY_ID["devices"]
+        unsupported_question = "Does Acme Computers provide free laptops?"
+        unsupported_claim = "Acme Computers provides free laptops to participants."
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                unsupported_claim,
+                devices,
+                unsupported_question,
+            )
+        )
+
     def test_grounded_model_output_changes_when_the_approved_record_changes(self):
         question = "What would I learn in the email class?"
         original = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]

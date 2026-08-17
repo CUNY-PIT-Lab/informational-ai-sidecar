@@ -2697,6 +2697,17 @@ def _named_entities_are_supported(answer, source_text):
     return True
 
 
+def answer_expresses_evidence_limit(answer):
+    """Recognize a concise refusal to claim a detail the source does not confirm."""
+
+    value = fold_text(answer)
+    return bool(re.search(
+        r"\b(?:can(?:not|'t)|could(?: not|n't)|does(?: not|n't)|is(?: not|n't)|"
+        r"not (?:confirmed|listed|specified|shown)|no (?:information|details?))\b",
+        value,
+    ))
+
+
 def answers_near_duplicate(answer, prior_answer):
     """Catch a follow-up that merely repeats the latest guide response."""
 
@@ -2743,7 +2754,7 @@ def question_requests_prior_detail(question, prior_answer):
     return len(overlap) >= 2 and len(overlap) >= min(3, len(question_terms))
 
 
-def model_answer_is_grounded(answer, source):
+def model_answer_is_grounded(answer, source, question=""):
     """Reject unsupported factual anchors after a model uses one approved record."""
 
     answer = clip_words(re.sub(r"<[^>]+>", " ", str(answer or "")), MAX_MESSAGE_WORDS)
@@ -2756,7 +2767,10 @@ def model_answer_is_grounded(answer, source):
         return False
     route_identity = urllib.parse.urlsplit(source.get("url", "")).path.replace("-", " ")
     route_identity = re.sub(r"\btechfair\b", "tech fair", route_identity, flags=re.I)
-    if not _named_entities_are_supported(answer, f"{source_text} {route_identity}"):
+    entity_context = f"{source_text} {route_identity}"
+    if question and answer_expresses_evidence_limit(answer):
+        entity_context += " " + str(question)
+    if not _named_entities_are_supported(answer, entity_context):
         return False
     for pattern in _UNIVERSAL_CLAIM_PATTERNS:
         if pattern.search(answer) and not any(row.search(source_text) for row in _UNIVERSAL_CLAIM_PATTERNS):
@@ -2829,7 +2843,7 @@ def parse_model_selection(
             routing_question,
         )
     message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
-    if not model_answer_is_grounded(message, selected):
+    if not model_answer_is_grounded(message, selected, question):
         return selector_clarification_response(
             question,
             retrieved,
@@ -2884,7 +2898,7 @@ def model_selection_retry_reason(
         return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
     message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
-    if not model_answer_is_grounded(message, selected):
+    if not model_answer_is_grounded(message, selected, question):
         return "unsupported factual wording"
     if (
         interaction.get("chat_stage") == "follow_up"
