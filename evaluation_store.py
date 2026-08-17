@@ -683,6 +683,24 @@ class EvaluationStore:
             raise EvaluationUnavailable("The reviewer bucket set is unavailable.")
         return str(row.get("id") if isinstance(row, dict) else row[0])
 
+    @staticmethod
+    def _lock_review_record(
+        cursor,
+        bucket_set_id: str,
+        conversation_id: str,
+        message_id: str | None = None,
+    ) -> None:
+        """Serialize first writes where no evaluation row exists to lock yet."""
+
+        scope = "annotation" if message_id else "evaluation"
+        identity = ":".join(
+            (scope, str(bucket_set_id), str(conversation_id), str(message_id or ""))
+        )
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (identity,),
+        )
+
     def list_buckets(self, account_slot: str) -> list[dict]:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
@@ -890,6 +908,7 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(cursor, set_id, conversation_id)
                 actual_transcript_version = self._current_transcript_version(
                     cursor, conversation_id
                 )
@@ -982,6 +1001,9 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(
+                    cursor, set_id, conversation_id, message_id
+                )
                 actual_transcript_version = self._current_transcript_version(
                     cursor, conversation_id
                 )
@@ -1094,6 +1116,7 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(cursor, set_id, conversation_id)
                 cursor.execute(
                     "SELECT 1 FROM evaluation_audit_events WHERE operation_id = %s",
                     (operation_id,),
@@ -1107,25 +1130,9 @@ class EvaluationStore:
                     )
                     if not cursor.fetchone():
                         raise EvaluationValidation("That bucket is not available.")
-                cursor.execute(
-                    """
-                    SELECT MAX(t.sequence)::BIGINT AS transcript_version
-                    FROM conversations c
-                    JOIN conversation_turns t ON t.conversation_id = c.id
-                    WHERE c.id = %s AND c.capture_mode = 'transcript'
-                      AND c.client_surface = 'synthetic' AND c.expires_at > NOW()
-                    HAVING BOOL_AND(
-                        t.status = 'complete' AND t.privacy_state = 'clear'
-                        AND t.review_state = 'ready'
-                        AND (SELECT COUNT(*) FROM conversation_messages m WHERE m.turn_id = t.id) = 2
-                    )
-                    """,
-                    (conversation_id,),
+                actual_transcript_version = self._current_transcript_version(
+                    cursor, conversation_id
                 )
-                transcript_row = cursor.fetchone()
-                if not transcript_row:
-                    raise EvaluationForbidden("That conversation is not available for review.")
-                actual_transcript_version = int(transcript_row["transcript_version"])
                 cursor.execute(
                     """
                     SELECT bucket_id, transcript_version, version

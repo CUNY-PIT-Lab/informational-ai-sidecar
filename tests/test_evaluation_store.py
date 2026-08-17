@@ -66,6 +66,53 @@ class EvaluationStoreBoundaryTests(unittest.TestCase):
         self.assertIn("actor_slot", save_source)
         self.assertIn("account_slot", save_source)
 
+    def test_first_shared_writes_serialize_before_reading_an_optional_row(self):
+        class RecordingCursor:
+            def __init__(self):
+                self.calls = []
+
+            def execute(self, query, params):
+                self.calls.append((" ".join(query.split()), params))
+
+        cursor = RecordingCursor()
+        evaluation_store.EvaluationStore._lock_review_record(
+            cursor, "set-1", "conversation-1"
+        )
+        evaluation_store.EvaluationStore._lock_review_record(
+            cursor, "set-1", "conversation-1", "message-1"
+        )
+        self.assertEqual(len(cursor.calls), 2)
+        for query, _ in cursor.calls:
+            self.assertIn("pg_advisory_xact_lock", query)
+            self.assertIn("hashtextextended", query)
+        self.assertEqual(cursor.calls[0][1], ("evaluation:set-1:conversation-1:",))
+        self.assertEqual(
+            cursor.calls[1][1],
+            ("annotation:set-1:conversation-1:message-1",),
+        )
+
+        for method_name, row_query in (
+            ("save_note", "SELECT bucket_id, note, transcript_version, version"),
+            ("move_conversation", "SELECT bucket_id, transcript_version, version"),
+            (
+                "save_annotation",
+                "SELECT message_id, category, note, transcript_version, version",
+            ),
+        ):
+            source = inspect.getsource(
+                getattr(evaluation_store.EvaluationStore, method_name)
+            )
+            self.assertLess(
+                source.index("_lock_review_record"), source.index(row_query)
+            )
+
+    def test_move_uses_the_same_inactive_conversation_gate_as_other_edits(self):
+        source = inspect.getsource(
+            evaluation_store.EvaluationStore.move_conversation
+        )
+        self.assertIn("_current_transcript_version", source)
+        self.assertNotIn("SELECT MAX(t.sequence)", source)
+
     def test_disabled_store_needs_no_database_or_auth_secret(self):
         store = evaluation_store.EvaluationStore(
             database_url="", enabled=False, auth_secret=""
