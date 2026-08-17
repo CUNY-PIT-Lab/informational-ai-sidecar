@@ -70,7 +70,7 @@ MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-13-v6"
+PROMPT_POLICY_VERSION = "2026-08-17-v7"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -357,9 +357,15 @@ _TOKEN = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)?")
 _VISUAL_SCAFFOLD = (
     re.compile(r"^icon representing\b", re.I),
     re.compile(r"^(?:image|photo|photograph)\s+(?:of|showing)\b", re.I),
+    re.compile(r"^qr ?code\b", re.I),
+    re.compile(r"^ended\s+ended\b", re.I),
+    re.compile(r"^your content has been submitted\b", re.I),
+    re.compile(r"^submit another question\b", re.I),
+    re.compile(r"^an error occurred\b", re.I),
     re.compile(r"^a digital navigator helping\b", re.I),
     re.compile(r"^participant being helped\b", re.I),
     re.compile(r"^the crowd at the annual fortune society tech fair\b", re.I),
+    re.compile(r"^.+\.(?:gif|jpe?g|png|webp)$", re.I),
 )
 
 _PERSONAL_PATTERNS = [
@@ -380,9 +386,9 @@ _HUMAN_HANDOFF_PATTERNS = [
 
 _SPANISH_MARKERS = {
     "abre", "ayuda", "clase", "clases", "como", "computadora", "computadoras",
-    "con", "curso", "donde", "encontre", "espanol", "favor", "gracias", "hola",
+    "confirmarlo", "con", "curso", "donde", "encontre", "espanol", "favor", "gracias", "hola",
     "informacion", "necesito", "para", "pagina", "personal", "por", "puedo",
-    "que", "quiero", "registrarme", "telefono", "una",
+    "publicas", "pude", "que", "quiero", "registrarme", "telefono", "una",
 }
 _ENGLISH_MARKERS = {
     "class", "classes", "computer", "device", "do", "help", "how", "internet",
@@ -523,6 +529,7 @@ def semantic_question(value):
 
 def tokens(value, keep_stopwords=False):
     values = _TOKEN.findall(fold_text(value))
+    values = [value[:-2] if value.endswith("'s") else value for value in values]
     values = [_QUESTION_ALIASES.get(item, item) for item in values]
     if keep_stopwords:
         return values
@@ -1020,13 +1027,30 @@ def grounded_evidence_sentences(
     max_sentences=MAX_EVIDENCE_SENTENCES,
     require_overlap=False,
     focus_query=None,
+    prior_answer=None,
 ):
     """Select short factual sentences that already exist in an approved record."""
     query = semantic_question(query)
     query_terms = set(tokens(query))
     focus_terms = set(tokens(focus_query or query))
+    focus_text = fold_text(focus_query or query)
+    if re.search(
+        r"\b(?:when|date|dates|calendar|schedule|scheduled|this week|next class)\b",
+        focus_text,
+    ):
+        query_terms.update({"availability", "calendar", "current", "date", "schedule"})
+        focus_terms.update({"availability", "calendar", "current", "date", "schedule"})
+    if re.search(r"\b(?:where|location|locations|address|office)\b", focus_text):
+        query_terms.update({"address", "location", "office"})
+        focus_terms.update({"address", "location", "office"})
+    if re.search(r"\b(?:register|registration|reserve|sign up)\b", focus_text):
+        query_terms.update({"register", "registration", "reserve"})
+        focus_terms.update({"register", "registration", "reserve"})
+    if re.search(r"\b(?:class|classes|course|courses|workshop|workshops)\b", focus_text):
+        query_terms.update({"class", "classes", "course", "courses", "workshop", "workshops"})
+    prior_terms = set(tokens(prior_answer or "", keep_stopwords=True))
     if device_use_support_intent(query):
-        query_terms.update({"appointment", "lab", "tutoring"})
+        query_terms.add("support")
     rows = []
     values = [source.get("description", "")] + list(source.get("facts", [])) + list(source.get("blocks", []))
     template_contaminated = source_has_template_content(source)
@@ -1099,6 +1123,11 @@ def grounded_evidence_sentences(
                 fold_text(sentence),
             ):
                 continue
+            if sentence.endswith("!") and re.search(
+                r"\b(?:join|ready|you|your)\b",
+                fold_text(sentence),
+            ):
+                continue
             key = fold_text(sentence)
             if key in seen:
                 continue
@@ -1106,7 +1135,15 @@ def grounded_evidence_sentences(
                 continue
             seen.add(key)
             sentence_terms = set(tokens(sentence))
+            sentence_words = set(tokens(sentence, keep_stopwords=True))
+            if prior_terms and len(sentence_words) >= 5:
+                repeated_share = len(sentence_words.intersection(prior_terms)) / len(sentence_words)
+                if repeated_share >= 0.8:
+                    continue
             matched_terms = query_terms.intersection(sentence_terms)
+            meaningful_matches = matched_terms.difference({
+                "current", "fortune", "information", "page", "program", "society", "staff",
+            })
             title_overlap = len(query_terms.intersection(tokens(source.get("title", ""))))
             overlap_score = sum(
                 3 + math.log(1 + len(ANSWER_SOURCES) / (1 + DOCUMENT_FREQUENCY[term]))
@@ -1142,6 +1179,8 @@ def grounded_evidence_sentences(
                 - generic_summary_penalty
                 - (value_index * 0.01 + sentence_index * 0.001)
             )
+            if matched_terms and not meaningful_matches:
+                score = min(score, 0)
             rows.append((score, status, sentence))
 
     rows.sort(key=lambda row: (-row[0], not row[1]))
@@ -1302,14 +1341,13 @@ def grounded_answer_message(
     chat_stage="opening",
     routing_question=None,
     require_evidence_overlap=False,
+    prior_answer=None,
 ):
     """Build the visible factual answer from source text, never model prose."""
     if not sources:
         return participant_copy("missing_message", language_code)
     source = sources[0]
     title = re.sub(r"\s*[|·]\s*FS Digital Equity\s*$", "", source.get("title", "Digital Equity"), flags=re.I)
-    if language_code == "es":
-        return f"Encontré: {title}. Abre la página para ver la información actual."
     evidence = ""
     question_words = set(tokens(question, keep_stopwords=True))
     partner_names = (
@@ -1356,8 +1394,9 @@ def grounded_answer_message(
                 else 1 if chat_stage == "follow_up"
                 else 2 if device_support else MAX_EVIDENCE_SENTENCES
             ),
-            require_overlap=require_evidence_overlap,
+            require_overlap=require_evidence_overlap or chat_stage == "follow_up",
             focus_query=question if routing_question else None,
+            prior_answer=prior_answer if chat_stage == "follow_up" else None,
         )
     if not evidence:
         return participant_copy("missing_message", language_code)
@@ -1918,6 +1957,7 @@ def parse_model_selection(
     retrieval_scope="site",
     interaction=None,
     routing_question=None,
+    prior_answer=None,
 ):
     retrieved = list(retrieved or retrieve_sources(question))
     interaction = dict(interaction or {})
@@ -1954,7 +1994,7 @@ def parse_model_selection(
         language_code=language_code,
         chat_stage=chat_stage,
         routing_question=routing_question or question,
-        require_evidence_overlap=True,
+        prior_answer=prior_answer,
     )
     if message == participant_copy("missing_message", language_code):
         return selector_clarification_response(
@@ -2321,6 +2361,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             deterministic = deterministic_answer_sources(
                 routing_question, retrieved, retrieval_scope
             )
+            prior_answer = " ".join(
+                item.get("content", "")
+                for item in safe_history
+                if item.get("role") == "assistant"
+            )
             if deterministic:
                 self._chat_json(200, response_contract(
                     kind="answer",
@@ -2331,6 +2376,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         language_code=interaction["request_language"],
                         chat_stage=interaction["chat_stage"],
                         routing_question=routing_question,
+                        prior_answer=prior_answer,
                     ),
                     reason=(
                         "La respuesta viene de una página aprobada."
@@ -2382,6 +2428,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     retrieval_scope,
                     interaction,
                     routing_question=routing_question,
+                    prior_answer=prior_answer,
                 ),
                 turn,
                 question,

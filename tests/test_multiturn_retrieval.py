@@ -158,6 +158,86 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         self.assertNotIn("Email is part of everything", message)
         self.assertFalse(message.endswith("?"))
 
+    def test_follow_up_excludes_evidence_used_anywhere_in_recent_history(self):
+        source = server.SOURCE_BY_ID["individual"]
+        prior = (
+            "One-to-one tutoring is available online or in person by appointment. "
+            "Technical support is listed at Long Island City Tuesday and Thursday."
+        )
+        message = server.grounded_answer_message(
+            "Can staff repair a broken phone?",
+            [source],
+            "site",
+            chat_stage="follow_up",
+            routing_question="Can staff repair a broken phone?",
+            prior_answer=prior,
+        )
+        self.assertNotIn(
+            "One-to-one tutoring is available online or in person by appointment.",
+            message,
+        )
+        self.assertNotIn(
+            "Technical support is listed at Long Island City Tuesday and Thursday.",
+            message,
+        )
+
+    def test_schedule_follow_up_prefers_live_calendar_evidence(self):
+        source = server.SOURCE_BY_ID["calendar"]
+        message = server.grounded_answer_message(
+            "When is it offered?",
+            [source],
+            "site",
+            chat_stage="follow_up",
+            routing_question="Intro to Smartphones. Follow-up: When is it offered?",
+        )
+        self.assertIn("live calendar", message.lower())
+
+    def test_advancement_grader_rejects_a_reused_source_sentence(self):
+        history = [
+            {"role": "user", "content": "Can I get support?"},
+            {
+                "role": "assistant",
+                "content": "One-to-one tutoring is available online or in person by appointment.",
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": "One-to-one tutoring is available online or in person by appointment.",
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            ["continuity: answer repeats prior evidence instead of advancing"],
+        )
+
+    def test_evidence_cleanup_removes_form_and_image_scaffolding(self):
+        fragments = [
+            "QRCode for Pre-Computer Safety Survey",
+            "Your content has been submitted",
+            "Ended Ended Main Office (LIC)",
+            "IMG_0210_edited.jpg",
+        ]
+        for fragment in fragments:
+            with self.subTest(fragment=fragment):
+                self.assertEqual(server.clean_evidence_fragment(fragment), "")
+
+    def test_possessive_source_names_match_plain_query_terms(self):
+        self.assertIn("canva", server.tokens("Canva's interface"))
+
+    def test_every_active_source_keeps_reachable_grounded_evidence(self):
+        missing = []
+        for source in server.RETRIEVABLE_SOURCES:
+            evidence = server.grounded_evidence_sentences(
+                source,
+                server.clean_source_title(source),
+                require_overlap=False,
+            )
+            if not evidence:
+                missing.append(source["id"])
+        self.assertEqual(missing, [])
+
     def test_device_eligibility_follow_up_advances_past_availability(self):
         source = server.SOURCE_BY_ID["devices"]
         message = server.grounded_answer_message(

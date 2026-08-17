@@ -165,8 +165,8 @@ class StagedRetrievalTests(unittest.TestCase):
         )
         self.assertTrue(retrieved_evidence)
         self.assertTrue(payload["message"].startswith(retrieved_evidence))
-        self.assertIn("one-to-one tutoring", payload["message"].lower())
-        self.assertIn("open computer lab", payload["message"])
+        self.assertIn("technical support", payload["message"].lower())
+        self.assertIn("appointment", payload["message"].lower())
         self.assertNotIn("Laptop supply", payload["message"])
         self.assertEqual(model_calls, [])
 
@@ -708,7 +708,7 @@ class ResponseContractTests(unittest.TestCase):
         self.assertTrue(changed_answer.startswith(changed_source["facts"][0]))
         self.assertNotIn("one-to-one tutoring", changed_answer.lower())
 
-    def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
+    def test_spanish_answer_uses_selected_source_content_not_fixed_navigation_copy(self):
         retrieved = server.retrieve_sources("computadora")
         raw = json.dumps({"pick": retrieved[0]["id"]})
         interaction = {
@@ -719,7 +719,9 @@ class ResponseContractTests(unittest.TestCase):
         result = server.parse_model_selection(
             raw, "Necesito una computadora", retrieved, "site", interaction
         )
-        self.assertIn("Encontré:", result["message"])
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], retrieved[0]["id"])
+        self.assertNotIn("Encontré:", result["message"])
         self.assertNotIn("disponibles hoy", result["message"])
         self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 

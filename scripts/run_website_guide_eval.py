@@ -229,8 +229,8 @@ def universal_failures(response: dict, capture_mode: str) -> list[str]:
         failures.append(f"schema: invalid kind {response.get('kind')!r}")
     if not isinstance(response.get("message"), str) or not response["message"].strip():
         failures.append("schema: message must be non-empty text")
-    elif len(response["message"].split()) > 32:
-        failures.append("schema: message exceeds 32 words")
+    elif len(response["message"].split()) > 48:
+        failures.append("schema: message exceeds 48 words")
     if not isinstance(response.get("reason"), str):
         failures.append("schema: reason must be text")
     elif len(response["reason"].split()) > 18:
