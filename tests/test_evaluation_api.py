@@ -18,6 +18,11 @@ import server
 class _FakeEvaluationStore:
     enabled = True
     absolute_seconds = 28800
+    invite_seconds = 86400
+
+    def __init__(self):
+        self.claimed = False
+        self.invited_email = None
 
     def public_status(self):
         return {
@@ -42,6 +47,18 @@ class _FakeEvaluationStore:
         }
 
     def authenticate(self, token):
+        if token == "admin-session":
+            return {
+                "slot_key": "admin",
+                "role": "admin",
+                "display_name": "Administrator",
+            }
+        if token == "claimed-session" and self.claimed:
+            return {
+                "slot_key": "editor-1",
+                "role": "editor",
+                "display_name": "Tester One",
+            }
         if token != "session-token":
             return None
         return {
@@ -51,10 +68,46 @@ class _FakeEvaluationStore:
         }
 
     def csrf_token(self, token):
+        if token == "admin-session":
+            return "admin-csrf"
+        if token == "claimed-session" and self.claimed:
+            return "claimed-csrf"
         return "csrf-token" if token == "session-token" else ""
 
     def csrf_matches(self, token, supplied):
-        return token == "session-token" and supplied == "csrf-token"
+        return supplied == self.csrf_token(token) and bool(supplied)
+
+    def list_accounts(self):
+        return [
+            {"slot_key": "admin", "role": "admin", "claimed": True, "invitation_active": False, "disabled": False},
+            {"slot_key": "editor-1", "role": "editor", "claimed": self.claimed, "invitation_active": bool(self.invited_email) and not self.claimed, "disabled": False},
+        ]
+
+    def issue_invitation(self, slot, *, email=None, actor_slot=None, operation_id=None):
+        if slot != "editor-1" or actor_slot != "admin" or not operation_id:
+            raise AssertionError("Invitation scope was not preserved")
+        self.invited_email = email
+        return "single-use-token-value-that-is-long-enough"
+
+    def claim_invitation(self, token, email, display_name, password):
+        if (
+            token != "single-use-token-value-that-is-long-enough"
+            or email != self.invited_email
+            or display_name != "Tester One"
+            or password != "correct horse battery"
+            or self.claimed
+        ):
+            raise server.AuthenticationFailed("This invitation is invalid or expired.")
+        self.claimed = True
+        return {
+            "session_token": "claimed-session",
+            "csrf_token": "claimed-csrf",
+            "account": {
+                "slot_key": "editor-1",
+                "role": "editor",
+                "display_name": "Tester One",
+            },
+        }
 
     def logout(self, _token):
         return None
@@ -187,6 +240,66 @@ class EvaluationApiTests(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["account"]["slot_key"], "editor-1")
+
+    def test_admin_issues_one_click_link_and_claimed_session_survives_reload(self):
+        store = server.EVALUATION_STORE
+        store.claimed = False
+        store.invited_email = None
+        headers = {
+            **self.same_origin_headers(),
+            "Cookie": "__Host-fs_eval=admin-session",
+            "X-CSRF-Token": "admin-csrf",
+        }
+        status, _, body = self.request(
+            "POST",
+            "/api/evaluation/admin/accounts/editor-1/invitation",
+            {
+                "email": "tester@example.org",
+                "operation_id": "33333333-3333-4333-8333-333333333333",
+            },
+            headers,
+        )
+        self.assertEqual(status, 201)
+        invitation = json.loads(body)
+        self.assertEqual(invitation["expires_in_seconds"], 86400)
+        self.assertTrue(invitation["invitation_path"].startswith("/evaluation#invite="))
+        token = invitation["invitation_path"].split("#invite=", 1)[1]
+
+        status, claim_headers, body = self.request(
+            "POST",
+            "/api/evaluation/invitations/claim",
+            {
+                "token": token,
+                "email": "tester@example.org",
+                "display_name": "Tester One",
+                "password": "correct horse battery",
+            },
+            self.same_origin_headers(),
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("__Host-fs_eval=claimed-session", claim_headers["Set-Cookie"])
+        self.assertEqual(json.loads(body)["account"]["slot_key"], "editor-1")
+
+        status, _, body = self.request(
+            "GET",
+            "/api/evaluation/session",
+            headers={"Cookie": "__Host-fs_eval=claimed-session"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["account"]["display_name"], "Tester One")
+
+        status, _, _ = self.request(
+            "POST",
+            "/api/evaluation/invitations/claim",
+            {
+                "token": token,
+                "email": "tester@example.org",
+                "display_name": "Tester One",
+                "password": "correct horse battery",
+            },
+            self.same_origin_headers(),
+        )
+        self.assertEqual(status, 401)
 
     def test_mutation_requires_csrf_and_admin_data_is_role_guarded(self):
         headers = {

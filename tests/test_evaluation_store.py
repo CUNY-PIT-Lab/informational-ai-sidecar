@@ -163,6 +163,9 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn("annotation-toggle", javascript)
         self.assertIn('maxlength="500"', javascript)
         self.assertIn("localStorage.setItem", javascript)
+        self.assertIn('class="invite-form"', javascript)
+        self.assertIn('"invitation_path"', (DEMO / "server.py").read_text(encoding="utf-8"))
+        self.assertIn("Link ready · single use", javascript)
 
 
 if __name__ == "__main__":

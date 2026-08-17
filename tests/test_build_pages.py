@@ -92,7 +92,7 @@ class SnapshotRenderingTests(unittest.TestCase):
 
         self.assertIn(build_pages.REPLICA_MARKER, shell)
         self.assertIn('href="../../replica-shell.css?v=20260803-replica-1"', shell)
-        self.assertIn('src="../../replica-shell.js?v=20260808-website-guide-1"', shell)
+        self.assertIn('src="../../replica-shell.js?v=20260813-conversation-persistence-1"', shell)
         self.assertIn(f'data-source-url="{route["sourceUrl"]}"', shell)
         self.assertEqual(shell.lower().count("<script"), 1)
         self.assertIn("form-action &#x27;none&#x27;", shell)
@@ -104,7 +104,7 @@ class SnapshotRenderingTests(unittest.TestCase):
         shell = build_pages.render_snapshot(snapshot_document(), HOME_ROUTE, "")
 
         self.assertIn('href="replica-shell.css?v=20260803-replica-1"', shell)
-        self.assertIn('src="replica-shell.js?v=20260808-website-guide-1"', shell)
+        self.assertIn('src="replica-shell.js?v=20260813-conversation-persistence-1"', shell)
         self.assertNotIn('href="../replica-shell.css', shell)
 
     def test_invalid_or_active_snapshot_markup_is_rejected_before_build(self):

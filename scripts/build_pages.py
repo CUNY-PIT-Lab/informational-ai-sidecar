@@ -227,7 +227,10 @@ def render_snapshot(snapshot_html: str, route: dict[str, str], asset_base: str) 
     escaped_source = html.escape(route["sourceUrl"], quote=True)
     escaped_page_id = html.escape(route["pageId"], quote=True)
     escaped_css = html.escape(f"{asset_base}replica-shell.css?v=20260803-replica-1", quote=True)
-    escaped_js = html.escape(f"{asset_base}replica-shell.js?v=20260808-website-guide-1", quote=True)
+    escaped_js = html.escape(
+        f"{asset_base}replica-shell.js?v=20260813-conversation-persistence-1",
+        quote=True,
+    )
     head_injection = (
         "\n  <!-- Fortune replica publication controls -->\n"
         "  <meta name=\"robots\" content=\"noindex,nofollow,noarchive\">\n"

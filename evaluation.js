@@ -546,13 +546,80 @@
     if (!localPreview && state.session?.role === "admin") {
       try {
         const payload = await api("/api/evaluation/admin/accounts");
-        accountSlots.innerHTML = `<ul class="slot-list">${payload.accounts.map(account => `<li><span>${escapeHtml(account.slot_key)}</span><strong>${account.claimed ? "Assigned" : "Unassigned"}</strong></li>`).join("")}</ul>`;
+        accountSlots.innerHTML = `<h3>Tester access</h3><ul class="slot-list">${payload.accounts.map(account => {
+          const slot = escapeHtml(account.slot_key);
+          const status = account.claimed ? "Assigned" : account.invitation_active ? "Invite active" : "Unassigned";
+          const invite = account.claimed ? "" : `
+            <form class="invite-form" data-slot="${slot}">
+              <label for="invite-${slot}">Tester email</label>
+              <div class="invite-row">
+                <input id="invite-${slot}" name="email" type="email" autocomplete="off" required>
+                <button class="secondary-button" type="submit">${account.invitation_active ? "Replace link" : "Create link"}</button>
+              </div>
+              <div class="invite-result" hidden>
+                <label>Single-use registration link</label>
+                <input class="invite-link" readonly>
+                <div class="invite-actions">
+                  <a class="secondary-button invite-open" target="_blank" rel="noopener">Open registration</a>
+                  <button class="text-button invite-copy" type="button">Copy link</button>
+                </div>
+                <span class="save-status invite-status" role="status"></span>
+              </div>
+            </form>`;
+          return `<li><div class="slot-summary"><span>${slot}</span><strong>${status}</strong></div>${invite}</li>`;
+        }).join("")}</ul>`;
         accountSlots.hidden = false;
       } catch (_error) {}
     }
     accountDialog.showModal();
   });
   accountClose.addEventListener("click", () => accountDialog.close());
+  accountSlots.addEventListener("submit", async event => {
+    const form = event.target.closest(".invite-form");
+    if (!form) return;
+    event.preventDefault();
+    const button = form.querySelector("button[type='submit']");
+    const status = form.querySelector(".invite-status");
+    button.disabled = true;
+    status.textContent = "Creating link…";
+    try {
+      const payload = await api(`/api/evaluation/admin/accounts/${encodeURIComponent(form.dataset.slot)}/invitation`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: new FormData(form).get("email"),
+          operation_id: crypto.randomUUID(),
+        }),
+      });
+      const link = new URL(payload.invitation_path, location.origin).href;
+      const result = form.querySelector(".invite-result");
+      const input = form.querySelector(".invite-link");
+      const open = form.querySelector(".invite-open");
+      input.value = link;
+      open.href = link;
+      result.hidden = false;
+      const hours = Math.round(Number(payload.expires_in_seconds || 0) / 3600);
+      status.textContent = `Link ready · single use${hours ? ` · ${hours} hours` : ""}`;
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  accountSlots.addEventListener("click", async event => {
+    const button = event.target.closest(".invite-copy");
+    if (!button) return;
+    const form = button.closest(".invite-form");
+    const input = form.querySelector(".invite-link");
+    const status = form.querySelector(".invite-status");
+    try {
+      await navigator.clipboard.writeText(input.value);
+      status.textContent = "Link copied";
+    } catch (_error) {
+      input.focus();
+      input.select();
+      status.textContent = "Link selected";
+    }
+  });
 
   bucketForm.addEventListener("submit", async event => {
     event.preventDefault();
