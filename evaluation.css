@@ -377,7 +377,22 @@ dialog::backdrop { background: rgb(40 26 57 / 55%); }
 .annotation-actions .text-button { min-height: 38px; padding: 6px 4px; }
 
 .slot-list { margin: 18px 0; padding: 0; list-style: none; }
-.slot-list li { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); }
+.slot-list li { padding: 14px 0; border-top: 1px solid var(--line); }
+.slot-summary { display: flex; justify-content: space-between; gap: 16px; }
+.invite-form { margin-top: 12px; }
+.invite-form label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 800; }
+.invite-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.invite-row input,
+.invite-link { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #aeb2bb; border-radius: 4px; }
+.invite-result { margin-top: 12px; }
+.invite-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.invite-actions .secondary-button { display: inline-flex; align-items: center; text-decoration: none; }
+.invite-actions .text-button { padding-inline: 10px; }
+
+@media (max-width: 520px) {
+  .invite-row { grid-template-columns: 1fr; }
+  .invite-row .secondary-button { width: 100%; }
+}
 
 .sr-only {
   position: absolute !important;

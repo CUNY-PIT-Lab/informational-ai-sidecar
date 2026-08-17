@@ -119,6 +119,7 @@
   );
 
   const frameUrl = new URL("sidecar.html", assetRoot);
+  frameUrl.searchParams.set("v", "20260813-conversation-persistence-1");
   frameUrl.searchParams.set("embed", "1");
   frameUrl.searchParams.set("page", canonicalUrl(sourceUrl) || sourceUrl);
   const pageSearch = new URLSearchParams(window.location.search);
