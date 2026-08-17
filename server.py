@@ -561,13 +561,19 @@ def tokens(value, keep_stopwords=False):
 
 
 _QUERY_TERM_GROUPS = (
+    frozenset({"address", "addresses"}),
+    frozenset({"calendar", "hours", "schedule"}),
     frozenset({"class", "classes"}),
     frozenset({"device", "devices"}),
     frozenset({"eligible", "eligibility", "qualify", "qualified", "requirements"}),
     frozenset({"laptop", "laptops"}),
     frozenset({"phone", "phones", "smartphone", "smartphones"}),
-    frozenset({"register", "registered", "registration"}),
+    frozenset({"register", "registered", "registering", "registration"}),
     frozenset({"skill", "skills"}),
+    frozenset({"sort", "sorted", "sorting"}),
+    frozenset({"filter", "filtered", "filtering", "filters"}),
+    frozenset({"table", "tables"}),
+    frozenset({"duplicate", "duplicates"}),
     frozenset({"workshop", "workshops"}),
 )
 
@@ -765,6 +771,64 @@ def clip_words(text, limit):
     return prefix.rstrip(".,;:") + "…"
 
 
+def clip_evidence_chars(text, limit):
+    """Fit source evidence to a character budget without dropping the block."""
+
+    value = str(text or "").strip()
+    if limit <= 0:
+        return ""
+    if len(value) <= limit:
+        return value
+    if limit < 40:
+        return ""
+    prefix = value[:limit].rstrip()
+    endings = list(re.finditer(r"[.!?](?:[\"']?)(?=\s|$)", prefix))
+    if endings and endings[-1].end() >= max(80, int(limit * 0.45)):
+        return prefix[:endings[-1].end()].strip()
+    if " " in prefix:
+        prefix = prefix.rsplit(" ", 1)[0]
+    return prefix.rstrip(".,;:") + "…"
+
+
+def query_focused_evidence_fragment(text, query_terms, limit):
+    """Keep query-matching source sentences when a long block must be clipped."""
+
+    value = str(text or "").strip()
+    if len(value) <= limit:
+        return value
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(
+            r"(?<!a\.m\.)(?<!p\.m\.)(?<=[.!?])\s+",
+            value,
+            flags=re.I,
+        )
+        if sentence.strip()
+    ]
+    ranked = []
+    for index, sentence in enumerate(sentences):
+        overlap = len(set(query_terms).intersection(expanded_query_terms(sentence)))
+        if overlap:
+            ranked.append((overlap, -index, index, sentence))
+    ranked.sort(reverse=True)
+    if ranked and ranked[0][0] >= 2:
+        chosen = []
+        used = 0
+        for _, _, index, sentence in ranked:
+            separator = 1 if chosen else 0
+            remaining = limit - used - separator
+            if remaining <= 0:
+                break
+            fragment = clip_evidence_chars(sentence, remaining)
+            if not fragment:
+                continue
+            chosen.append((index, fragment))
+            used += separator + len(fragment)
+        if chosen:
+            return "\n".join(fragment for _, fragment in sorted(chosen))
+    return clip_evidence_chars(value, limit)
+
+
 def device_use_support_intent(text):
     """Distinguish help using a device from requests to obtain one."""
 
@@ -850,8 +914,8 @@ def registration_intent(text):
 
     value = fold_text(semantic_question(text))
     return bool(re.search(
-        r"\b(?:register|registered|registration|sign up|reserve|registrarme|"
-        r"registro|inscribirme)\b",
+        r"\b(?:register|registered|registering|registration|sign up|reserve|"
+        r"registrarme|registro|inscribirme)\b",
         value,
     ))
 
@@ -1355,11 +1419,19 @@ def source_excerpt(source, query, limit=1800):
     for _, _, block in candidates:
         if block in selected:
             continue
-        addition = min(len(block), 900)
-        if selected and length + addition > limit:
+        separator = 1 if selected else 0
+        remaining = limit - length - separator
+        if remaining <= 0:
+            break
+        fragment = query_focused_evidence_fragment(
+            block,
+            query_terms,
+            min(remaining, 900),
+        )
+        if not fragment:
             continue
-        selected.append(block[:900])
-        length += addition
+        selected.append(fragment)
+        length += separator + len(fragment)
         if length >= limit:
             break
     return "\n".join(selected)
@@ -1874,7 +1946,7 @@ def question_needs_history_context(question):
         r"\b(?:it|its|that|those|they|them|there)\b",
         r"\b(?:this|that) class\b",
         r"\b(?:which|is there) one\b",
-        r"\bwhat (?:else|about|are they for|kind of help)\b",
+        r"\bwhat (?:else|about|are they for|kind of (?:help|class|workshop))\b",
         r"\bwhat kinds? of (?:help|support|classes|services|workshops)\b",
         r"\bwhat (?:are|is) (?:the )?(?:regular )?(?:class |support |office )?"
         r"(?:hours|schedule)\b",
@@ -2024,15 +2096,20 @@ def current_faq_sources(question):
     words = set(tokens(value, keep_stopwords=True))
     source_ids = []
     if (
+        re.search(r"\bwalk (?:in|into)\b|\bwalk-?ins?\b", value)
+        and re.search(r"\bregister(?:ed|ing)?\b|\bregistration\b", value)
+    ):
+        source_ids = ["home"]
+    elif (
         words.intersection({"attend", "attendance"})
         and words.intersection({"all", "every", "month", "scheduled"})
     ):
-        source_ids = ["home", "contact"]
+        source_ids = ["home"]
     elif (
         words.intersection({"assistance", "help", "skill", "skills", "topic", "topics"})
         and ("not listed" in value or words.intersection({"catalog", "uncatalogued"}))
     ):
-        source_ids = ["home", "contact"]
+        source_ids = ["home"]
     elif (
         words.intersection({"laptop", "laptops"})
         and (
@@ -2040,7 +2117,7 @@ def current_faq_sources(question):
             or "automatically qualify" in value
         )
     ):
-        source_ids = ["home", "contact", "devices"]
+        source_ids = ["home"]
     return [
         SOURCE_BY_ID[source_id]
         for source_id in source_ids
@@ -2074,12 +2151,12 @@ def retrieval_plan(question, page_context=None):
     current = approved_current_page_source(page_context)
     if current and question_refers_to_current_page(question):
         return "page", [current]
-    registration = registration_sources(question)
-    if registration:
-        return "site", registration
     faq = current_faq_sources(question)
     if faq:
         return "site", faq
+    registration = registration_sources(question)
+    if registration:
+        return "site", registration
     retired = retired_class_sources(question)
     if retired:
         return "site", retired
@@ -2655,6 +2732,17 @@ def answers_near_duplicate(answer, prior_answer):
     ) >= 0.62
 
 
+def question_requests_prior_detail(question, prior_answer):
+    """Allow a grounded confirmation when the user asks about an earlier detail."""
+
+    question_terms = expanded_query_terms(question).difference({
+        "answer", "detail", "details", "kind", "page", "tell",
+    })
+    prior_terms = expanded_query_terms(prior_answer)
+    overlap = question_terms.intersection(prior_terms)
+    return len(overlap) >= 2 and len(overlap) >= min(3, len(question_terms))
+
+
 def model_answer_is_grounded(answer, source):
     """Reject unsupported factual anchors after a model uses one approved record."""
 
@@ -2753,6 +2841,7 @@ def parse_model_selection(
         interaction.get("chat_stage") == "follow_up"
         and prior_answer
         and answers_near_duplicate(message, prior_answer)
+        and not question_requests_prior_detail(question, prior_answer)
     ):
         return selector_clarification_response(
             question,
@@ -2777,14 +2866,20 @@ def parse_model_selection(
     )
 
 
-def model_selection_retry_reason(raw, retrieved, interaction=None, prior_answer=""):
+def model_selection_retry_reason(
+    raw,
+    retrieved,
+    interaction=None,
+    prior_answer="",
+    question="",
+):
     """Return the one recoverable validation failure that merits a model retry."""
 
     interaction = dict(interaction or {})
     allowed = {source["id"]: source for source in retrieved}
     parsed = parse_selector_response(raw, allowed)
     if not parsed:
-        return ""
+        return "resolved source can answer" if len(retrieved) == 1 else ""
     if parsed["pick"] == SELECTOR_ASK:
         return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
@@ -2795,6 +2890,7 @@ def model_selection_retry_reason(raw, retrieved, interaction=None, prior_answer=
         interaction.get("chat_stage") == "follow_up"
         and prior_answer
         and answers_near_duplicate(message, prior_answer)
+        and not question_requests_prior_detail(question, prior_answer)
     ):
         return "repeated prior answer"
     return ""
@@ -3210,6 +3306,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 model_sources,
                 interaction,
                 prior_answer,
+                question,
             )
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
                 retry_messages = [

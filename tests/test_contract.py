@@ -185,8 +185,10 @@ class RetrievalTests(unittest.TestCase):
         expectations = {
             "How do I register for a class?": ["contact", "calendar"],
             "Where do I sign up?": ["contact", "calendar"],
-            "Do I need to attend every scheduled class?": ["home", "contact"],
-            "Can I get help with skills not listed in the catalog?": ["home", "contact"],
+            "Do I need to attend every scheduled class?": ["home"],
+            "Can I get help with skills not listed in the catalog?": ["home"],
+            "Can I walk in without registering?": ["home"],
+            "Do five workshops automatically qualify me for a laptop?": ["home"],
         }
         for question, source_ids in expectations.items():
             with self.subTest(question=question):
@@ -194,6 +196,16 @@ class RetrievalTests(unittest.TestCase):
                 self.assertEqual(scope, "site")
                 self.assertEqual([source["id"] for source in sources], source_ids)
                 self.assertTrue(all(source["authority"] == "answer" for source in sources))
+
+    def test_acp_enrollment_language_remains_on_current_device_evidence(self):
+        question = "Can Fortune enroll me in the old ACP discount today?"
+        scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
+        self.assertEqual(scope, "site")
+        self.assertEqual(sources[0]["id"], "devices")
+        self.assertEqual(
+            [source["id"] for source in server.deterministic_answer_sources(question, sources, scope)],
+            ["devices"],
+        )
 
     def test_removed_resume_and_pivot_classes_are_not_replaced_with_guesses(self):
         for question in (
@@ -239,6 +251,60 @@ class RetrievalTests(unittest.TestCase):
         self.assertIn("at least 5", laptop)
         self.assertIn("supply is limited", laptop)
         self.assertNotIn("distribution is currently on hold", laptop)
+
+    def test_model_prompt_keeps_query_evidence_at_the_real_character_limit(self):
+        cases = (
+            (
+                server.INTRO_EMAIL_ID,
+                "What would I learn in Intro to Email?",
+                ("email account", "inbox", "attachments"),
+            ),
+            (
+                server.INTRO_EMAIL_ID,
+                "Do I need an email address before taking Intro to Email?",
+                ("No email address required",),
+            ),
+            (
+                server.UNDERSTANDING_COMPUTERS_ID,
+                "What does Understanding Computers cover?",
+                ("hardware", "software", "CPU", "RAM", "storage"),
+            ),
+            (
+                server.EXCEL_FORMATTING_ID,
+                "Which Excel class covers currency, percentages, borders, and cell styles?",
+                ("currency", "percentages", "borders", "cell styles"),
+            ),
+            (
+                server.EXCEL_ORGANIZING_ID,
+                "Which Excel class covers tables, sorting, filtering, and duplicate data?",
+                ("table", "sort", "filter", "duplicate"),
+            ),
+            (
+                "calendar",
+                "What is the current class schedule?",
+                ("August Training Schedule", "TUE, WED & THU", "2:00 PM to 3:30 PM"),
+            ),
+            (
+                "home",
+                "Can I walk in without registering?",
+                ("walk-in attendance", "priority to participants registered in advance"),
+            ),
+            (
+                "home",
+                "Do five workshops automatically qualify me for a laptop?",
+                ("at least 5 Digital Equity classes", "Laptop access and supplies are limited"),
+            ),
+        )
+        for source_id, question, expected_fragments in cases:
+            with self.subTest(source_id=source_id, question=question):
+                source = server.SOURCE_BY_ID[source_id]
+                prompt = server.retrieval_prompt(question, [source], {"url": server.ROOT_URL})
+                records = json.loads(prompt.split("\nCANDIDATE RECORDS:\n", 1)[1])
+                content = records[0]["content"]
+                self.assertLessEqual(len(content), server.MAX_MODEL_EXCERPT_CHARS)
+                for fragment in expected_fragments:
+                    self.assertIn(fragment.lower(), content.lower())
+                self.assertNotRegex(content, r"(?:^|\s)\S{1,3}…(?:\s|$)")
 
     def test_certification_list_excerpt_keeps_named_credentials_not_badge_scaffolding(self):
         excerpt = server.source_excerpt(
@@ -328,11 +394,14 @@ class StagedRetrievalTests(unittest.TestCase):
 
         handler._ollama = record_model_call.__get__(handler, server.Handler)
         original_key = server.KEY
+        original_model_budget = server.MODEL_CALL_BUDGET
         server.KEY = "test-only-placeholder" if model_enabled else ""
+        server.MODEL_CALL_BUDGET = server.ModelCallBudget(10000, 10000)
         try:
             handler.do_POST()
         finally:
             server.KEY = original_key
+            server.MODEL_CALL_BUDGET = original_model_budget
         return captured, model_calls
 
     @staticmethod
@@ -546,7 +615,11 @@ class StagedRetrievalTests(unittest.TestCase):
                     ),
                 )
                 for grounded_line in records[0]["content"].splitlines():
-                    self.assertIn(grounded_line, server.searchable_text(source))
+                    source_text = server.searchable_text(source)
+                    if grounded_line.endswith("…"):
+                        self.assertIn(grounded_line[:-1].rstrip(), source_text)
+                    else:
+                        self.assertIn(grounded_line, source_text)
 
     def test_site_search_occurs_only_after_current_page_miss(self):
         captured, model_calls = self.dispatch_chat(
@@ -625,6 +698,28 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["kind"], "clarify")
         self.assertEqual(len(model_calls), 2)
 
+    def test_follow_up_can_confirm_a_grounded_detail_already_in_the_prior_answer(self):
+        source = server.SOURCE_BY_ID["home"]
+        prior = (
+            "Regularly scheduled classes have rolling attendance. However, multi-part "
+            "workshops on special topics may require full attendance."
+        )
+        answer = "Multi-part workshops on special topics may require full attendance."
+        result = server.parse_model_selection(
+            json.dumps({"pick": "home", "answer": answer}),
+            "What kind of class could require full attendance?",
+            [source],
+            "site",
+            {"chat_stage": "follow_up", "request_language": "en"},
+            routing_question=(
+                "Do I need to attend every scheduled class? Follow-up: "
+                "What kind of class could require full attendance?"
+            ),
+            prior_answer=prior,
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["message"], answer)
+
     def test_single_resolved_source_ask_retries_then_answers(self):
         grounded = (
             "To qualify, participants must be active attendees or previous attendees "
@@ -641,6 +736,27 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["kind"], "answer")
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
         self.assertIn("at least 5", captured["payload"]["message"])
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["resolved source can answer"],
+            model_calls[1][0]["content"],
+        )
+
+    def test_single_resolved_source_malformed_output_retries_then_answers(self):
+        grounded = (
+            "To qualify, participants must be active attendees or previous attendees "
+            "of at least 5 Digital Equity Program workshops."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What are the current requirements for a free refurbished laptop?",
+            "https://www.fortunedigitalequity.org/",
+            model_raws=[
+                "not valid selector JSON",
+                json.dumps({"pick": "devices", "answer": grounded}),
+            ],
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
         self.assertEqual(len(model_calls), 2)
         self.assertIn(
             server.RETRY_INSTRUCTIONS["resolved source can answer"],
