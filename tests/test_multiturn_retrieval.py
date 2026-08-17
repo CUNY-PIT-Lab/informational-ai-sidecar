@@ -1,12 +1,15 @@
 import pathlib
+import sys
 import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 import server
 from scripts import run_website_guide_eval
 from scripts import run_website_guide_multiturn_eval
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOME = {"url": "https://www.fortunedigitalequity.org/"}
 
 
@@ -95,7 +98,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "I want to learn email from the beginning. What class fits?": server.INTRO_EMAIL_ID,
             "Does Fortune have a beginner Canva class?": server.INTRO_CANVA_ID,
             "Is there a class for learning a new smartphone?": server.INTRO_SMARTPHONE_ID,
-            "Is there a class about writing resumes with AI?": server.RESUME_AI_ID,
             "Now I want to learn Excel formulas.": server.EXCEL_FORMULAS_ID,
             "Is there also a class on job searching online?": server.JOB_SEARCH_ID,
             "Busco una clase básica de computación.": server.SPANISH_BASIC_ID,
@@ -104,6 +106,13 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             with self.subTest(question=question):
                 _, sources = server.retrieval_plan(question, HOME)
                 self.assertEqual(sources[0]["id"], source_id)
+
+    def test_removed_resume_class_uses_current_discovery_sources_without_guessing(self):
+        question = "Is there a class about writing resumes with AI?"
+        scope, sources = server.retrieval_plan(question, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual([source["id"] for source in sources], ["trainings", "contact"])
+        self.assertEqual(server.deterministic_answer_sources(question, sources, scope), [])
 
     def test_word_certification_follow_up_prefers_word_certification_page(self):
         history = [
@@ -190,7 +199,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             chat_stage="follow_up",
             routing_question="Intro to Smartphones. Follow-up: When is it offered?",
         )
-        self.assertIn("live calendar", message.lower())
+        self.assertIn("available classes", message.lower())
 
     def test_advancement_grader_rejects_a_reused_source_sentence(self):
         history = [
@@ -247,8 +256,8 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             chat_stage="follow_up",
             routing_question="Can I get a free laptop? How do I confirm whether I qualify?",
         )
-        self.assertIn("referral", message)
-        self.assertIn("case manager", message)
+        self.assertIn("at least 5", message)
+        self.assertIn("workshops", message)
         self.assertNotIn("currently on hold", message)
 
     def test_continuity_grader_accepts_stable_follow_up(self):

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "name": "Fortune Website Guide refreshed-corpus multi-turn evaluation",
+    "version": "2026-08-17.1",
+    "mode": "gym",
+    "owner": "Fortune Website Guide maintainers"
+  },
+  "charter": {
+    "decision": "Determine whether the refreshed guide sustains grounded, concise conversation while advancing follow-ups, respecting topic shifts, and refusing to guess.",
+    "unitUnderTest": "The deployed zmuhls staging guide with conversation continuity, a six-message safe-history window, page context, current Fortune records, and model-backed grounded answers.",
+    "hardConstraints": [
+      "Conversation and chat-stage continuity remain intact.",
+      "A factual follow-up adds supported information instead of repeating the prior answer.",
+      "An explicit topic shift does not revive an older source.",
+      "Factual answers cite only current approved Fortune records and call the model.",
+      "No visible response exceeds 48 words."
+    ]
+  },
+  "coverage": {
+    "minimumEpisodes": 10,
+    "minimumTurns": 40,
+    "historyWindow": "Latest six safe messages",
+    "scenarioFamilies": [
+      "current FAQs",
+      "device and support eligibility",
+      "email, Excel, Canva, and Spanish class retrieval",
+      "registration and current schedule",
+      "page awareness",
+      "clarification",
+      "topic shifts and stale-context eviction",
+      "out-of-scope and adversarial requests",
+      "stale-fact negatives",
+      "follow-up advancement"
+    ],
+    "split": "validation"
+  },
+  "protocol": {
+    "schedule": "fixed sequential episodes",
+    "seeds": [20260817],
+    "repetitions": 1,
+    "timeoutSeconds": 45,
+    "retryPolicy": {
+      "transientInfrastructureErrors": 1,
+      "semanticFailures": 0
+    }
+  },
+  "graders": [
+    {
+      "id": "continuity-grounding-advancement-grader",
+      "type": "executable-plus-human-adjudication",
+      "version": "2026-08-17.1",
+      "adjudication": "Review every failed or near-duplicate turn against the cited source and the three preceding user-guide exchanges."
+    }
+  ],
+  "releaseGates": [
+    "At least 10 episodes and 40 turns complete.",
+    "Every hard episode passes.",
+    "At least 90 percent of required episodes pass.",
+    "At least 85 percent of contextual turns pass.",
+    "No factual follow-up repeats a prior evidence sentence without advancing.",
+    "No infrastructure or staging-boundary failure occurs."
+  ],
+  "reproducibility": {
+    "recordCodeHash": true,
+    "recordDataHashes": true,
+    "recordModelAndPromptVersions": true,
+    "recordEnvironment": true,
+    "immutableRawArtifacts": true
+  }
+}

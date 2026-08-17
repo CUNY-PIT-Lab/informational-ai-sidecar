@@ -12,13 +12,27 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from prompt_policy import (
+    CURRENT_TUNABLE_SELECTIONS,
+    PROMPT_LAB_TUNABLE_MODULES,
+    TEAM_TUNABLE_PROMPT_MODULES,
+)
 
-EVALUATION_SCHEMA_VERSION = "006_transcript_annotations"
+
+EVALUATION_SCHEMA_VERSION = "007_prompt_proposals"
 COOKIE_NAME = "__Host-fs_eval"
 SLOT_KEYS = ("admin", "editor-1", "editor-2", "editor-3")
 SHARED_BUCKET_OWNER = "admin"
 COLOR_KEYS = {"blue", "sky", "eggplant", "coral"}
 ANNOTATION_CATEGORIES = {"helpful", "unclear", "incorrect", "unsafe", "other"}
+PROMPT_EDITABLE_KEYS = PROMPT_LAB_TUNABLE_MODULES
+PROMPT_MODULE_LABELS = {
+    "style": "Tone and concision",
+    "clarification": "Clarification style",
+    "page_awareness": "Page awareness and flow",
+    "follow_up": "Follow-up advancement",
+}
+PROMPT_PROPOSAL_STATUSES = {"draft", "ready", "archived"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -100,6 +114,43 @@ def _annotation_category(value: Any, *, allow_empty: bool = False) -> str | None
     if category not in ANNOTATION_CATEGORIES:
         raise EvaluationValidation("Choose an available annotation type.")
     return category
+
+
+def _proposal_title(value: Any) -> str:
+    title = " ".join(str(value or "").split())
+    if not 1 <= len(title) <= 80:
+        raise EvaluationValidation("Proposal titles must be between 1 and 80 characters.")
+    return title
+
+
+def _prompt_module_values(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise EvaluationValidation("Prompt module suggestions must be an object.")
+    unknown = sorted(set(value) - set(PROMPT_EDITABLE_KEYS))
+    if unknown:
+        raise EvaluationValidation("Only the four reviewable prompt modules can be proposed.")
+    modules: dict[str, str] = {}
+    for key in PROMPT_EDITABLE_KEYS:
+        if key not in value:
+            continue
+        if not isinstance(value[key], str):
+            raise EvaluationValidation("Prompt module suggestions must be text.")
+        suggestion = " ".join(value[key].split())
+        if not suggestion:
+            continue
+        if len(suggestion) > 500:
+            raise EvaluationValidation("Prompt module suggestions must be 500 characters or fewer.")
+        modules[key] = suggestion
+    if not modules:
+        raise EvaluationValidation("Propose a change to at least one reviewable module.")
+    return modules
+
+
+def _proposal_comment(value: Any) -> str:
+    comment = " ".join(str(value or "").split())
+    if not 1 <= len(comment) <= 1000:
+        raise EvaluationValidation("Comments must be between 1 and 1000 characters.")
+    return comment
 
 
 def _json_value(value: Any) -> Any:
@@ -700,6 +751,457 @@ class EvaluationStore:
             "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
             (identity,),
         )
+
+    @staticmethod
+    def _lock_prompt_proposal(cursor, proposal_id: str) -> None:
+        """Serialize proposal creation and edits even before a row exists."""
+
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (f"prompt-proposal:shared:{proposal_id}",),
+        )
+
+    def _prompt_workspace_scope(self, cursor) -> str:
+        cursor.execute(
+            """
+            SELECT w.scope_key
+            FROM prompt_review_workspaces w
+            JOIN evaluation_bucket_sets s ON s.id = w.bucket_set_id
+            WHERE w.scope_key = 'shared'
+              AND s.account_slot = %s
+              AND s.archived_at IS NULL
+            """,
+            (SHARED_BUCKET_OWNER,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise EvaluationUnavailable("The shared prompt review workspace is unavailable.")
+        return str(row.get("scope_key") if isinstance(row, dict) else row[0])
+
+    @staticmethod
+    def _prompt_module_catalog() -> list[dict]:
+        catalog = []
+        for key in PROMPT_EDITABLE_KEYS:
+            variant = CURRENT_TUNABLE_SELECTIONS[key]
+            catalog.append({
+                "key": key,
+                "label": PROMPT_MODULE_LABELS[key],
+                "current_variant": variant,
+                "current_value": TEAM_TUNABLE_PROMPT_MODULES[key][variant],
+                "maximum_length": 500,
+            })
+        return catalog
+
+    def _prompt_proposal_record(self, cursor, proposal_id: str, scope: str) -> dict:
+        cursor.execute(
+            """
+            SELECT id, base_prompt_version, title, module_values, status, version,
+                   created_by, updated_by, created_at, updated_at,
+                   ready_at, archived_at
+            FROM prompt_proposals
+            WHERE id = %s AND scope_key = %s
+            """,
+            (proposal_id, scope),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise EvaluationForbidden("That prompt proposal is not available.")
+        proposal = dict(row)
+        cursor.execute(
+            """
+            SELECT proposal_version, base_prompt_version, title, module_values,
+                   status, actor_slot, action, recorded_at
+            FROM prompt_proposal_revisions
+            WHERE proposal_id = %s
+            ORDER BY proposal_version DESC
+            """,
+            (proposal_id,),
+        )
+        proposal["revisions"] = [dict(item) for item in cursor.fetchall()]
+        cursor.execute(
+            """
+            SELECT id, body, actor_slot, proposal_version, created_at
+            FROM prompt_proposal_comments
+            WHERE proposal_id = %s
+            ORDER BY created_at, id
+            """,
+            (proposal_id,),
+        )
+        proposal["comments"] = [dict(item) for item in cursor.fetchall()]
+        return proposal
+
+    @staticmethod
+    def _prompt_operation(cursor, operation_id: str) -> dict | None:
+        cursor.execute(
+            """
+            SELECT operation_id, proposal_id, action, proposal_version
+            FROM prompt_proposal_events
+            WHERE operation_id = %s
+            """,
+            (operation_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def _record_prompt_event(
+        self,
+        cursor,
+        *,
+        operation_id: str,
+        proposal_id: str,
+        actor_slot: str,
+        action: str,
+        proposal_version: int,
+        metadata: dict | None = None,
+    ) -> None:
+        cursor.execute(
+            """
+            INSERT INTO prompt_proposal_events (
+                id, operation_id, proposal_id, actor_slot, action,
+                proposal_version, metadata
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                str(uuid.uuid4()), operation_id, proposal_id, actor_slot, action,
+                proposal_version, self._jsonb(metadata or {}),
+            ),
+        )
+
+    def get_prompt_lab(
+        self,
+        account_slot: str,
+        deployed_version: str,
+        behavior_release: str,
+    ) -> dict:
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                scope = self._prompt_workspace_scope(cursor)
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM prompt_proposals
+                    WHERE scope_key = %s
+                    ORDER BY updated_at DESC, id
+                    LIMIT 100
+                    """,
+                    (scope,),
+                )
+                proposal_ids = [str(row["id"]) for row in cursor.fetchall()]
+                proposals = [
+                    self._prompt_proposal_record(cursor, proposal_id, scope)
+                    for proposal_id in proposal_ids
+                ]
+        return _json_value({
+            "scope": scope,
+            "shared": True,
+            "deployed": {
+                "version": str(deployed_version or "unknown")[:80],
+                "behavior_release": str(behavior_release or "unknown")[:120],
+                "editable": False,
+            },
+            "editable_modules": self._prompt_module_catalog(),
+            "code_controlled": [
+                "Grounding and no-guessing rules",
+                "Approved source access",
+                "Privacy and safety rules",
+                "Response validation and release activation",
+            ],
+            "activation": "code_review_and_deploy_only",
+            "can_mark_status": account_slot == SHARED_BUCKET_OWNER,
+            "proposals": proposals,
+        })
+
+    def create_prompt_proposal(
+        self,
+        account_slot: str,
+        title_value: Any,
+        module_values_value: Any,
+        base_prompt_version: str,
+        proposal_value: Any,
+        operation_value: Any,
+    ) -> dict:
+        title = _proposal_title(title_value)
+        modules = _prompt_module_values(module_values_value)
+        proposal_id = _uuid(proposal_value, "proposal_id")
+        operation_id = _uuid(operation_value, "operation_id")
+        base_version = str(base_prompt_version or "").strip()
+        if not 1 <= len(base_version) <= 80:
+            raise EvaluationValidation("The deployed prompt version is unavailable.")
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                scope = self._prompt_workspace_scope(cursor)
+                self._lock_prompt_proposal(cursor, proposal_id)
+                repeated = self._prompt_operation(cursor, operation_id)
+                if repeated:
+                    if (
+                        str(repeated["proposal_id"]) == proposal_id
+                        and repeated["action"] == "proposal.create"
+                    ):
+                        return _json_value(
+                            self._prompt_proposal_record(cursor, proposal_id, scope)
+                        )
+                    raise EvaluationConflict("That operation ID was already used.")
+                cursor.execute(
+                    "SELECT 1 FROM prompt_proposals WHERE id = %s",
+                    (proposal_id,),
+                )
+                if cursor.fetchone():
+                    raise EvaluationConflict("That proposal already exists.")
+                cursor.execute(
+                    """
+                    INSERT INTO prompt_proposals (
+                        id, scope_key, base_prompt_version, title, module_values,
+                        status, version, created_by, updated_by
+                    ) VALUES (%s, %s, %s, %s, %s, 'draft', 1, %s, %s)
+                    """,
+                    (
+                        proposal_id, scope, base_version, title,
+                        self._jsonb(modules), account_slot, account_slot,
+                    ),
+                )
+                self._record_prompt_event(
+                    cursor,
+                    operation_id=operation_id,
+                    proposal_id=proposal_id,
+                    actor_slot=account_slot,
+                    action="proposal.create",
+                    proposal_version=1,
+                    metadata={"module_keys": list(modules)},
+                )
+                proposal = self._prompt_proposal_record(cursor, proposal_id, scope)
+            connection.commit()
+        return _json_value(proposal)
+
+    def update_prompt_proposal(
+        self,
+        account_slot: str,
+        proposal_value: Any,
+        title_value: Any,
+        module_values_value: Any,
+        expected_version_value: Any,
+        operation_value: Any,
+    ) -> dict:
+        proposal_id = _uuid(proposal_value, "proposal_id")
+        title = _proposal_title(title_value)
+        modules = _prompt_module_values(module_values_value)
+        operation_id = _uuid(operation_value, "operation_id")
+        try:
+            expected_version = max(1, int(expected_version_value))
+        except (TypeError, ValueError) as error:
+            raise EvaluationValidation("Proposal versions must be integers.") from error
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                scope = self._prompt_workspace_scope(cursor)
+                self._lock_prompt_proposal(cursor, proposal_id)
+                repeated = self._prompt_operation(cursor, operation_id)
+                if repeated:
+                    if (
+                        str(repeated["proposal_id"]) == proposal_id
+                        and repeated["action"] == "proposal.update"
+                    ):
+                        return _json_value(
+                            self._prompt_proposal_record(cursor, proposal_id, scope)
+                        )
+                    raise EvaluationConflict("That operation ID was already used.")
+                cursor.execute(
+                    """
+                    SELECT status, version
+                    FROM prompt_proposals
+                    WHERE id = %s AND scope_key = %s
+                    FOR UPDATE
+                    """,
+                    (proposal_id, scope),
+                )
+                current = cursor.fetchone()
+                if not current:
+                    raise EvaluationForbidden("That prompt proposal is not available.")
+                if current["status"] != "draft":
+                    raise EvaluationValidation("Only draft proposals can be edited.")
+                if expected_version != int(current["version"]):
+                    raise EvaluationConflict(
+                        "The proposal changed; refresh before saving.",
+                        _json_value(self._prompt_proposal_record(cursor, proposal_id, scope)),
+                    )
+                next_version = expected_version + 1
+                cursor.execute(
+                    """
+                    UPDATE prompt_proposals
+                    SET title = %s, module_values = %s, version = %s,
+                        updated_by = %s, updated_at = NOW()
+                    WHERE id = %s AND scope_key = %s
+                    """,
+                    (
+                        title, self._jsonb(modules), next_version, account_slot,
+                        proposal_id, scope,
+                    ),
+                )
+                self._record_prompt_event(
+                    cursor,
+                    operation_id=operation_id,
+                    proposal_id=proposal_id,
+                    actor_slot=account_slot,
+                    action="proposal.update",
+                    proposal_version=next_version,
+                    metadata={"module_keys": list(modules)},
+                )
+                proposal = self._prompt_proposal_record(cursor, proposal_id, scope)
+            connection.commit()
+        return _json_value(proposal)
+
+    def add_prompt_proposal_comment(
+        self,
+        account_slot: str,
+        proposal_value: Any,
+        comment_value: Any,
+        operation_value: Any,
+    ) -> dict:
+        proposal_id = _uuid(proposal_value, "proposal_id")
+        comment = _proposal_comment(comment_value)
+        operation_id = _uuid(operation_value, "operation_id")
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                scope = self._prompt_workspace_scope(cursor)
+                self._lock_prompt_proposal(cursor, proposal_id)
+                repeated_operation = self._prompt_operation(cursor, operation_id)
+                cursor.execute(
+                    """
+                    SELECT id, body, actor_slot, proposal_version, created_at
+                    FROM prompt_proposal_comments
+                    WHERE operation_id = %s
+                    """,
+                    (operation_id,),
+                )
+                repeated_comment = cursor.fetchone()
+                if repeated_comment:
+                    if not (
+                        repeated_operation
+                        and str(repeated_operation["proposal_id"]) == proposal_id
+                        and repeated_operation["action"] == "proposal.comment"
+                    ):
+                        raise EvaluationConflict("That operation ID was already used.")
+                    return _json_value(dict(repeated_comment))
+                if repeated_operation:
+                    raise EvaluationConflict("That operation ID was already used.")
+                cursor.execute(
+                    """
+                    SELECT version FROM prompt_proposals
+                    WHERE id = %s AND scope_key = %s
+                    FOR SHARE
+                    """,
+                    (proposal_id, scope),
+                )
+                proposal = cursor.fetchone()
+                if not proposal:
+                    raise EvaluationForbidden("That prompt proposal is not available.")
+                comment_id = str(uuid.uuid4())
+                proposal_version = int(proposal["version"])
+                cursor.execute(
+                    """
+                    INSERT INTO prompt_proposal_comments (
+                        id, proposal_id, operation_id, body, actor_slot,
+                        proposal_version
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, body, actor_slot, proposal_version, created_at
+                    """,
+                    (
+                        comment_id, proposal_id, operation_id, comment,
+                        account_slot, proposal_version,
+                    ),
+                )
+                stored = dict(cursor.fetchone())
+                self._record_prompt_event(
+                    cursor,
+                    operation_id=operation_id,
+                    proposal_id=proposal_id,
+                    actor_slot=account_slot,
+                    action="proposal.comment",
+                    proposal_version=proposal_version,
+                    metadata={"length": len(comment)},
+                )
+            connection.commit()
+        return _json_value(stored)
+
+    def set_prompt_proposal_status(
+        self,
+        account_slot: str,
+        proposal_value: Any,
+        status_value: Any,
+        expected_version_value: Any,
+        operation_value: Any,
+    ) -> dict:
+        if account_slot != SHARED_BUCKET_OWNER:
+            raise EvaluationForbidden("Only the administrator can change proposal status.")
+        proposal_id = _uuid(proposal_value, "proposal_id")
+        status = str(status_value or "").strip().lower()
+        if status not in {"ready", "archived"}:
+            raise EvaluationValidation("Proposal status can only be ready or archived.")
+        operation_id = _uuid(operation_value, "operation_id")
+        try:
+            expected_version = max(1, int(expected_version_value))
+        except (TypeError, ValueError) as error:
+            raise EvaluationValidation("Proposal versions must be integers.") from error
+        action = f"proposal.{status}"
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                scope = self._prompt_workspace_scope(cursor)
+                self._lock_prompt_proposal(cursor, proposal_id)
+                repeated = self._prompt_operation(cursor, operation_id)
+                if repeated:
+                    if (
+                        str(repeated["proposal_id"]) == proposal_id
+                        and repeated["action"] == action
+                    ):
+                        return _json_value(
+                            self._prompt_proposal_record(cursor, proposal_id, scope)
+                        )
+                    raise EvaluationConflict("That operation ID was already used.")
+                cursor.execute(
+                    """
+                    SELECT status, version FROM prompt_proposals
+                    WHERE id = %s AND scope_key = %s
+                    FOR UPDATE
+                    """,
+                    (proposal_id, scope),
+                )
+                current = cursor.fetchone()
+                if not current:
+                    raise EvaluationForbidden("That prompt proposal is not available.")
+                if expected_version != int(current["version"]):
+                    raise EvaluationConflict(
+                        "The proposal changed; refresh before changing its status.",
+                        _json_value(self._prompt_proposal_record(cursor, proposal_id, scope)),
+                    )
+                if status == "ready" and current["status"] != "draft":
+                    raise EvaluationValidation("Only a draft can be marked ready.")
+                if status == "archived" and current["status"] == "archived":
+                    raise EvaluationValidation("That proposal is already archived.")
+                next_version = expected_version + 1
+                cursor.execute(
+                    """
+                    UPDATE prompt_proposals
+                    SET status = %s, version = %s, updated_by = %s,
+                        updated_at = NOW(),
+                        ready_at = CASE WHEN %s = 'ready' THEN NOW() ELSE ready_at END,
+                        archived_at = CASE WHEN %s = 'archived' THEN NOW() ELSE archived_at END
+                    WHERE id = %s AND scope_key = %s
+                    """,
+                    (
+                        status, next_version, account_slot, status, status,
+                        proposal_id, scope,
+                    ),
+                )
+                self._record_prompt_event(
+                    cursor,
+                    operation_id=operation_id,
+                    proposal_id=proposal_id,
+                    actor_slot=account_slot,
+                    action=action,
+                    proposal_version=next_version,
+                    metadata={"from": current["status"], "to": status},
+                )
+                proposal = self._prompt_proposal_record(cursor, proposal_id, scope)
+            connection.commit()
+        return _json_value(proposal)
 
     def list_buckets(self, account_slot: str) -> list[dict]:
         with self._pool.connection() as connection:

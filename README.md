@@ -1,6 +1,6 @@
 # Fortune Digital Equity page-aware guide
 
-This repository publishes an inert replica of the public Fortune Digital Equity site with its informational sidecar. The August 8 inventory contains 200 public HTML routes drawn from the Wix sitemaps, blog feed, pagination links, and public member links. Each route preserves the rendered public page while removing Wix scripts, forms, tokens, trackers, and authenticated services. Internal links stay inside the replica; booking, form, upload, and member actions lead to the live Fortune site.
+This repository publishes an inert replica of the public Fortune Digital Equity site with its informational sidecar. The August 17 inventory contains 138 public HTML routes drawn from the Wix sitemaps, blog feed, pagination links, and public member links. Each route preserves the rendered public page while removing Wix scripts, forms, tokens, trackers, and authenticated services. Internal links stay inside the replica; booking, form, upload, and member actions lead to the live Fortune site.
 
 The page remains readable when the model service is unavailable. In that state, the static GitHub Pages build uses the public index for page context and links visitors to source pages. The published Pages configuration calls a separate Railway backend at `https://guide-api-production-a1a1.up.railway.app`. That service holds the provider key, accepts the `https://zmuhls.github.io` browser origin, and applies per-client and shared daily model-call limits. The server preloads GLM-5.2 at startup. The Pages and Wix clients repeat the same empty warm-up request when the guide loads, while a server-side cooldown collapses visitors into one provider call and keeps the model ready for 30 minutes.
 
@@ -8,14 +8,16 @@ The page remains readable when the model service is unavailable. In that state, 
 
 The index is a public-site inventory, not a claim that every URL can support an answer. The current crawl contains:
 
-- 143 current operational pages that may support answers.
-- 27 excluded pages, including new routes awaiting review, test, member, upload, duplicate, and staging pages.
+- 90 current operational pages that may support answers.
+- 18 excluded pages, including new routes awaiting review, inactive, member, upload, and administrative pages.
 - 21 archived pages retained for provenance and historical navigation.
 - 9 navigation records that can lead to another page but cannot establish current service facts.
 
 Old posts, category archives, past Tech Fair pages, member surfaces, test pages, duplicate services, and archive-labelled classes do not support participant answers. Dates, locations, registration, availability, eligibility, and inventory can change. The guide sends visitors to the current Fortune page or staff for confirmation.
 
 Every index record carries its canonical URL, authority state, content hash, proposed content owner, and Fortune-review status. The crawler keeps excluded and archived records in the inventory so reviewers can see the full routing scope.
+
+The [August 17 source-refresh report](docs/SOURCE-REFRESH-2026-08-17.md) records the exact FAQ, workshop, route, authority, and capture changes from the prior inventory.
 
 ## Page-aware chat
 
@@ -30,7 +32,7 @@ After a question:
 3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
 4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
 5. The server checks the approved record for the current page first. A strong local match narrows the model to that record instead of emitting a fixed sentence.
-6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 144 substantive records are addressable by public title; one Wix template-only Partners route is excluded from factual retrieval. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
+6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 90 answer-authority records are addressable by public title. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
 7. Answerable requests reach GLM-5.2 with the resolved question, the preceding guide answer when relevant, and bounded approved page excerpts—not raw participant history. The model returns one allowed page ID plus a concise answer, or `ASK`. The server rejects unknown IDs, invented numbers, links, unsupported selections, and answers without source overlap. Valid prose is shown so the same grounded material can be answered naturally rather than through a prepackaged sentence.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
@@ -53,6 +55,11 @@ Internal Drive notes and meeting transcripts may shape navigation, ambiguity, tr
 Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Every authenticated evaluator sees and updates the same shared workspace: **Success**, **Needs work**, **Handoff**, the virtual **Unsorted** area, and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event attributed to the evaluator who made the change.
 
 The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. Shared conversation notes and message annotations can mark content as helpful, unclear, incorrect, a safety concern, or other; audit records retain the acting evaluator. Annotation records reference message IDs and never copy transcript text into evaluation or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
+
+Prompt Lab adds a shared, review-only place to suggest changes to four
+presentation modules. It cannot change grounding, privacy, validation, or the
+deployed prompt. See the [versioned prompt history](prompts/README.md) and the
+[Meeting 4 intervention report](docs/MEETING-4-INTERVENTIONS.md).
 
 Run the content-free aggregate release gate with `DATABASE_URL` supplied through the environment:
 
@@ -80,7 +87,7 @@ python3 scripts/build_pages.py
 python3 -m http.server 8791 --directory _site
 ```
 
-The build writes 200 `index.html` route snapshots under `_site/`, including the root route, and copies only the shared files that the replica and sidecar require.
+The build writes 138 `index.html` route snapshots under `_site/`, including the root route, and copies only the shared files that the replica and sidecar require.
 
 Run the live local model demo:
 
@@ -113,7 +120,7 @@ The [deployment overview](deployment/README.md) carries the shared API contract.
 
 - [Wix app subset](wix-app/README.md) contains the administrator key form, Admin-only Wix Secrets Manager methods, backend-only secret reader, embedded-script fragment, and site guide element. [The earlier roadmap](deployment/wix/ROADMAP.md) retains the extension-selection history.
 - [Copilot Studio bridge](deployment/wix/copilot-studio-bridge/README.md) is an optional, separately hosted Direct Line embed for evaluating Fortune's Microsoft agent on Wix without exposing its channel secret. It is limited to approved public information and does not replace the guide's pre-provider privacy and source-authority checks.
-- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the 200-route public replica, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
+- [GitHub Pages roadmap](deployment/github-pages/ROADMAP.md) describes the public replica, the source-backed static state, the active-model backend, and the review gates before sharing the URL with Jacob and the Fortune team.
 
 The Pages publication workflow is [`.github/workflows/pages.yml`](.github/workflows/pages.yml). It builds the allowlisted `_site/` directory and deploys that artifact after changes reach `main` or an authorized manual run begins.
 

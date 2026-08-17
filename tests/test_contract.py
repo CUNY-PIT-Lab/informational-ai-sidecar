@@ -31,18 +31,18 @@ def model_response(source, question="", answer=""):
 
 
 class SiteIndexTests(unittest.TestCase):
-    def test_complete_public_sitemap_inventory_is_present(self):
+    def test_current_public_sitemap_inventory_is_present(self):
         self.assertTrue(server.SITE_INDEX_PATH.exists())
-        self.assertEqual(server.SITE_INDEX["unique_urls"], 200)
-        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 213)
-        self.assertEqual(len(server.SITE_INDEX["pages"]), 200)
+        self.assertEqual(server.SITE_INDEX["unique_urls"], 138)
+        self.assertEqual(server.SITE_INDEX["sitemap_entries"], 151)
+        self.assertEqual(len(server.SITE_INDEX["pages"]), 138)
 
     def test_authority_boundary_is_explicit(self):
         self.assertEqual(
             server.SITE_INDEX["authority_counts"],
-            {"answer": 143, "excluded": 27, "archive": 21, "navigation": 9},
+            {"answer": 90, "excluded": 18, "archive": 21, "navigation": 9},
         )
-        self.assertGreaterEqual(len(server.ANSWER_SOURCES), 140)
+        self.assertGreaterEqual(len(server.ANSWER_SOURCES), 90)
         self.assertTrue(all(source["authority"] == "answer" for source in server.ANSWER_SOURCES))
 
     def test_every_indexed_url_stays_on_the_public_digital_equity_host(self):
@@ -58,8 +58,18 @@ class SiteIndexTests(unittest.TestCase):
 
     def test_reviewed_core_sources_remain_available(self):
         self.assertTrue({"home", "trainings", "devices", "individual", "calendar", "contact"}.issubset(server.SOURCE_BY_ID))
-        for source_id in ("home", "trainings", "devices", "individual", "calendar", "contact"):
-            self.assertTrue(server.SOURCE_BY_ID[source_id]["facts"])
+        expected_paths = {
+            "home": "/",
+            "trainings": "/workshops",
+            "devices": "/devices",
+            "individual": "/support",
+            "calendar": "/calendar",
+            "contact": "/contact",
+        }
+        for source_id, path in expected_paths.items():
+            source = server.SOURCE_BY_ID[source_id]
+            self.assertEqual(source["url"], server.ROOT_URL.rstrip("/") + path)
+            self.assertTrue(server.searchable_text(source).strip())
 
     def test_internal_drive_material_is_not_a_public_model_source(self):
         self.assertNotIn("docs.google.com", server.BASE_SYSTEM_PROMPT)
@@ -71,10 +81,10 @@ class RetrievalTests(unittest.TestCase):
     def test_retrieval_finds_specific_booking_services(self):
         robot = server.retrieve_sources("robot coding")
         spanish = server.retrieve_sources("Spanish digital literacy")
-        excel = server.retrieve_sources("Excel pivot table")
+        excel = server.retrieve_sources("Excel charts")
         self.assertIn("robot-coders-101", robot[0]["url"])
         self.assertIn("alfabetizaci", spanish[0]["url"])
-        self.assertTrue(any("pivot-tables" in source["url"] for source in excel[:2]))
+        self.assertEqual(excel[0]["id"], server.EXCEL_PRESENTING_ID)
 
     def test_retrieval_keeps_device_question_on_device_route(self):
         self.assertEqual(server.retrieve_sources("Can I get a free laptop?")[0]["id"], "devices")
@@ -94,6 +104,73 @@ class RetrievalTests(unittest.TestCase):
                 self.assertEqual(scope, "site")
                 self.assertEqual(sources[0]["id"], source_id)
 
+    def test_current_workshop_support_and_class_routes_replace_removed_slugs(self):
+        expected = {
+            server.INTRO_COMPUTERS_ID: "/service-page/understanding-computers",
+            server.INTRO_CANVA_ID: "/service-page/canva-design-tools",
+            server.INTRO_SMARTPHONE_ID: "/service-page/navigating-your-smartphone",
+            server.WORD_CERTIFICATION_ID: "/certifications",
+        }
+        for source_id, path in expected.items():
+            with self.subTest(path=path):
+                self.assertTrue(source_id)
+                self.assertEqual(
+                    server.SOURCE_BY_ID[source_id]["url"],
+                    server.ROOT_URL.rstrip("/") + path,
+                )
+        aliases = {
+            "/trainings": "/workshops",
+            "/individual": "/support",
+            "/reserve": "/calendar",
+            "/about/partners": "/about",
+        }
+        for old_path, current_path in aliases.items():
+            self.assertEqual(
+                server.canonical_url(server.ROOT_URL.rstrip("/") + old_path),
+                server.ROOT_URL.rstrip("/") + current_path,
+            )
+
+    def test_registration_and_current_faqs_use_live_answer_sources(self):
+        expectations = {
+            "How do I register for a class?": ["contact", "calendar"],
+            "Where do I sign up?": ["contact", "calendar"],
+            "Do I need to attend every scheduled class?": ["home", "contact"],
+            "Can I get help with skills not listed in the catalog?": ["contact", "individual"],
+        }
+        for question, source_ids in expectations.items():
+            with self.subTest(question=question):
+                scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
+                self.assertEqual(scope, "site")
+                self.assertEqual([source["id"] for source in sources], source_ids)
+                self.assertTrue(all(source["authority"] == "answer" for source in sources))
+
+    def test_removed_resume_and_pivot_classes_are_not_replaced_with_guesses(self):
+        for question in (
+            "Is there a class about writing resumes with AI?",
+            "I want an Excel pivot table class",
+        ):
+            with self.subTest(question=question):
+                scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
+                self.assertEqual(scope, "site")
+                self.assertEqual([source["id"] for source in sources], ["trainings", "contact"])
+                self.assertEqual(
+                    server.deterministic_answer_sources(question, sources, scope),
+                    [],
+                )
+                self.assertFalse(any(
+                    fragment in source["url"]
+                    for source in sources
+                    for fragment in ("pivot", "resume-writing")
+                ))
+
+    def test_current_home_and_contact_records_contain_the_updated_faqs(self):
+        for source_id in ("home", "contact"):
+            text = server.fold_text(server.searchable_text(server.SOURCE_BY_ID[source_id]))
+            self.assertIn("rolling attendance", text)
+            self.assertIn("priority to participants registered in advance", text)
+            self.assertIn("at least 5 digital equity classes", text)
+            self.assertIn("one-on-one time", text)
+
     def test_retrieval_never_returns_non_answer_authority(self):
         for query in ("2022 Tech Fair", "old blog post", "sample class", "member files"):
             for source in server.retrieve_sources(query):
@@ -111,12 +188,12 @@ class RetrievalTests(unittest.TestCase):
 
     def test_page_context_is_canonicalized_and_weighted(self):
         context = server.sanitize_page_context({
-            "url": "https://www.fortunedigitalequity.org/trainings?x=1#top",
-            "path": "trainings",
+            "url": "https://www.fortunedigitalequity.org/workshops?x=1#top",
+            "path": "workshops",
             "title": "Workshops",
         })
         contextual = server.contextualize_sources(server.retrieve_sources("What else is here?"), context)
-        self.assertEqual(context["url"], "https://www.fortunedigitalequity.org/trainings")
+        self.assertEqual(context["url"], "https://www.fortunedigitalequity.org/workshops")
         self.assertEqual(contextual[0]["id"], "trainings")
 
     def test_external_page_context_is_not_trusted(self):
@@ -242,6 +319,57 @@ class StagedRetrievalTests(unittest.TestCase):
                 })
                 self.assertEqual(distribution_sources[0]["id"], "devices")
 
+    def test_specific_one_to_one_help_bypasses_broad_start_clarification(self):
+        question = "What kinds of one-on-one technology help does Fortune offer?"
+        self.assertIsNone(server.ambiguity_response(question))
+
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/",
+            model_source_id="individual",
+            model_answer="Individualized training is offered by appointment and in practice clinics.",
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["retrieval_scope"], "site")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
+        self.assertEqual(len(model_calls), 1)
+
+    def test_support_page_reference_precedes_broad_help_clarification(self):
+        question = "Can I walk in for the help described here?"
+        page_context = {"url": "https://www.fortunedigitalequity.org/support"}
+        self.assertIsNone(server.ambiguity_response(question, page_context=page_context))
+
+        captured, model_calls = self.dispatch_chat(
+            question,
+            page_context["url"],
+            model_source_id="individual",
+            model_answer="Join us for office hours, or stop by our Support Desk.",
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["retrieval_scope"], "page")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
+        self.assertEqual(len(model_calls), 1)
+
+    def test_named_acp_enrollment_question_retrieves_current_device_status(self):
+        question = "Can Fortune enroll me in the old $30 Affordable Connectivity Program discount today?"
+        self.assertIsNone(server.ambiguity_response(question))
+
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/",
+            model_source_id="devices",
+            model_answer=(
+                "However, distribution is currently on hold, due to the loss of federal "
+                "funding for devices through the Affordable Connectivity Program."
+            ),
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["retrieval_scope"], "site")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
+        self.assertIn("currently on hold", captured["payload"]["message"])
+        self.assertNotIn("$30", captured["payload"]["message"])
+        self.assertEqual(len(model_calls), 1)
+
     def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
         captured, _ = self.dispatch_chat(
             "Can I get a free laptop?",
@@ -257,7 +385,7 @@ class StagedRetrievalTests(unittest.TestCase):
     def test_response_logs_server_owned_interaction_context(self):
         captured, _ = self.dispatch_chat(
             "How do I register for a class?",
-            "https://www.fortunedigitalequity.org/trainings",
+            "https://www.fortunedigitalequity.org/workshops",
             model_source_id="trainings",
             history=[
                 {"role": "user", "content": "I want a class."},
@@ -279,7 +407,7 @@ class StagedRetrievalTests(unittest.TestCase):
                 server.SOURCE_BY_ID[server.SOURCE_ID_BY_URL[page["url"]]]
             )
         ]
-        self.assertEqual(len(complete_pages), 142)
+        self.assertEqual(len(complete_pages), 90)
         for page in complete_pages:
             question = f"What does this page say about {page.get('title') or page['id']}?"
             with self.subTest(url=page["url"]):
@@ -295,7 +423,7 @@ class StagedRetrievalTests(unittest.TestCase):
             page for page in server.SITE_INDEX["pages"]
             if page.get("authority") != "answer" or page.get("status") != 200
         ]
-        self.assertEqual(len(blocked_pages), 57)
+        self.assertEqual(len(blocked_pages), 48)
         self.assertEqual(
             {page.get("authority") for page in blocked_pages},
             {"archive", "excluded", "navigation"},
@@ -333,7 +461,7 @@ class StagedRetrievalTests(unittest.TestCase):
     def test_site_search_occurs_only_after_current_page_miss(self):
         captured, model_calls = self.dispatch_chat(
             "Can I get a free laptop?",
-            "https://www.fortunedigitalequity.org/trainings",
+            "https://www.fortunedigitalequity.org/workshops",
         )
         self.assertEqual(captured["payload"]["retrieval_scope"], "site")
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
@@ -422,7 +550,7 @@ class StagedRetrievalTests(unittest.TestCase):
     def test_page_reference_uses_only_the_current_page(self):
         captured, model_calls = self.dispatch_chat(
             "What does this page say?",
-            "https://www.fortunedigitalequity.org/trainings",
+            "https://www.fortunedigitalequity.org/workshops",
             model_source_id="trainings",
         )
         self.assertEqual(captured["payload"]["retrieval_scope"], "page")
@@ -446,7 +574,7 @@ class StagedRetrievalTests(unittest.TestCase):
     def test_no_evidence_uses_staff_route_without_calling_model(self):
         captured, model_calls = self.dispatch_chat(
             "What is the zzyzx quasar permit policy?",
-            "https://www.fortunedigitalequity.org/trainings",
+            "https://www.fortunedigitalequity.org/workshops",
         )
         payload = captured["payload"]
         self.assertEqual(payload["retrieval_scope"], "staff")
@@ -481,7 +609,7 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(
             server.retrieval_plan(
                 "zzyzx quasar permit policy",
-                {"url": "https://www.fortunedigitalequity.org/trainings"},
+                {"url": "https://www.fortunedigitalequity.org/workshops"},
             ),
             ("staff", []),
         )
@@ -537,9 +665,9 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
 
     def test_class_clarification_choices_bypass_homepage_overlap(self):
         expected_urls = {
-            "Class topics": server.RESERVE_URL,
+            "Class topics": server.WORKSHOPS_URL,
             "Dates & locations": server.CALENDAR_URL,
-            "Register": server.RESERVE_URL,
+            "Register": server.CONTACT_URL,
         }
         for question, expected_url in expected_urls.items():
             self.assertIsNone(server.ambiguity_response(question), question)
@@ -741,8 +869,8 @@ class ResponseContractTests(unittest.TestCase):
         self.assertIn("Adrienne Whaley", result["message"])
         self.assertIn("Mark Solomon", result["message"])
 
-    def test_wix_template_people_never_become_retrieval_evidence(self):
-        partners = server.SOURCE_BY_ID[server.PARTNERS_PLACEHOLDER_ID]
+    def test_removed_partner_template_redirects_to_the_current_about_source(self):
+        partners = server.SOURCE_BY_ID[server.PARTNERS_ID]
         excerpt = server.source_excerpt(
             partners,
             "Who is on the Digital Equity team?",
@@ -751,14 +879,13 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("Don Francis", excerpt)
         self.assertNotIn("Ashley Jones", excerpt)
         self.assertNotIn("Every website has a story", excerpt)
-        self.assertIsNone(
-            server.approved_current_page_source({"url": partners["url"]})
+        self.assertEqual(
+            server.canonical_url("https://www.fortunedigitalequity.org/about/partners"),
+            partners["url"],
         )
-        self.assertFalse(
-            server.source_supports_query(
-                partners,
-                "Who is on the Digital Equity team?",
-            )
+        self.assertEqual(
+            server.approved_current_page_source({"url": partners["url"]})["id"],
+            server.PARTNERS_ID,
         )
 
     def test_model_prose_cannot_become_an_unsupported_factual_claim(self):
@@ -840,23 +967,27 @@ class ResponseContractTests(unittest.TestCase):
 
     def test_fast_answers_are_complete_short_sentences(self):
         devices = server.SOURCE_BY_ID["devices"]
-        reserve = server.SOURCE_BY_ID["page-reserve-0f176b4b"]
+        registration_source = server.SOURCE_BY_ID["contact"]
         laptop = server.grounded_answer_message(
             "Can I get a free laptop?", [devices], "site"
         )
         registration = server.grounded_answer_message(
-            "How do I register for a class?", [reserve], "site"
+            "How do I register for a class?", [registration_source], "site"
         )
         laptop_evidence = server.grounded_evidence_sentences(
             devices, "Can I get a free laptop?"
         )
         registration_evidence = server.grounded_evidence_sentences(
-            reserve, "How do I register for a class?"
+            registration_source, "How do I register for a class?"
         )
         self.assertTrue(laptop.startswith(laptop_evidence))
         self.assertTrue(registration.startswith(registration_evidence))
         self.assertIn("laptop", laptop.lower())
-        self.assertIn("registration", registration.lower())
+        self.assertTrue(
+            {"register", "registered", "walk-in"}.intersection(
+                server.tokens(registration, keep_stopwords=True)
+            )
+        )
         self.assertNotIn("currently on hold", laptop.lower())
         self.assertLessEqual(len(laptop.split()), server.MAX_MESSAGE_WORDS)
         self.assertLessEqual(len(registration.split()), server.MAX_MESSAGE_WORDS)
@@ -874,7 +1005,7 @@ class ResponseContractTests(unittest.TestCase):
 
         for question, source_id in (
             ("Can I get a free laptop?", "devices"),
-            ("How do I register for a class?", "page-reserve-0f176b4b"),
+            ("How do I register for a class?", "contact"),
             ("I need help using a device", "individual"),
         ):
             with self.subTest(question=question):
@@ -1224,7 +1355,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn('window.sessionStorage', app)
         self.assertIn("return window.parent.sessionStorage", app)
         self.assertIn('"fortune-website-guide:replica:v1"', app)
-        self.assertIn('frameUrl.searchParams.set("v", "20260817-grounded-generation-1")', replica_shell)
+        self.assertIn('frameUrl.searchParams.set("v", "20260817-route-refresh-1")', replica_shell)
         self.assertIn("persistConversation();", app)
         self.assertIn("restoreConversation();", app)
         self.assertIn("clearPersistedConversation();", app)
@@ -1486,16 +1617,16 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("staticAnswer", ask)
         self.assertIn("pendingClientEventId", ask)
 
-    def test_sidecar_keeps_reviewed_context_for_routes_missing_from_the_snapshot(self):
+    def test_sidecar_keeps_current_reviewed_context_routes(self):
         html = (DEMO / "index.html").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
         self.assertIn("const GUIDE_CONTEXT_PAGES", site)
-        for route in ("TRAININGS_URL", "INDIVIDUAL_URL", "CONTACT_URL"):
+        for route in ("WORKSHOPS_URL", "SUPPORT_URL", "CONTACT_URL"):
             self.assertIn(f"url: {route}", site)
         merge = site.index("GUIDE_CONTEXT_PAGES.forEach")
         selection = site.index("const page = state.byUrl.get(selectedUrl())", merge)
         self.assertLess(merge, selection)
-        self.assertIn("site.js?v=20260812-guide-context-1", html)
+        self.assertIn("site.js?v=20260817-route-refresh-1", html)
 
     def test_page_families_keep_specific_prompts_behind_compact_buttons(self):
         core = (DEMO / "guide-core.js").read_text(encoding="utf-8")
@@ -1505,7 +1636,6 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "Do you need a device or help using one?",
             "What kind of individual help do you need?",
             "What current class information are you trying to find?",
-            "What would you like to know about registration?",
             "What kind of help are you trying to reach?",
             "What event information do you need?",
             "What current information are you looking for?",

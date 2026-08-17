@@ -10,6 +10,14 @@ import urllib.request
 import uuid
 
 
+def get_json(base_url: str, path: str) -> tuple[int, dict]:
+    try:
+        with urllib.request.urlopen(base_url.rstrip("/") + path, timeout=30) as response:
+            return response.status, json.load(response)
+    except urllib.error.HTTPError as error:
+        return error.code, json.load(error)
+
+
 def post(base_url: str, payload: dict) -> tuple[int, dict]:
     request = urllib.request.Request(
         base_url.rstrip("/") + "/api/chat",
@@ -35,6 +43,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("base_url")
     args = parser.parse_args()
+
+    health_status, health = get_json(args.base_url, "/health")
+    prompt_policy_version = health.get("prompt_policy", {}).get("version")
+    if health_status != 200 or not prompt_policy_version:
+        raise AssertionError("Health response does not expose a prompt-policy version")
 
     event_id = str(uuid.uuid4())
     first_payload = {
@@ -77,7 +90,7 @@ def main() -> int:
         "request_kind": "clarification",
         "request_language": "en",
         "response_language": "en",
-        "prompt_policy_version": "2026-08-08-v2",
+        "prompt_policy_version": prompt_policy_version,
     }
     if {key: first.get(key) for key in expected_context} != expected_context:
         raise AssertionError("Interaction context was not logged consistently")

@@ -1,33 +1,21 @@
 {
-  "reviewed_on": "2026-07-20",
+  "reviewed_on": "2026-08-17",
   "scope": "The Fortune Society Digital Equity public website",
+  "source_mode": "live-site-index",
+  "source_note": "These records preserve stable routing IDs and review provenance only. Participant-facing facts come from the matching current public page in site-index.json; compact factual strings do not override the live crawl.",
   "public_sources": [
     {
       "id": "home",
       "title": "Digital Equity home",
       "url": "https://www.fortunedigitalequity.org/",
-      "facts": [
-        "The Digital Equity Program is for Fortune Society participants who want technical support and training for navigating a digital world.",
-        "The home page links to Find a Workshop and View Calendar.",
-        "Digital Equity staff can be reached at (212) 691-7554 or FSTrain@FortuneSociety.org."
-      ],
+      "facts": [],
       "volatile_fields": []
     },
     {
       "id": "trainings",
       "title": "Regular Workshops",
-      "url": "https://www.fortunedigitalequity.org/trainings",
-      "facts": [
-        "Beginner workshops are Introduction to Computers, Introduction to Windows, File and Print Management, Introduction to Email, Introduction to Smartphones and Tablets, Introduction to the Cloud, Introduction to LinkedIn, PantrySoft, and Coursera.",
-        "Introduction to Computers covers computer parts, mouse and keyboard use, startup, and shutdown. Introduction to Windows covers the desktop, taskbar, Start menu, File Explorer, and a web browser.",
-        "Introduction to Email covers creating an email address, sending messages, folders, filters, signatures, and calendars. Introduction to Smartphones and Tablets covers setup, home screens, apps, and common functions.",
-        "PantrySoft is listed only at the Bronx Supervised Release Program office. Fortune provides free Coursera access.",
-        "Intermediate workshops are Introduction to the Google Suite, Email and Calendar Management, Introduction to Microsoft Word, Introduction to Microsoft Excel, Introduction to Video Conferencing, Introduction to Microsoft PowerPoint, Job Searching Online, Resume Writing in an AI World, Digital Safety, Microsoft Excel Next Steps, and Microsoft Word Next Steps.",
-        "Job Searching Online covers job boards, online applications, and a professional online presence. Resume Writing in an AI World covers applicant-tracking systems and preparing a resume for current hiring processes. Digital Safety covers spam, phishing, malware, and safer device use.",
-        "Advanced workshops are Introduction to Robotics, Introduction to Canva, Introduction to Google Sites, PowerPoint Themes and Templates, Word Mail Merge, Excel Advanced Topics, and Macros.",
-        "Word Mail Merge, Macros, and some advanced Excel offerings are marked coming soon on the current page.",
-        "Prerequisites vary by workshop. The live workshop page is the source for the current prerequisite text."
-      ],
+      "url": "https://www.fortunedigitalequity.org/workshops",
+      "facts": [],
       "volatile_fields": [
         "workshop status",
         "prerequisites",
@@ -38,12 +26,7 @@
       "id": "devices",
       "title": "Device Distribution Programs",
       "url": "https://www.fortunedigitalequity.org/devices",
-      "facts": [
-        "The page describes help connecting eligible participants with a free cellphone and service through a Lifeline vendor.",
-        "The page directs people to ask at the Long Island City service center, the Bronx Supervised Release Program office, or 502 East 163rd Street. Phone eligibility rules have changed, so staff must confirm current eligibility.",
-        "The laptop program works with Computers 4 People. The current page says applicants must be active or former Digital Equity workshop attendees and have a case-manager referral.",
-        "Laptop supply is limited, and eligible people may need to wait. The guide cannot decide eligibility or promise inventory."
-      ],
+      "facts": [],
       "volatile_fields": [
         "eligibility",
         "inventory",
@@ -54,14 +37,8 @@
     {
       "id": "individual",
       "title": "Individual Support",
-      "url": "https://www.fortunedigitalequity.org/individual",
-      "facts": [
-        "One-to-one tutoring is available online or in person by appointment.",
-        "The current page lists Long Island City tutoring Monday through Friday from 10 a.m. to 2 p.m. and Bronx Supervised Release Program tutoring Monday and Wednesday from 1 p.m. to 3 p.m.",
-        "The Long Island City open computer lab is listed for Thursday from 10:30 a.m. to noon in room 133, without advance scheduling.",
-        "Technical support is listed at Long Island City Tuesday and Thursday from 11:30 a.m. to 1:30 p.m.; the Bronx Monday and Wednesday from 1 p.m. to 3 p.m.; and Mandela Community Center every other Friday from 11 a.m. to 1 p.m. Support can also be arranged by appointment.",
-        "Hours and staff availability can change, so the current page and staff should confirm them."
-      ],
+      "url": "https://www.fortunedigitalequity.org/support",
+      "facts": [],
       "volatile_fields": [
         "hours",
         "appointment availability",
@@ -72,12 +49,7 @@
       "id": "calendar",
       "title": "Digital Equity calendar",
       "url": "https://www.fortunedigitalequity.org/calendar",
-      "facts": [
-        "The live calendar is the source for current dates and availability. A visitor can select a green date to begin class registration.",
-        "The page lists Long Island City at 29-76 Northern Boulevard; the Bronx Supervised Release Program at 3230 Third Avenue; Mandela Community Center at 1074 Washington Avenue; and Castle Gardens at 625 West 140th Street.",
-        "Recurring class-hour ranges are listed as Long Island City Tuesday, Wednesday, and Thursday from 2 p.m. to 3:30 p.m.; Bronx Supervised Release Program Monday and Wednesday from 1:30 p.m. to 3 p.m.; and Mandela Community Center Monday and Wednesday from 11 a.m. to 1 p.m.",
-        "The guide must never invent the next available class date."
-      ],
+      "facts": [],
       "volatile_fields": [
         "dates",
         "availability",
@@ -89,12 +61,7 @@
       "id": "contact",
       "title": "Contact Digital Equity",
       "url": "https://www.fortunedigitalequity.org/contact",
-      "facts": [
-        "Digital Equity can be reached at FSTrain@FortuneSociety.org or (212) 691-7554.",
-        "The mailing address is 29-76 Northern Boulevard, Queens, New York 11101.",
-        "The public contact page provides an official contact form and a class-registration route.",
-        "The official form asks for a Fortune ID. This guide must link to the official form and must never collect a Fortune ID itself."
-      ],
+      "facts": [],
       "volatile_fields": [
         "form fields",
         "registration route"

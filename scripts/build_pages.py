@@ -228,7 +228,7 @@ def render_snapshot(snapshot_html: str, route: dict[str, str], asset_base: str) 
     escaped_page_id = html.escape(route["pageId"], quote=True)
     escaped_css = html.escape(f"{asset_base}replica-shell.css?v=20260803-replica-1", quote=True)
     escaped_js = html.escape(
-        f"{asset_base}replica-shell.js?v=20260813-conversation-persistence-1",
+        f"{asset_base}replica-shell.js?v=20260817-route-refresh-1",
         quote=True,
     )
     head_injection = (

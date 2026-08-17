@@ -5,12 +5,11 @@
   if (!Core) throw new Error("FortuneGuideCore must load before site.js");
   const SITE_ORIGIN = "https://www.fortunedigitalequity.org";
   const CONTACT_URL = `${SITE_ORIGIN}/contact`;
-  const TRAININGS_URL = `${SITE_ORIGIN}/trainings`;
+  const WORKSHOPS_URL = `${SITE_ORIGIN}/workshops`;
   const CALENDAR_URL = `${SITE_ORIGIN}/calendar`;
   const DEVICES_URL = `${SITE_ORIGIN}/devices`;
-  const INDIVIDUAL_URL = `${SITE_ORIGIN}/individual`;
+  const SUPPORT_URL = `${SITE_ORIGIN}/support`;
   const PRACTICE_URL = `${SITE_ORIGIN}/practice`;
-  const RESERVE_URL = `${SITE_ORIGIN}/reserve`;
   const ASSET_BASE = String(window.FORTUNE_ASSET_BASE || "");
   const STATIC_ROUTES = Boolean(window.FORTUNE_STATIC_ROUTES);
   const BOT_MESSAGE_WORD_LIMIT = 48;
@@ -25,7 +24,7 @@
     {
       id: "trainings",
       title: "Regular Workshops",
-      url: TRAININGS_URL,
+      url: WORKSHOPS_URL,
       description: "Beginner, intermediate, and advanced digital-skills workshops.",
       blocks: ["Use the live workshop page for current topics and prerequisites."],
       authority: "answer",
@@ -35,7 +34,7 @@
     {
       id: "individual",
       title: "Individual Support",
-      url: INDIVIDUAL_URL,
+      url: SUPPORT_URL,
       description: "One-to-one tutoring, computer-lab access, and technical support.",
       blocks: ["Use the live support page for current hours and appointments."],
       authority: "answer",
@@ -142,12 +141,12 @@
   function fallbackDestination(question, current) {
     const value = cleanText(question).toLowerCase();
     const candidates = [];
-    if (/device|laptop|cell ?phone|phone|lifeline/.test(value)) candidates.push(DEVICES_URL, INDIVIDUAL_URL, CONTACT_URL);
-    else if (/date|time|schedule|when|where|calendar/.test(value)) candidates.push(CALENDAR_URL, TRAININGS_URL, CONTACT_URL);
-    else if (/register|reserve|sign up|enroll/.test(value)) candidates.push(RESERVE_URL, CALENDAR_URL, CONTACT_URL);
-    else if (/practice|exercise|assessment|quiz/.test(value)) candidates.push(PRACTICE_URL, TRAININGS_URL, CONTACT_URL);
-    else if (/support|tutor|problem|fix|troubleshoot/.test(value)) candidates.push(INDIVIDUAL_URL, CONTACT_URL, TRAININGS_URL);
-    else candidates.push(TRAININGS_URL, PRACTICE_URL, CONTACT_URL);
+    if (/device|laptop|cell ?phone|phone|lifeline/.test(value)) candidates.push(DEVICES_URL, SUPPORT_URL, CONTACT_URL);
+    else if (/date|time|schedule|when|where|calendar/.test(value)) candidates.push(CALENDAR_URL, WORKSHOPS_URL, CONTACT_URL);
+    else if (/register|reserve|sign up|enroll/.test(value)) candidates.push(CALENDAR_URL, CONTACT_URL, WORKSHOPS_URL);
+    else if (/practice|exercise|assessment|quiz/.test(value)) candidates.push(PRACTICE_URL, WORKSHOPS_URL, CONTACT_URL);
+    else if (/support|tutor|problem|fix|troubleshoot/.test(value)) candidates.push(SUPPORT_URL, CONTACT_URL, WORKSHOPS_URL);
+    else candidates.push(WORKSHOPS_URL, PRACTICE_URL, CONTACT_URL);
     return candidates.find(url => canonicalUrl(url) !== canonicalUrl(current?.url)) || CONTACT_URL;
   }
 

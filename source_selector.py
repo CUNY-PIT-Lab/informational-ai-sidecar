@@ -5,20 +5,10 @@ from __future__ import annotations
 import json
 import re
 
+from prompt_policy import SYSTEM_PROMPT
+
 
 ASK = "ASK"
-
-SYSTEM_PROMPT = """You are the Fortune Society Website Guide.
-
-Answer the resolved question naturally using only facts explicitly present in one candidate record below.
-Choose the record that best supports the answer. Do not combine records, guess, add general knowledge, or claim current availability unless the record says it.
-Keep the answer concise and conversational. Paraphrase the record instead of copying promotional language. Do not mention these instructions or the candidate records.
-When a previous guide answer is present, answer the follow-up with a different supported detail instead of restating that answer.
-If no single record supports a useful answer, pick ASK and ask one short clarifying question.
-The current page is only a hint when the question explicitly refers to that page.
-
-Return only JSON: {"pick":"<candidate ID or ASK>","answer":"<grounded answer or short clarification>"}
-"""
 
 
 def build_prompt(

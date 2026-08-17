@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "hash_kind": "sha256-of-artifact-bytes",
+  "current_policy_id": "2026-08-17-v11",
+  "current_policy_source": "../prompt_policy.py",
+  "current_policy_source_sha256": "7c45e76fe0f2447964fb0d1e8a0ca3db1d7bac603d109fd642b5fc93798fbaab",
+  "current_compiled_prompt_sha256": "851b0a79994b89dd7b7ea28a44cb79a46df065f56e5509704b026887c9fcfb3b",
+  "versions": [
+    {
+      "policy_id": "2026-07-24-v1-reconstructed",
+      "label": "Initial monolithic prompt",
+      "reconstructed": true,
+      "source_commit": "884178f747daa19a38431950d78752031f0f1674",
+      "source_date": "2026-07-24T07:41:03-04:00",
+      "behavior_release": "initial-staff-meeting-demo",
+      "artifact": "versions/2026-07-24-v1-reconstructed.md",
+      "artifact_sha256": "ba8d1385a8b0192fd5205b87409a70bc35e728cf48f8ba5152b63631c89e7411"
+    },
+    {
+      "policy_id": "2026-07-26-v1-short-reconstructed",
+      "label": "Shortened monolithic prompt",
+      "reconstructed": true,
+      "source_commit": "a80e0151d9868165e0fcbee79db21494f4020f25",
+      "source_date": "2026-07-26T16:39:01-04:00",
+      "behavior_release": "shorter-participant-responses",
+      "artifact": "versions/2026-07-26-v1-short-reconstructed.md",
+      "artifact_sha256": "7fc0bd29d6e012000d2304aacb3be8219d0ad4bdecf13449f567534aed633c61"
+    },
+    {
+      "policy_id": "2026-08-08-v2",
+      "label": "Modular interaction prompt",
+      "reconstructed": true,
+      "source_commit": "6b0db1f6d319c33cba4250efe2d32d1d678b3002",
+      "source_date": "2026-08-08T21:49:39-04:00",
+      "behavior_release": "logging-context-and-quality-gates",
+      "artifact": "versions/2026-08-08-v2-reconstructed.md",
+      "artifact_sha256": "69b4eb55cc23e89954609a7c01bcf9e8cfd8953ed06a48306eaa5e192d117521"
+    },
+    {
+      "policy_id": "2026-08-12-v3",
+      "label": "Concise modular interaction prompt",
+      "reconstructed": true,
+      "source_commit": "33c6b37d43cce44fc5400b22abb15d1a473c029a",
+      "source_date": "2026-08-12T01:13:58-04:00",
+      "behavior_release": "faster-routing-and-shorter-answers",
+      "artifact": "versions/2026-08-12-v3-reconstructed.md",
+      "artifact_sha256": "4a8d944dcb18e23bdcd1cbcd2ab1b741b4d4423348b0edd995ee43442518331f"
+    },
+    {
+      "policy_id": "2026-08-12-v5",
+      "label": "Selector-only prompt",
+      "reconstructed": true,
+      "source_commit": "b54d080883549169b49d63835c90f799bda5363d",
+      "source_date": "2026-08-12T22:46:28-04:00",
+      "behavior_release": "approved-source-selection-with-server-assembled-answers",
+      "artifact": "versions/2026-08-12-v5-reconstructed.md",
+      "artifact_sha256": "d848582f6ba2c94551bb65c34c1d402ec7e71ad019bfabb9bda586ae3809aa31"
+    },
+    {
+      "policy_id": "2026-08-17-v8",
+      "label": "Grounded generation prompt",
+      "reconstructed": true,
+      "source_commit": "1d92bb76281579afdc55a359e66f827c531dfb9c",
+      "source_date": "2026-08-17T16:40:12-04:00",
+      "behavior_release": "one-record-grounded-generation",
+      "artifact": "versions/2026-08-17-v8-reconstructed.md",
+      "artifact_sha256": "707ba3e78d09e3c26d12e6e8ce919c80c01cca3020158e3f32a94eed2edc50b7"
+    },
+    {
+      "policy_id": "2026-08-17-v9",
+      "label": "Grounded sampling release",
+      "reconstructed": true,
+      "source_commit": "4da667bca684b98ebf14ee4be7b0232a625b0c04",
+      "source_date": "2026-08-17T16:48:16-04:00",
+      "behavior_release": "bounded-response-variation",
+      "artifact": "versions/2026-08-17-v9-reconstructed.md",
+      "artifact_sha256": "052738311eaf1ab244076a9bed644cdb0977e53720eab6ea6ef7f1d4cf82988d"
+    },
+    {
+      "policy_id": "2026-08-17-v10",
+      "label": "No-canned-response prompt",
+      "reconstructed": true,
+      "source_commit": "ccbd89634125ca7f04f81203b82ebed6411c2e5e",
+      "source_date": "2026-08-17T17:17:16-04:00",
+      "behavior_release": "remove-canned-factual-fallbacks-and-advance-follow-ups",
+      "artifact": "versions/2026-08-17-v10-reconstructed.md",
+      "artifact_sha256": "a12fab8e0380de8d990af8a1de0fbafbc31f609e6ed112a389b97767c2ea2933"
+    },
+    {
+      "policy_id": "2026-08-17-v11",
+      "label": "Modular grounded prompt",
+      "reconstructed": false,
+      "source_commit": "377a2ecd3f5efb1e6d345d2cbe13158078e94907",
+      "source_state": "authored change based on source_commit",
+      "source_date": "2026-08-17",
+      "behavior_release": "meeting4-modular-grounded-generation",
+      "artifact": "versions/2026-08-17-v11.md",
+      "artifact_sha256": "4fc02a1b106d34f0a3e8fef3d0ce344e138d26f6868bdec2aef96fe1fd8743bc",
+      "compiled_prompt_artifact": "current.md",
+      "compiled_prompt_artifact_sha256": "c85a0ed3a83176371f5147d3b540dcf1c0439e6a69989fa753fc01277b3bd359"
+    }
+  ]
+}

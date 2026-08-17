@@ -61,10 +61,6 @@ ARCHIVE_PAGE_PATHS = {
 ADDITIONAL_PUBLIC_ROUTES = {
     "/news/page/2": "blog-categories",
     "/news/page/3": "blog-categories",
-    "/profile/abarnes/profile": "profiles",
-    "/profile/awhaley/profile": "profiles",
-    "/profile/jschwartz/profile": "profiles",
-    "/profile/wwaters/profile": "profiles",
 }
 
 

@@ -44,6 +44,11 @@ from evaluation_store import (
     EvaluationUnavailable,
     EvaluationValidation,
 )
+from prompt_policy import (
+    PROMPT_BEHAVIOR_RELEASE,
+    PROMPT_POLICY_VERSION,
+    build_retry_prompt,
+)
 from source_selector import ASK as SELECTOR_ASK
 from source_selector import SYSTEM_PROMPT as SELECTOR_SYSTEM_PROMPT
 from source_selector import build_prompt as build_selector_prompt
@@ -70,7 +75,6 @@ MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-17-v10"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -111,7 +115,7 @@ MODEL_WARMUP_COOLDOWN = bounded_env_int(
     maximum=3600,
 )
 MODEL_KEEP_ALIVE = os.environ.get("FORTUNE_MODEL_KEEP_ALIVE", "30m").strip() or "30m"
-CONVERSATION_RECORDER = ConversationRecorder()
+CONVERSATION_RECORDER = ConversationRecorder(prompt_version=PROMPT_POLICY_VERSION)
 EVALUATION_STORE = EvaluationStore()
 EVALUATION_ASSETS = {
     "/evaluation": HERE / "evaluation.html",
@@ -123,12 +127,18 @@ EVALUATION_ASSETS = {
 
 CONTACT_URL = "https://www.fortunedigitalequity.org/contact"
 CALENDAR_URL = "https://www.fortunedigitalequity.org/calendar"
-RESERVE_URL = "https://www.fortunedigitalequity.org/reserve"
-TRAININGS_URL = "https://www.fortunedigitalequity.org/trainings"
+WORKSHOPS_URL = "https://www.fortunedigitalequity.org/workshops"
 DEVICES_URL = "https://www.fortunedigitalequity.org/devices"
-INDIVIDUAL_URL = "https://www.fortunedigitalequity.org/individual"
+SUPPORT_URL = "https://www.fortunedigitalequity.org/support"
 PRACTICE_URL = "https://www.fortunedigitalequity.org/practice"
 ROOT_URL = "https://www.fortunedigitalequity.org/"
+
+LEGACY_PATH_ALIASES = {
+    "/about/partners": "/about",
+    "/individual": "/support",
+    "/reserve": "/calendar",
+    "/trainings": "/workshops",
+}
 
 with (HERE / "knowledge.json").open(encoding="utf-8") as handle:
     KNOWLEDGE = json.load(handle)
@@ -151,6 +161,7 @@ def canonical_url(url):
     if parsed.hostname not in {"fortunedigitalequity.org", "www.fortunedigitalequity.org"}:
         return ""
     path = parsed.path.rstrip("/") or "/"
+    path = LEGACY_PATH_ALIASES.get(path, path)
     return urllib.parse.urlunsplit(("https", "www.fortunedigitalequity.org", path, "", ""))
 
 
@@ -444,20 +455,15 @@ def source_id_for_path(path):
 
 CERTIFICATIONS_ID = source_id_for_path("/certifications")
 ASSESSMENTS_ID = source_id_for_path("/assessments")
-PARTNERS_PLACEHOLDER_ID = source_id_for_path("/about/partners")
 PARTNERS_ID = source_id_for_path("/about")
 IMPACT_ID = source_id_for_path("/about/impact")
 INTRO_EMAIL_ID = source_id_for_path("/service-page/intro-to-email")
-ADVANCED_EMAIL_ID = source_id_for_path("/service-page/advanced-email")
-EMAIL_PART_TWO_ID = source_id_for_path("/service-page/intro-to-email-pt-2")
 INTRO_EXCEL_ID = source_id_for_path("/service-page/intro-to-microsoft-excel")
-INTRO_COMPUTERS_ID = source_id_for_path("/service-page/intro-to-computers")
-INTRO_CANVA_ID = source_id_for_path("/service-page/intro-to-canva")
+UNDERSTANDING_COMPUTERS_ID = source_id_for_path("/service-page/understanding-computers")
 CANVA_DESIGN_TOOLS_ID = source_id_for_path("/service-page/canva-design-tools")
-INTRO_SMARTPHONE_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets")
-SMARTPHONE_PART_TWO_ID = source_id_for_path("/service-page/intro-to-smartphones-tablets-pt-2")
-WORD_CERTIFICATION_ID = source_id_for_path("/service-page/microsoft-word-associate-certification")
-EXCEL_CHARTS_ID = source_id_for_path("/service-page/microsoft-excel-charts")
+NAVIGATING_SMARTPHONE_ID = source_id_for_path("/service-page/navigating-your-smartphone")
+MANAGING_SMARTPHONE_ID = source_id_for_path("/service-page/managing-your-smartphone")
+EXCEL_PRESENTING_ID = source_id_for_path("/service-page/excel-presenting-data")
 EXCEL_FORMULAS_ID = source_id_for_path("/service-page/excel-formulas-functions")
 EXCEL_FORMATTING_ID = source_id_for_path("/service-page/excel-formatting-data")
 EXCEL_ORGANIZING_ID = source_id_for_path("/service-page/excel-organizing-data")
@@ -465,11 +471,20 @@ DIGITAL_SAFETY_COMPUTERS_ID = source_id_for_path("/service-page/digital-safety-c
 DIGITAL_SAFETY_EMAIL_ID = source_id_for_path("/service-page/digital-safety-email")
 DIGITAL_SAFETY_MOBILE_ID = source_id_for_path("/service-page/digital-safety-mobile-devices")
 DIGITAL_SAFETY_ONLINE_ID = source_id_for_path("/service-page/digital-safety-online")
-RESUME_AI_ID = source_id_for_path("/service-page/resume-writing-in-an-ai-world")
 JOB_SEARCH_ID = source_id_for_path("/service-page/job-searching-online")
 TECH_FAIR_QA_ID = source_id_for_path("/techfair/qa")
 PRACTICE_ID = source_id_for_path("/practice")
 SPANISH_BASIC_ID = source_id_for_path("/service-page/alfabetización-digital-básica-en-español")
+
+# Stable semantic names used by the conversation tests and routing rules now
+# point at the current public pages.  The older route slugs disappeared from
+# Wix revision 2063; these aliases do not reintroduce them as destinations.
+INTRO_COMPUTERS_ID = UNDERSTANDING_COMPUTERS_ID
+INTRO_CANVA_ID = CANVA_DESIGN_TOOLS_ID
+INTRO_SMARTPHONE_ID = NAVIGATING_SMARTPHONE_ID
+SMARTPHONE_PART_TWO_ID = MANAGING_SMARTPHONE_ID
+WORD_CERTIFICATION_ID = CERTIFICATIONS_ID
+EXCEL_CHARTS_ID = EXCEL_PRESENTING_ID
 
 SPECIFIC_CLASS_TERMS = {
     "advanced", "ai", "alfabetizacion", "android", "apple", "assessment",
@@ -540,6 +555,24 @@ def tokens(value, keep_stopwords=False):
     if keep_stopwords:
         return values
     return [value for value in values if len(value) > 1 and value not in STOPWORDS]
+
+
+_QUERY_TERM_GROUPS = (
+    frozenset({"class", "classes"}),
+    frozenset({"device", "devices"}),
+    frozenset({"laptop", "laptops"}),
+    frozenset({"phone", "phones", "smartphone", "smartphones"}),
+    frozenset({"register", "registered", "registration"}),
+    frozenset({"workshop", "workshops"}),
+)
+
+
+def expanded_query_terms(value):
+    terms = set(tokens(value))
+    for group in _QUERY_TERM_GROUPS:
+        if terms.intersection(group):
+            terms.update(group)
+    return terms
 
 
 _SOURCE_BOILERPLATE_PHRASES = (
@@ -748,6 +781,28 @@ def device_use_support_intent(text):
     )
 
 
+def individual_support_intent(text):
+    """Recognize explicit requests for Fortune's one-to-one support options."""
+
+    value = fold_text(semantic_question(text))
+    return bool(re.search(
+        r"\b(?:one-to-one|1-on-1|individual (?:help|support)|tutor(?:ing)?|"
+        r"office hours?|support desk|open (?:computer )?lab)\b",
+        value,
+    ))
+
+
+def device_distribution_intent(text):
+    """Recognize named device programs without treating generic enrollment as one."""
+
+    value = fold_text(semantic_question(text))
+    return bool(re.search(
+        r"\b(?:acp|affordable connectivity program|lifeline|computers 4 people|"
+        r"device distribution|phone service|laptop referral)\b",
+        value,
+    ))
+
+
 def content_detail_intent(text):
     """Recognize follow-ups asking for concrete topics rather than a page summary."""
 
@@ -759,9 +814,24 @@ def content_detail_intent(text):
     ))
 
 
+def retired_class_intent(text):
+    """Recognize named class routes that are absent from the current Wix site."""
+
+    value = fold_text(semantic_question(text))
+    words = set(tokens(value, keep_stopwords=True))
+    resume_class = "resume" in words and "ai" in words
+    pivot_class = (
+        bool(words.intersection({"pivot", "pivottable", "pivottables"}))
+        and bool(words.intersection({"class", "course", "training", "workshop"}))
+        and not bool(words.intersection({"certification", "certifications", "certified"}))
+    )
+    return resume_class or pivot_class
+
+
 def likely_source_ids(text, fallback=True):
     lowered = fold_text(semantic_question(text))
     word_set = set(tokens(lowered, keep_stopwords=True))
+    retired_class = retired_class_intent(lowered)
     ranked = []
     def add(source_id):
         if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
@@ -774,11 +844,20 @@ def likely_source_ids(text, fallback=True):
         add("home")
     if device_use_support_intent(lowered):
         add("individual")
-    if any(term in lowered for term in (
+    if individual_support_intent(lowered):
+        add("individual")
+    if device_distribution_intent(lowered):
+        add("devices")
+    if retired_class:
+        add("trainings")
+        add("contact")
+    registration_intent = any(term in lowered for term in (
         "register", "registration", "sign up", "reserve", "registrarme",
         "registro", "inscribirme",
-    )):
-        add("page-reserve-0f176b4b")
+    ))
+    if registration_intent:
+        add("contact")
+        add("calendar")
     schedule_intent = bool(re.search(
         r"\b(?:calendar|current dates?|class dates?|this week|next class|"
         r"when (?:is|are|does|do|will)|schedule|locations?|where is|"
@@ -790,7 +869,7 @@ def likely_source_ids(text, fallback=True):
     spreadsheet_terms = word_set.intersection({
         "excel", "spreadsheet", "spreadsheets", "worksheet", "worksheets",
     })
-    if spreadsheet_terms:
+    if spreadsheet_terms and not retired_class:
         formatting_focus = word_set.intersection({
             "format", "formatting", "read", "readable", "date", "dates", "number", "numbers",
         })
@@ -835,8 +914,8 @@ def likely_source_ids(text, fallback=True):
         word_set.intersection({"email", "correo", "electronico"})
         and word_set.intersection({"advanced", "after", "next", "organize", "folders", "templates"})
     ):
-        add(ADVANCED_EMAIL_ID)
-        add(EMAIL_PART_TWO_ID)
+        add(INTRO_EMAIL_ID)
+        add("trainings")
     if (
         word_set.intersection({"email", "correo", "electronico"})
         and word_set.intersection({"beginning", "beginner", "basic", "intro", "introduction"})
@@ -874,12 +953,13 @@ def likely_source_ids(text, fallback=True):
         and word_set.intersection({"duplicate", "duplicates", "record", "records", "sorting"})
     ):
         add(EXCEL_ORGANIZING_ID)
-    if "resume" in word_set and "ai" in word_set:
-        add(RESUME_AI_ID)
     if "job" in word_set and word_set.intersection({"search", "searching", "online"}):
         add(JOB_SEARCH_ID)
     if "assessment" in word_set or "assessments" in word_set:
         add(ASSESSMENTS_ID)
+        if not ASSESSMENTS_ID:
+            add("trainings")
+            add("contact")
     if "practice" in word_set and word_set.intersection({"class", "exercise", "exercises", "skill", "skills"}):
         add(PRACTICE_ID)
     if "partner" in word_set or "partners" in word_set:
@@ -905,6 +985,22 @@ def likely_source_ids(text, fallback=True):
         add(SPANISH_BASIC_ID)
     if re.search(r"\b(?:what is|about|explain)\b.*\bdigital equity program\b", lowered):
         add("home")
+
+    if (
+        word_set.intersection({"attend", "attendance"})
+        and word_set.intersection({"all", "every", "month", "scheduled"})
+    ):
+        add("home")
+        add("contact")
+    if (
+        word_set.intersection({"assistance", "help", "skill", "skills", "topic", "topics"})
+        and (
+            "not listed" in lowered
+            or word_set.intersection({"catalog", "uncatalogued"})
+        )
+    ):
+        add("individual")
+        add("contact")
 
     rules = [
         ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "repair", "fix", "broken", "ayuda individual", "tutoria")),
@@ -1042,7 +1138,18 @@ def retrieve_sources(query, limit=MAX_RETRIEVED):
 
 
 def source_excerpt(source, query, limit=1800):
-    query_terms = set(tokens(query))
+    query_terms = expanded_query_terms(query)
+    query_value = fold_text(semantic_question(query))
+    if re.search(
+        r"\b(?:register|registered|registration|reserve|sign up|enroll|"
+        r"registrarme|registro|inscribirme)\b",
+        query_value,
+    ):
+        query_terms.update({"attend", "class", "register", "registered", "registration"})
+    availability_requested = bool(re.search(
+        r"\b(?:available|availability|current|does .+ have|is there|offered|when)\b",
+        query_value,
+    ))
     candidates = []
     template_contaminated = source_has_template_content(source)
     for index, block in enumerate(
@@ -1056,8 +1163,18 @@ def source_excerpt(source, query, limit=1800):
         block = clean_evidence_fragment(block)
         if not block:
             continue
+        block_value = fold_text(block)
         overlap = len(query_terms.intersection(tokens(block)))
-        candidates.append((overlap, -index, block))
+        status_bonus = (
+            12
+            if availability_requested
+            and re.search(
+                r"\b(?:not available|no longer|on hold|under redevelopment|coming soon)\b",
+                block_value,
+            )
+            else 0
+        )
+        candidates.append((overlap + status_bonus, -index, block))
     candidates.sort(reverse=True)
     selected = []
     length = 0
@@ -1085,8 +1202,8 @@ def grounded_evidence_sentences(
 ):
     """Select short factual sentences that already exist in an approved record."""
     query = semantic_question(query)
-    query_terms = set(tokens(query))
-    focus_terms = set(tokens(focus_query or query))
+    query_terms = expanded_query_terms(query)
+    focus_terms = expanded_query_terms(focus_query or query)
     focus_text = fold_text(focus_query or query)
     if re.search(
         r"\b(?:when|date|dates|calendar|schedule|scheduled|this week|next class)\b",
@@ -1298,11 +1415,17 @@ def source_supports_query(source, query):
     source_terms = SOURCE_TERMS.get(source.get("id"), {})
     support_aliases = {
         "background": {"experience", "prior"},
+        "class": {"classes"},
+        "classes": {"class"},
         "experience": {"background", "prior"},
+        "laptop": {"laptops"},
+        "laptops": {"laptop"},
         "one-on": {"one-to-one"},
         "one-to-one": {"one-on"},
         "resume": {"resumes"},
         "resumes": {"resume"},
+        "workshop": {"workshops"},
+        "workshops": {"workshop"},
     }
     return all(
         source_terms.get(term, 0)
@@ -1542,6 +1665,9 @@ def question_refers_to_current_page(question):
         r"\bwhere should i go next\b",
         r"\bwhat do i do next\b",
         r"\bmain information here\b",
+        r"\b(?:help|information|service|program|class|workshop) "
+        r"(?:described |listed |shown |mentioned |explained )?here\b",
+        r"\b(?:described|listed|shown|mentioned|explained) (?:on this page|here)\b",
     )
     return any(re.search(pattern, value) for pattern in patterns)
 
@@ -1594,7 +1720,7 @@ def contextual_routing_question(question, history=None):
     # routes are intentionally excluded because phrases such as "when is it
     # offered?" still need the class named in history.
     explicit_sources = likely_source_ids(question, fallback=False)
-    generic_follow_up_ids = {"calendar", "page-reserve-0f176b4b", "trainings"}
+    generic_follow_up_ids = {"calendar", "contact", "trainings"}
     if any(source_id not in generic_follow_up_ids for source_id in explicit_sources):
         return question
     topic = history_topic_question(history)
@@ -1608,12 +1734,12 @@ def guided_class_sources(question):
 
     prompt = " ".join(tokens(question, keep_stopwords=True))
     destination_by_prompt = {
-        "class topics": RESERVE_URL,
+        "class topics": WORKSHOPS_URL,
         "dates locations": CALENDAR_URL,
-        "register": RESERVE_URL,
-        "temas": RESERVE_URL,
+        "register": CONTACT_URL,
+        "temas": WORKSHOPS_URL,
         "fechas y lugares": CALENDAR_URL,
-        "inscribirme": RESERVE_URL,
+        "inscribirme": CONTACT_URL,
     }
     source_id = SOURCE_ID_BY_URL.get(destination_by_prompt.get(prompt, ""), "")
     source = SOURCE_BY_ID.get(source_id)
@@ -1629,10 +1755,52 @@ def registration_sources(question):
         value,
     ):
         return []
-    source = SOURCE_BY_ID.get("page-reserve-0f176b4b")
-    if not source or source.get("authority") != "answer" or source.get("status", 200) != 200:
+    return [
+        SOURCE_BY_ID[source_id]
+        for source_id in ("contact", "calendar")
+        if source_id in SOURCE_BY_ID
+        and SOURCE_BY_ID[source_id].get("authority") == "answer"
+        and SOURCE_BY_ID[source_id].get("status", 200) == 200
+    ]
+
+
+def current_faq_sources(question):
+    """Route the four current public FAQs to pages that actually contain them."""
+
+    value = fold_text(semantic_question(question))
+    words = set(tokens(value, keep_stopwords=True))
+    source_ids = []
+    if (
+        words.intersection({"attend", "attendance"})
+        and words.intersection({"all", "every", "month", "scheduled"})
+    ):
+        source_ids = ["home", "contact"]
+    elif (
+        words.intersection({"assistance", "help", "skill", "skills", "topic", "topics"})
+        and ("not listed" in value or words.intersection({"catalog", "uncatalogued"}))
+    ):
+        source_ids = ["contact", "individual"]
+    return [
+        SOURCE_BY_ID[source_id]
+        for source_id in source_ids
+        if source_id in SOURCE_BY_ID
+        and SOURCE_BY_ID[source_id].get("authority") == "answer"
+        and SOURCE_BY_ID[source_id].get("status", 200) == 200
+    ]
+
+
+def retired_class_sources(question):
+    """Keep removed named classes on current discovery and contact evidence."""
+
+    if not retired_class_intent(question):
         return []
-    return [source]
+    return [
+        SOURCE_BY_ID[source_id]
+        for source_id in ("trainings", "contact")
+        if source_id in SOURCE_BY_ID
+        and SOURCE_BY_ID[source_id].get("authority") == "answer"
+        and SOURCE_BY_ID[source_id].get("status", 200) == 200
+    ]
 
 
 def retrieval_plan(question, page_context=None):
@@ -1648,6 +1816,12 @@ def retrieval_plan(question, page_context=None):
     registration = registration_sources(question)
     if registration:
         return "site", registration
+    faq = current_faq_sources(question)
+    if faq:
+        return "site", faq
+    retired = retired_class_sources(question)
+    if retired:
+        return "site", retired
 
     site_sources = retrieve_sources(question)
     if current and site_sources and site_sources[0]["url"] == current["url"]:
@@ -1665,6 +1839,8 @@ def deterministic_answer_sources(question, retrieved, retrieval_scope):
         return []
     if retrieval_scope == "page" or guided_class_sources(question):
         return retrieved[:1]
+    if retired_class_intent(question):
+        return []
     preferred = likely_source_ids(question, fallback=False)
     if preferred and retrieved[0]["id"] == preferred[0]:
         return retrieved[:1]
@@ -1682,15 +1858,15 @@ def related_links(question, sources, limit=3):
     lowered = fold_text(question)
     candidates = []
     if any(word in lowered for word in ("device", "laptop", "phone", "computer to keep", "lifeline")):
-        candidates.extend([(DEVICES_URL, "Review device programs"), (CONTACT_URL, "Confirm eligibility with staff"), (INDIVIDUAL_URL, "Find device help")])
+        candidates.extend([(DEVICES_URL, "Review device programs"), (CONTACT_URL, "Confirm eligibility with staff"), (SUPPORT_URL, "Find device help")])
     elif any(word in lowered for word in ("class", "workshop", "training", "learn", "course", "register", "sign up")):
-        candidates.extend([(CALENDAR_URL, "View the current calendar"), (RESERVE_URL, "Register for a class"), (TRAININGS_URL, "Browse workshop levels")])
+        candidates.extend([(CALENDAR_URL, "View the current calendar"), (CONTACT_URL, "Registration details"), (WORKSHOPS_URL, "Browse workshops")])
     elif any(word in lowered for word in ("support", "tutor", "appointment", "lab", "fix", "troubleshoot")):
-        candidates.extend([(INDIVIDUAL_URL, "See individual support"), (CALENDAR_URL, "Check current hours"), (CONTACT_URL, "Ask Digital Equity staff")])
+        candidates.extend([(SUPPORT_URL, "See individual support"), (CALENDAR_URL, "Check current hours"), (CONTACT_URL, "Ask Digital Equity staff")])
     elif any(word in lowered for word in ("practice", "exercise", "quiz", "assessment")):
-        candidates.extend([(PRACTICE_URL, "Open skills practice"), (TRAININGS_URL, "Browse workshops"), (CONTACT_URL, "Ask for guidance")])
+        candidates.extend([(PRACTICE_URL, "Open skills practice"), (WORKSHOPS_URL, "Browse workshops"), (CONTACT_URL, "Ask for guidance")])
     else:
-        candidates.extend([(TRAININGS_URL, "Browse workshops"), (PRACTICE_URL, "Practice digital skills"), (CONTACT_URL, "Ask Digital Equity staff")])
+        candidates.extend([(WORKSHOPS_URL, "Browse workshops"), (PRACTICE_URL, "Practice digital skills"), (CONTACT_URL, "Ask Digital Equity staff")])
 
     source_urls = {source["url"] for source in sources}
     for source in sources[:2]:
@@ -1715,11 +1891,17 @@ def related_links(question, sources, limit=3):
     return [record for record in result if record]
 
 
-def ambiguity_response(question, language_code=None):
+def ambiguity_response(question, language_code=None, page_context=None):
     question = semantic_question(question)
     lowered = fold_text(question).strip(" ?.!")
     words = set(tokens(lowered, keep_stopwords=True))
-    if guided_class_sources(question):
+    current = approved_current_page_source(page_context)
+    if (
+        guided_class_sources(question)
+        or individual_support_intent(question)
+        or device_distribution_intent(question)
+        or (current and question_refers_to_current_page(question))
+    ):
         return None
     cases = []
     if language_code == "es":
@@ -2406,6 +2588,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 ),
             })
             return
+        if parsed.path == "/api/evaluation/prompt-lab":
+            account, _ = self._require_evaluation_account()
+            if not account:
+                return
+            self._json(200, {
+                "prompt_lab": EVALUATION_STORE.get_prompt_lab(
+                    account["slot_key"],
+                    PROMPT_POLICY_VERSION,
+                    PROMPT_BEHAVIOR_RELEASE,
+                ),
+            })
+            return
         conversation_match = re.fullmatch(
             r"/api/evaluation/conversations/([0-9a-fA-F-]{36})",
             parsed.path,
@@ -2445,6 +2639,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "authority_counts": SITE_INDEX.get("authority_counts", {}),
                 "index_generated_at": SITE_INDEX.get("generated_at"),
                 "sources_reviewed_on": KNOWLEDGE["reviewed_on"],
+                "prompt_policy": {
+                    "version": PROMPT_POLICY_VERSION,
+                    "behavior_release": PROMPT_BEHAVIOR_RELEASE,
+                },
                 "model_call_limits": {
                     "per_client_hour": MODEL_CALLS_PER_HOUR,
                     "shared_day": MODEL_CALLS_PER_DAY,
@@ -2643,7 +2841,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     interaction=interaction,
                 )
                 return
-            ambiguous = ambiguity_response(routing_question, interaction["request_language"])
+            ambiguous = ambiguity_response(
+                routing_question,
+                interaction["request_language"],
+                page_context,
+            )
             if ambiguous:
                 self._chat_json(
                     200, ambiguous, turn, question, started_at,
@@ -2719,12 +2921,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 retry_messages = [
                     {
                         "role": "system",
-                        "content": messages[0]["content"].replace(
-                            "\nCANDIDATE RECORDS:\n",
-                            "\nRETRY: The prior draft contained "
-                            + retry_reason
-                            + ". Use a different explicitly supported detail or pick ASK."
-                            + "\nCANDIDATE RECORDS:\n",
+                        "content": build_retry_prompt(
+                            messages[0]["content"], retry_reason
                         ),
                     },
                     messages[1],
@@ -2802,10 +3000,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             r"/api/evaluation/conversations/([0-9a-fA-F-]{36})/annotations/([0-9a-fA-F-]{36})",
             path,
         )
-        if not (placement_match or note_match or annotation_match):
+        prompt_match = re.fullmatch(
+            r"/api/evaluation/prompt-proposals/([0-9a-fA-F-]{36})",
+            path,
+        )
+        prompt_status_match = re.fullmatch(
+            r"/api/evaluation/prompt-proposals/([0-9a-fA-F-]{36})/status",
+            path,
+        )
+        if not (
+            placement_match or note_match or annotation_match
+            or prompt_match or prompt_status_match
+        ):
             self.send_error(404)
             return
-        account, _ = self._require_evaluation_account(mutation=True)
+        account, _ = self._require_evaluation_account(
+            mutation=True,
+            role="admin" if prompt_status_match else None,
+        )
         if not account:
             return
         try:
@@ -2830,7 +3042,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     request.get("operation_id"),
                 )
                 self._json(200, {"evaluation": evaluation})
-            else:
+            elif annotation_match:
                 annotation = EVALUATION_STORE.save_annotation(
                     account["slot_key"],
                     annotation_match.group(1),
@@ -2842,6 +3054,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     request.get("operation_id"),
                 )
                 self._json(200, {"annotation": annotation})
+            elif prompt_match:
+                proposal = EVALUATION_STORE.update_prompt_proposal(
+                    account["slot_key"],
+                    prompt_match.group(1),
+                    request.get("title"),
+                    request.get("module_values"),
+                    request.get("expected_version"),
+                    request.get("operation_id"),
+                )
+                self._json(200, {"proposal": proposal})
+            else:
+                proposal = EVALUATION_STORE.set_prompt_proposal_status(
+                    account["slot_key"],
+                    prompt_status_match.group(1),
+                    request.get("status"),
+                    request.get("expected_version"),
+                    request.get("operation_id"),
+                )
+                self._json(200, {"proposal": proposal})
         except EvaluationConflict as error:
             self._json(409, {"error": str(error), "current": error.current})
         except EvaluationForbidden as error:
@@ -2913,6 +3144,38 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     request.get("operation_id"),
                 )
                 self._json(201, {"bucket": bucket})
+                return
+            if path == "/api/evaluation/prompt-proposals":
+                account, _ = self._require_evaluation_account(mutation=True)
+                if not account:
+                    return
+                request = self._read_json()
+                proposal = EVALUATION_STORE.create_prompt_proposal(
+                    account["slot_key"],
+                    request.get("title"),
+                    request.get("module_values"),
+                    PROMPT_POLICY_VERSION,
+                    request.get("proposal_id"),
+                    request.get("operation_id"),
+                )
+                self._json(201, {"proposal": proposal})
+                return
+            comment_match = re.fullmatch(
+                r"/api/evaluation/prompt-proposals/([0-9a-fA-F-]{36})/comments",
+                path,
+            )
+            if comment_match:
+                account, _ = self._require_evaluation_account(mutation=True)
+                if not account:
+                    return
+                request = self._read_json()
+                comment = EVALUATION_STORE.add_prompt_proposal_comment(
+                    account["slot_key"],
+                    comment_match.group(1),
+                    request.get("comment"),
+                    request.get("operation_id"),
+                )
+                self._json(201, {"comment": comment})
                 return
             invitation_match = re.fullmatch(
                 r"/api/evaluation/admin/accounts/(admin|editor-[123])/invitation",

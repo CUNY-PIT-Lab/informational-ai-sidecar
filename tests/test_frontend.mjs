@@ -87,26 +87,30 @@ test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.canonicalUrl("/about/"), "https://www.fortunedigitalequity.org/about");
   assert.equal(Core.canonicalUrl("https://example.com/devices"), "");
   assert.equal(Core.pathFor("https://www.fortunedigitalequity.org/"), "/");
+  assert.equal(Core.canonicalUrl("/trainings"), "https://www.fortunedigitalequity.org/workshops");
+  assert.equal(Core.canonicalUrl("/individual"), "https://www.fortunedigitalequity.org/support");
+  assert.equal(Core.canonicalUrl("/reserve"), "https://www.fortunedigitalequity.org/calendar");
+  assert.equal(Core.canonicalUrl("/about/partners"), "https://www.fortunedigitalequity.org/about");
 });
 
-test("all 200 routes receive one of the reviewed page families", () => {
+test("all 138 routes receive one of the reviewed page families", () => {
   const counts = {};
   for (const page of pages) {
     const family = Core.pageFamily(page);
     counts[family] = (counts[family] || 0) + 1;
   }
   assert.deepEqual(counts, {
-    program: 4,
-    excluded: 27,
-    action: 6,
-    directory: 7,
-    support: 1,
-    event: 6,
+    program: 3,
+    excluded: 18,
+    action: 3,
+    directory: 6,
+    support: 2,
+    event: 4,
     archive: 21,
     news: 9,
-    service: 119,
+    service: 72,
   });
-  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 200);
+  assert.equal(Object.values(counts).reduce((sum, value) => sum + value, 0), 138);
 });
 
 test("every page has a tailored heading, placeholder, and exactly two prompts", () => {
@@ -119,7 +123,7 @@ test("every page has a tailored heading, placeholder, and exactly two prompts", 
   }
   assert.equal(Core.starterFor(byPath.get("/devices")).placeholder, "Do you need a device or help using one?");
   assert.equal(Core.starterFor(byPath.get("/calendar")).suggestions[0], "Where and when are current classes?");
-  assert.equal(Core.starterFor(byPath.get("/service-page/intro-to-computers")).suggestions[0], "What does this class cover?");
+  assert.equal(Core.starterFor(byPath.get("/service-page/understanding-computers")).suggestions[0], "What does this class cover?");
 });
 
 test("starter prompts keep their full question while exposing compact button labels", () => {
