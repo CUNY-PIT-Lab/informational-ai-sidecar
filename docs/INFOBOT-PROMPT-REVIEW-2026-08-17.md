@@ -57,6 +57,12 @@ code control, not a promise delegated to the model.
 - Legal, parole, health, benefits, crisis, and other out-of-scope requests use
   deterministic pre-model staff routing.
 
+The document's two open comments were also reviewed. The request to include a
+human staff route is already covered by that pre-model handoff. The request to
+share when information was last updated is retained as source/evaluation
+provenance rather than repeated in every answer; an always-visible freshness
+label remains an interface decision.
+
 ## Not adopted
 
 - **“Active conversation logs are recorded.”** Capture mode varies by
