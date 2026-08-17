@@ -35,9 +35,10 @@
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
-  const previewKey = "fortune-evaluation-preview-v3";
+  const previewKey = "fortune-evaluation-preview-v4";
   const viewKeyPrefix = "fortune-evaluation-view-v2";
   const defaultView = { visibility: "all", sort: "default", layout: "compact" };
+  const UNREVIEWED_PAGE_SIZE = 8;
   const state = {
     session: null,
     csrf: "",
@@ -45,6 +46,7 @@
     conversations: [],
     selectedId: "",
     openConversation: null,
+    unreviewedPage: 1,
     view: { ...defaultView },
   };
 
@@ -68,6 +70,22 @@
     ["6e7f9g", "Legal Help Referrals", 6, "needs"],
     ["3h6j8k", "Benefits Assistance", 5, "handoff"],
     ["5k9l0m", "Theory of Change", 4, "handoff"],
+    ["1a2b3c", "Computer Basics", 5, null],
+    ["2b3c4d", "Intro to Email", 4, null],
+    ["3c4d5e", "Microsoft Excel", 7, null],
+    ["4d5e6f", "Online Safety", 3, null],
+    ["5e6f7a", "Digital Equity", 6, null],
+    ["6f7a8b", "Community Resources", 4, null],
+    ["7a8b9c", "Technology Training", 8, null],
+    ["8b9c0d", "Individual Support", 5, null],
+    ["9c0d1e", "Mobile Devices", 3, null],
+    ["0d1e2f", "Internet Basics", 6, null],
+    ["1e2f3a", "Job Search Support", 5, null],
+    ["2f3a4b", "Program Calendar", 4, null],
+    ["3a4b5c", "Contact Digital Equity", 3, null],
+    ["4b5c6d", "Workshops", 7, null],
+    ["5c6d7e", "About the Program", 4, null],
+    ["6d7e8f", "Frequently Asked Questions", 5, null],
   ].map(([id, page_title, turn_count, bucket_id]) => ({
     id, page_title, turn_count, bucket_id, transcript_version: turn_count,
     last_turn_at: "2026-08-08T14:30:00Z",
@@ -128,7 +146,7 @@
     if (localPreview) return previewLoad();
     const [bucketPayload, conversationPayload] = await Promise.all([
       api("/api/evaluation/buckets"),
-      api("/api/evaluation/conversations?limit=100"),
+      api("/api/evaluation/conversations?limit=500"),
     ]);
     state.buckets = bucketPayload.buckets || [];
     state.conversations = conversationPayload.conversations || [];
@@ -197,6 +215,45 @@
       </article>`;
   }
 
+  function pageTokens(currentPage, pageCount) {
+    if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1);
+    const pages = new Set([1, pageCount, currentPage - 1, currentPage, currentPage + 1]);
+    const ordered = [...pages].filter(page => page >= 1 && page <= pageCount).sort((a, b) => a - b);
+    return ordered.reduce((tokens, page, index) => {
+      if (index && page - ordered[index - 1] > 1) tokens.push("ellipsis");
+      tokens.push(page);
+      return tokens;
+    }, []);
+  }
+
+  function paginatedItems(bucket, items) {
+    if (bucket.id !== null || items.length <= UNREVIEWED_PAGE_SIZE) {
+      if (bucket.id === null) state.unreviewedPage = 1;
+      return { items, pagination: "" };
+    }
+    const pageCount = Math.ceil(items.length / UNREVIEWED_PAGE_SIZE);
+    state.unreviewedPage = Math.min(Math.max(state.unreviewedPage, 1), pageCount);
+    const start = (state.unreviewedPage - 1) * UNREVIEWED_PAGE_SIZE;
+    const end = Math.min(start + UNREVIEWED_PAGE_SIZE, items.length);
+    const pages = pageTokens(state.unreviewedPage, pageCount).map(token => {
+      if (token === "ellipsis") return '<span class="pagination-ellipsis" aria-hidden="true">…</span>';
+      const current = token === state.unreviewedPage ? ' aria-current="page"' : "";
+      return `<button class="pagination-button pagination-page" type="button" data-page="${token}" aria-label="Page ${token}"${current}>${token}</button>`;
+    }).join("");
+    return {
+      items: items.slice(start, end),
+      pagination: `
+        <nav class="bucket-pagination" aria-label="Not yet reviewed pages">
+          <p class="pagination-range" aria-live="polite">Showing ${start + 1}–${end} of ${items.length}</p>
+          <div class="pagination-controls">
+            <button class="pagination-button pagination-previous" type="button" data-page="${state.unreviewedPage - 1}" aria-label="Previous page"${state.unreviewedPage === 1 ? " disabled" : ""}>‹</button>
+            <span class="pagination-pages">${pages}</span>
+            <button class="pagination-button pagination-next" type="button" data-page="${state.unreviewedPage + 1}" aria-label="Next page"${state.unreviewedPage === pageCount ? " disabled" : ""}>›</button>
+          </div>
+        </nav>`,
+    };
+  }
+
   function renderBoard() {
     const conversations = filteredConversations();
     emptyState.hidden = conversations.length > 0;
@@ -211,13 +268,15 @@
     board.dataset.layout = state.view.layout;
     board.innerHTML = columns.map(bucket => {
       const items = conversations.filter(item => (item.bucket_id || null) === bucket.id);
+      const page = paginatedItems(bucket, items);
       return `
         <section class="bucket" data-bucket-id="${escapeHtml(bucket.id || "")}" data-color="${escapeHtml(bucket.color_key || "blue")}" aria-labelledby="bucket-${escapeHtml(bucket.id || "unsorted")}">
           <header class="bucket-header">
             <h2 id="bucket-${escapeHtml(bucket.id || "unsorted")}">${escapeHtml(bucket.label)}</h2>
             <span class="bucket-count" aria-label="${items.length} conversations">${items.length}</span>
           </header>
-          <div class="bucket-cards">${items.map(cardHtml).join("")}</div>
+          <div class="bucket-cards">${page.items.map(cardHtml).join("")}</div>
+          ${page.pagination}
         </section>`;
     }).join("");
     bindBoardEvents();
@@ -253,6 +312,14 @@
         event.preventDefault();
         bucket.classList.remove("is-drop-target");
         moveConversation(event.dataTransfer.getData("text/plain"), bucket.dataset.bucketId || null);
+      });
+    });
+
+    board.querySelectorAll(".bucket-pagination [data-page]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.unreviewedPage = Number(button.dataset.page);
+        renderBoard();
+        board.querySelector('.bucket-pagination [aria-current="page"]')?.focus();
       });
     });
   }
@@ -514,7 +581,10 @@
     setStatus("");
   });
 
-  search.addEventListener("input", renderBoard);
+  search.addEventListener("input", () => {
+    state.unreviewedPage = 1;
+    renderBoard();
+  });
   bucketVisibility.addEventListener("change", () => {
     state.view.visibility = bucketVisibility.value;
     saveViewPreferences();

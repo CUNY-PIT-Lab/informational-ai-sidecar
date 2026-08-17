@@ -770,7 +770,7 @@ class EvaluationStore:
         """
 
     def list_conversations(self, account_slot: str, limit: int = 100) -> list[dict]:
-        limit = max(1, min(int(limit), 200))
+        limit = max(1, min(int(limit), 500))
         query = self._eligible_cte() + """
             SELECT e.id, e.last_turn_at, e.turn_count, e.transcript_version,
                    COALESCE(e.page_context ->> 'title', 'Unknown page') AS page_title,

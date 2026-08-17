@@ -265,6 +265,45 @@ h1, h2, p { margin-top: 0; }
 
 .bucket-cards { min-height: 285px; padding: 8px 38px 28px; }
 
+.bucket-pagination {
+  margin: 0 16px 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-range {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pagination-controls,
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-controls { flex-wrap: wrap; }
+
+.pagination-button {
+  min-width: 42px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 7px 10px;
+  color: var(--ink);
+  background: var(--white);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.pagination-button:hover { border-color: var(--blue); color: var(--blue); }
+.pagination-button[aria-current="page"] { border-color: var(--blue); color: var(--white); background: var(--blue); }
+.pagination-button:disabled { color: #8b8790; background: #f2f2f4; cursor: default; }
+.pagination-ellipsis { min-width: 14px; text-align: center; }
+
 .conversation-card {
   position: relative;
   margin-bottom: 14px;
@@ -425,6 +464,9 @@ dialog::backdrop { background: rgb(40 26 57 / 55%); }
   .board[data-layout="compact"] { min-height: 540px; grid-template-columns: 1fr; gap: 16px; }
   .bucket { min-height: 280px; }
   .bucket-cards { min-height: 200px; padding: 8px 16px 20px; }
+  .bucket-pagination { margin-inline: 16px; }
+  .pagination-controls { gap: 5px; }
+  .pagination-button { min-width: 44px; min-height: 44px; padding-inline: 8px; }
   .access-card { padding: 28px 22px; }
 }
 

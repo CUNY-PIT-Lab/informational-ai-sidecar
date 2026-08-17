@@ -175,6 +175,21 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('board[data-layout="compact"]', css)
         self.assertIn('layout: "compact"', javascript)
         self.assertIn('viewKeyPrefix = "fortune-evaluation-view-v2"', javascript)
+        self.assertIn("const UNREVIEWED_PAGE_SIZE = 8", javascript)
+        self.assertIn('api("/api/evaluation/conversations?limit=500")', javascript)
+        self.assertIn("items.slice(start, end)", javascript)
+        self.assertIn('aria-label="Not yet reviewed pages"', javascript)
+        self.assertIn('aria-current="page"', javascript)
+        self.assertIn('class="pagination-button pagination-next"', javascript)
+        self.assertIn(".bucket-pagination", css)
+        self.assertIn("min-height: 44px", css)
+        pagination_handler = javascript.split(
+            'board.querySelectorAll(".bucket-pagination [data-page]")', 1
+        )[1].split("async function moveConversation", 1)[0]
+        self.assertNotIn("api(", pagination_handler)
+        self.assertNotIn("previewSave", pagination_handler)
+        store_source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        self.assertIn("min(int(limit), 500)", store_source)
         self.assertIn('id="review-note"', html)
         self.assertIn('maxlength="1000"', html)
         self.assertIn("annotation-toggle", javascript)
