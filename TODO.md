@@ -57,9 +57,10 @@
 
 ## 3. Synthetic evaluator — staging only
 
-- [ ] Add admin controls to issue or rotate an unassigned evaluator invite.
+- [x] Add admin controls to issue or rotate a single-use, email-bound evaluator invite.
 - [ ] Assign the Fortune representative and two student delegates only after Fortune names the three accounts.
-- [ ] Make each invite single-use, account-bound, and valid for 24 hours; deliver it privately and never commit the token.
+- [x] Make each invite single-use, account-bound, and valid for 24 hours; keep raw tokens out of request paths, commits, variables, and logs.
+- [ ] Deliver the named testers' links privately after Fortune supplies the account emails.
 - [ ] Re-run the staging acceptance pass: save, reopen, and remove one note and annotation; confirm reviewer isolation, a stale-version `409`, and `orphan_annotations=0`.
 
 ## 4. Wix pilot — blocked on the site owner account

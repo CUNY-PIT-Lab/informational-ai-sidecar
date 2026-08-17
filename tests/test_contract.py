@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Key-free contract tests for the context-aware Digital Equity guide."""
 
+import copy
 import io
+import inspect
 import json
 import pathlib
 import sys
@@ -138,6 +140,58 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual([source["id"] for source in captured["payload"]["sources"]], ["devices"])
         self.assertFalse(captured["payload"]["model_called"])
         self.assertEqual(model_calls, [])
+
+    def test_help_using_a_device_routes_to_specific_support_not_distribution(self):
+        question = "I need help using a device"
+        scope, sources = server.retrieval_plan(question, {
+            "url": "https://www.fortunedigitalequity.org/",
+        })
+        self.assertEqual(scope, "site")
+        self.assertEqual(sources[0]["id"], "individual")
+
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/",
+        )
+        payload = captured["payload"]
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(payload["kind"], "answer")
+        self.assertEqual(payload["sources"][0]["id"], "individual")
+        retrieved_evidence = server.grounded_evidence_sentences(
+            server.SOURCE_BY_ID["individual"],
+            question,
+            limit=40,
+            max_sentences=2,
+        )
+        self.assertTrue(retrieved_evidence)
+        self.assertTrue(payload["message"].startswith(retrieved_evidence))
+        self.assertIn("technical support", payload["message"].lower())
+        self.assertIn("appointment", payload["message"].lower())
+        self.assertNotIn("Laptop supply", payload["message"])
+        self.assertEqual(model_calls, [])
+
+        for support_question in (
+            "Can someone help me use my laptop?",
+            "I need help with my phone",
+            "I want to learn how to use this tablet",
+            "My device is not working",
+        ):
+            with self.subTest(question=support_question):
+                _, support_sources = server.retrieval_plan(support_question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(support_sources[0]["id"], "individual")
+
+        for distribution_question in (
+            "Can I get a free laptop?",
+            "Am I eligible for a device?",
+            "How do I get a phone through Lifeline?",
+        ):
+            with self.subTest(question=distribution_question):
+                _, distribution_sources = server.retrieval_plan(distribution_question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(distribution_sources[0]["id"], "devices")
 
     def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
         captured, _ = self.dispatch_chat(
@@ -595,19 +649,66 @@ class ResponseContractTests(unittest.TestCase):
         registration = server.grounded_answer_message(
             "How do I register for a class?", [reserve], "site"
         )
-        self.assertEqual(
-            laptop,
-            "Fortune partners with Computers 4 People to provide free refurbished laptops. "
-            "Supply is limited and can take time to acquire. Check the live page for current details.",
+        laptop_evidence = server.grounded_evidence_sentences(
+            devices, "Can I get a free laptop?"
         )
-        self.assertEqual(
-            registration,
-            "This page lists classes and registration links. Check the live page for current details.",
+        registration_evidence = server.grounded_evidence_sentences(
+            reserve, "How do I register for a class?"
         )
+        self.assertTrue(laptop.startswith(laptop_evidence))
+        self.assertTrue(registration.startswith(registration_evidence))
+        self.assertIn("laptop", laptop.lower())
+        self.assertIn("registration", registration.lower())
+        self.assertNotIn("currently on hold", laptop.lower())
         self.assertLessEqual(len(laptop.split()), server.MAX_MESSAGE_WORDS)
-        self.assertLessEqual(len(registration.split()), 16)
+        self.assertLessEqual(len(registration.split()), server.MAX_MESSAGE_WORDS)
 
-    def test_spanish_answer_uses_safe_navigation_copy_not_model_facts(self):
+    def test_factual_answers_are_selected_from_source_records_not_embedded_copy(self):
+        source = inspect.getsource(server.grounded_answer_message)
+        self.assertNotIn("PAGE_SUMMARIES", source)
+        for embedded_fact in (
+            "Laptop applicants must",
+            "Mobile-device distribution",
+            "Fortune partners with Computers 4 People",
+            "This page lists classes",
+        ):
+            self.assertNotIn(embedded_fact, source)
+
+        for question, source_id in (
+            ("Can I get a free laptop?", "devices"),
+            ("How do I register for a class?", "page-reserve-0f176b4b"),
+            ("I need help using a device", "individual"),
+        ):
+            with self.subTest(question=question):
+                selected = server.SOURCE_BY_ID[source_id]
+                answer = server.grounded_answer_message(
+                    question, [selected], "site", routing_question=question
+                )
+                evidence = server.grounded_evidence_sentences(
+                    selected,
+                    question,
+                    limit=40 if server.device_use_support_intent(question) else server.MAX_EVIDENCE_WORDS,
+                    max_sentences=2 if server.device_use_support_intent(question) else server.MAX_EVIDENCE_SENTENCES,
+                )
+                self.assertTrue(evidence)
+                self.assertTrue(answer.startswith(evidence))
+
+        changed_source = copy.deepcopy(server.SOURCE_BY_ID["individual"])
+        changed_source["description"] = ""
+        changed_source["facts"] = [
+            "Device help is available through a newly indexed support desk."
+        ]
+        changed_source["blocks"] = list(changed_source["facts"])
+        changed_answer = server.grounded_answer_message(
+            "I need device help",
+            [changed_source],
+            "site",
+            routing_question="I need device help",
+        )
+        self.assertTrue(changed_answer.startswith(changed_source["facts"][0]))
+        self.assertNotIn("one-to-one tutoring", changed_answer.lower())
+
+    def test_spanish_answer_uses_selected_source_content_not_fixed_navigation_copy(self):
         retrieved = server.retrieve_sources("computadora")
         raw = json.dumps({"pick": retrieved[0]["id"]})
         interaction = {
@@ -618,7 +719,9 @@ class ResponseContractTests(unittest.TestCase):
         result = server.parse_model_selection(
             raw, "Necesito una computadora", retrieved, "site", interaction
         )
-        self.assertIn("Encontré:", result["message"])
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], retrieved[0]["id"])
+        self.assertNotIn("Encontré:", result["message"])
         self.assertNotIn("disponibles hoy", result["message"])
         self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 
@@ -886,13 +989,47 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         readme = (DEMO / "README.md").read_text(encoding="utf-8")
         self.assertIn('id="context-window"', html)
-        self.assertIn("Context · this page · 0/3", html)
+        self.assertIn("Context · conversation · 0/3", html)
         self.assertIn("const MAX_CONTEXT_MESSAGES = 6", app)
         self.assertIn("MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2", app)
         self.assertIn(".slice(-MAX_CONTEXT_MESSAGES)", app)
         self.assertIn("updateContextWindow();", app)
         self.assertIn("three recent exchanges (six messages)", readme)
         self.assertEqual(server.MAX_HISTORY, 6)
+
+    def test_conversation_persists_across_page_navigation_in_the_same_tab(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        replica_shell = (DEMO / "replica-shell.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+        readme = (DEMO / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("stay in this tab across pages", html)
+        self.assertIn('window.sessionStorage', app)
+        self.assertIn("return window.parent.sessionStorage", app)
+        self.assertIn('"fortune-website-guide:replica:v1"', app)
+        self.assertIn('frameUrl.searchParams.set("v", "20260813-conversation-persistence-1")', replica_shell)
+        self.assertIn("persistConversation();", app)
+        self.assertIn("restoreConversation();", app)
+        self.assertIn("clearPersistedConversation();", app)
+        self.assertNotIn("window.localStorage", app)
+
+        reset = app[app.index("function resetForPage") : app.index("function setEditStatus")]
+        for destructive_reset in (
+            "history = []",
+            "turns = []",
+            'conversationId = ""',
+            'conversationToken = ""',
+            "transcript.replaceChildren()",
+        ):
+            self.assertNotIn(destructive_reset, reset)
+
+        self.assertIn('window.sessionStorage', wix)
+        self.assertIn('"fortune-website-guide:wix:v1"', wix)
+        self.assertIn("this.persistConversation();", wix)
+        self.assertIn("this.restoreConversation()", wix)
+        self.assertNotIn("window.localStorage", wix)
+        self.assertIn("tab-scoped session storage", readme)
 
     def test_guide_starts_compact_and_expands_to_reveal_the_answer(self):
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")

@@ -20,6 +20,10 @@ python3 scripts/issue_evaluator_invite.py admin \
 
 The command prints one fragment-based claim link. PostgreSQL stores only its keyed digest. Do not place the raw link in Railway variables or logs.
 
+After the admin account is claimed, the administrator can open **Account** in the evaluator and create or replace an email-bound link for any unassigned editor slot. Each link opens the first-use registration form, expires after 24 hours, works once, and signs the tester in immediately after registration. Share links only through a private channel; do not paste them into issues, commits, deployment logs, or test reports.
+
+Returning testers sign in at `/evaluation` with the email and password they chose during registration. Their queue placements, buckets, conversation notes, and message annotations are stored in PostgreSQL by reviewer account and remain available after reload, sign-out, and a new browser session. Interface preferences are browser-local and reviewer-scoped.
+
 ## Staging variables
 
 ```text
@@ -61,4 +65,6 @@ Mixed or privacy-held conversations are withheld in full. Reviewers receive thei
 3. Confirm `/health` reports evaluation schema `006_transcript_annotations`, four total slots, and the expected claimed/unassigned slot counts.
 4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
 5. Confirm `/evaluation` shows the login surface and no reviewer data without a session.
-6. Leave all invitation fields null until Fortune names the recipients.
+6. Claim the admin account, create one editor link from **Account**, and verify first-use registration signs the editor in without exposing the token in an HTTP request path or server log.
+7. Reload, sign out and back in, then reopen a saved bucket, note, and annotation; confirm another reviewer cannot see those placements or edits.
+8. Confirm the same invitation cannot be claimed twice, then leave the remaining invitation fields null until Fortune names the recipients.

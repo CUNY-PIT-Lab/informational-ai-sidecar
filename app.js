@@ -22,8 +22,10 @@
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
   const MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2;
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:replica:v1";
 
   let history = [];
+  let turns = [];
   let latestTurn = null;
   let editTarget = null;
   let apiReady = false;
@@ -72,7 +74,76 @@
 
   function updateContextWindow() {
     const count = contextExchangeCount();
-    contextWindowText.textContent = `Context · this page · ${count}/${MAX_CONTEXT_EXCHANGES}`;
+    contextWindowText.textContent = `Context · conversation · ${count}/${MAX_CONTEXT_EXCHANGES}`;
+  }
+
+  function conversationStorage() {
+    try {
+      if (window.parent && window.parent !== window) return window.parent.sessionStorage;
+    } catch {
+      // Cross-origin embeds cannot use their host page's tab storage.
+    }
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  }
+
+  function storedPayload(data = {}, answer = "") {
+    const safeRows = rows => (Array.isArray(rows) ? rows : []).slice(0, 4).map(row => ({
+      id: cleanText(row?.id).slice(0, 160),
+      title: cleanText(row?.title).slice(0, 240),
+      url: String(row?.url || "").slice(0, 1000),
+    })).filter(row => row.title && row.url);
+    const choices = (Array.isArray(data?.choices) ? data.choices : []).slice(0, 3).map(choice => ({
+      label: cleanText(choice?.label).slice(0, 160),
+      prompt: cleanText(choice?.prompt || choice?.label).slice(0, 600),
+    })).filter(choice => choice.label && choice.prompt);
+    return {
+      kind: ["answer", "clarify", "handoff"].includes(data?.kind) ? data.kind : "answer",
+      message: redactSixDigitValues(cleanText(answer || data?.message)).slice(0, 4000),
+      retrieval_scope: ["page", "site", "staff"].includes(data?.retrieval_scope)
+        ? data.retrieval_scope
+        : "site",
+      choices,
+      sources: safeRows(data?.sources),
+      related: safeRows(data?.related),
+    };
+  }
+
+  function storedTurn(value) {
+    const question = cleanText(value?.question).slice(0, 600);
+    const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
+    if (!question || !answer || personalInformationDetected(question)) return null;
+    return { question, answer, payload: storedPayload(value?.payload, answer) };
+  }
+
+  function clearPersistedConversation() {
+    try {
+      conversationStorage()?.removeItem(CONVERSATION_STORAGE_KEY);
+    } catch {
+      // Storage is optional; the in-memory conversation still works.
+    }
+  }
+
+  function persistConversation() {
+    const storage = conversationStorage();
+    if (!storage) return;
+    if (!turns.length) {
+      clearPersistedConversation();
+      return;
+    }
+    try {
+      storage.setItem(CONVERSATION_STORAGE_KEY, JSON.stringify({
+        version: 1,
+        turns: turns.slice(-MAX_CONTEXT_EXCHANGES).map(turn => storedTurn(turn)).filter(Boolean),
+        conversationId,
+        conversationToken,
+      }));
+    } catch {
+      // A storage quota or policy failure must not break the guide.
+    }
   }
 
   function resizeQuestionField() {
@@ -195,6 +266,61 @@
     return null;
   }
 
+  function appendTurn(turn, editable = false) {
+    const userArticle = appendMessage("user", turn.question, { editable });
+    const payload = storedPayload(turn.payload, turn.answer);
+    const destination = payload.choices.length ? null : distinctDestination(payload);
+    const assistantArticle = appendMessage("assistant", turn.answer, {
+      choices: payload.choices,
+      destination,
+      scope: payload.retrieval_scope,
+    });
+    return { question: turn.question, answer: turn.answer, userArticle, assistantArticle };
+  }
+
+  function renderConversation() {
+    transcript.replaceChildren();
+    latestTurn = null;
+    turns.forEach((turn, index) => {
+      const rendered = appendTurn(turn, index === turns.length - 1);
+      if (index === turns.length - 1) latestTurn = rendered;
+    });
+    if (turns.length) panel.classList.add("is-expanded");
+    else panel.classList.remove("is-expanded");
+    if (turns.length) suggestions.replaceChildren();
+  }
+
+  function restoreConversation() {
+    const storage = conversationStorage();
+    if (!storage) return false;
+    try {
+      const saved = JSON.parse(storage.getItem(CONVERSATION_STORAGE_KEY) || "null");
+      if (saved?.version !== 1 || !Array.isArray(saved.turns)) return false;
+      const restored = saved.turns.slice(-MAX_CONTEXT_EXCHANGES).map(storedTurn);
+      if (!restored.length || restored.some(turn => !turn)) {
+        clearPersistedConversation();
+        return false;
+      }
+      turns = restored;
+      history = turns.flatMap(turn => [
+        { role: "user", content: turn.question },
+        { role: "assistant", content: turn.answer },
+      ]).slice(-MAX_CONTEXT_MESSAGES);
+      conversationId = /^[0-9a-f-]{36}$/i.test(String(saved.conversationId || ""))
+        ? String(saved.conversationId)
+        : "";
+      conversationToken = /^[A-Za-z0-9_-]{32,128}$/.test(String(saved.conversationToken || ""))
+        ? String(saved.conversationToken)
+        : "";
+      renderConversation();
+      updateContextWindow();
+      return true;
+    } catch {
+      clearPersistedConversation();
+      return false;
+    }
+  }
+
   function renderSuggestions(starter) {
     suggestions.replaceChildren();
     (starter?.suggestions || []).slice(0, 2).forEach(prompt => {
@@ -209,19 +335,15 @@
   function resetForPage(page, starter) {
     if (!page) return;
     activePageId = page.id;
-    history = [];
-    latestTurn = null;
     endEditing({ clearInput: true });
-    conversationId = "";
-    conversationToken = "";
     pendingClientEventId = "";
     pendingQuestion = "";
     updateContextWindow();
-    panel.classList.remove("is-expanded");
-    transcript.replaceChildren();
+    panel.classList.toggle("is-expanded", turns.length > 0);
     title.textContent = "Website Guide";
     questionField.placeholder = "Ask about this page";
-    renderSuggestions(starter);
+    if (turns.length) suggestions.replaceChildren();
+    else renderSuggestions(starter);
   }
 
   function setEditStatus(message = "") {
@@ -296,9 +418,11 @@
       },
     );
     history = [];
+    turns = [];
     latestTurn = null;
     conversationId = "";
     conversationToken = "";
+    clearPersistedConversation();
     transcript.querySelectorAll(".chat-message-actions").forEach(actions => actions.remove());
     updateContextWindow();
   }
@@ -418,12 +542,16 @@
       const assistantArticle = showAnswer(data);
       history = [...requestHistory, { role: "user", content: safeQuestion }, { role: "assistant", content: answer }]
         .slice(-MAX_CONTEXT_MESSAGES);
+      const turn = { question: safeQuestion, answer, payload: storedPayload(data, answer) };
+      turns = (editing ? turns.slice(0, -1).concat(turn) : turns.concat(turn))
+        .slice(-MAX_CONTEXT_EXCHANGES);
       latestTurn = { question: safeQuestion, answer, userArticle, assistantArticle };
       conversationId = String(data.conversation_id || (editing ? "" : conversationId));
       conversationToken = String(data.conversation_token || (editing ? "" : conversationToken));
       updateContextWindow();
       pendingClientEventId = "";
       pendingQuestion = "";
+      persistConversation();
     } catch (error) {
       questionField.value = value;
       resizeQuestionField();
@@ -463,8 +591,8 @@
       contextWindowCopy.textContent = captureMode === "transcript"
         ? "This review build records questions and answers."
         : captureMode === "metadata"
-          ? "This review build stores IDs and response data, not chat text."
-          : "Up to 3 exchanges stay in this tab. Changing pages clears them. Chat text isn’t stored.";
+          ? "This review build stores IDs and response data. Chat stays in this tab across pages."
+          : "Up to 3 exchanges stay in this tab across pages.";
       modelStatus.textContent = modelReady ? "Starting…" : "Source only";
       modelStatus.classList.toggle("model-ready", modelReady);
       if (modelReady) warmupPromise = warmModel();
@@ -525,6 +653,7 @@
 
   window.FortuneMockSite.ready.then(page => {
     if (page.id !== activePageId) resetForPage(page, window.FortuneMockSite.getStarter(page));
+    restoreConversation();
     checkHealth();
     const search = new URLSearchParams(window.location.search);
     if (search.get("open") === "1") openGuide({ moveFocus: false });
@@ -544,6 +673,7 @@
       activePageId,
       answering,
       historyLength: history.length,
+      turnCount: turns.length,
       latestQuestion: latestTurn?.question || "",
       editing: Boolean(editTarget),
       contextExchanges: contextExchangeCount(),

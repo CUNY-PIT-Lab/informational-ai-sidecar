@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import pathlib
 import platform
+import re
 import statistics
 import time
 import uuid
@@ -111,6 +112,31 @@ def continuity_failures(
             f"continuity: expected {expected_history} history messages, got {len(history)}"
         )
     return failures
+
+
+def advancement_failures(*, response: dict, history: list[dict]) -> list[str]:
+    """Reject a factual follow-up that merely reuses an earlier evidence sentence."""
+
+    if response.get("kind") != "answer" or not history:
+        return []
+    current = str(response.get("message") or "")
+    if current in {
+        "I couldn’t confirm that on Fortune’s public pages.",
+        "No pude confirmarlo en las páginas públicas de Fortune.",
+    }:
+        return []
+    prior = " ".join(
+        str(item.get("content") or "")
+        for item in history
+        if item.get("role") == "assistant"
+    )
+    normalize = lambda value: " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
+    prior_normalized = normalize(prior)
+    for sentence in re.split(r"(?<=[.!?])\s+", current):
+        normalized = normalize(sentence)
+        if len(normalized.split()) >= 6 and normalized in prior_normalized:
+            return ["continuity: answer repeats prior evidence instead of advancing"]
+    return []
 
 
 def percentile(values: list[float], fraction: float) -> float | None:
@@ -294,6 +320,10 @@ def run(args: argparse.Namespace) -> int:
                         history=history,
                     )
                 )
+                if turn_index:
+                    failures.extend(
+                        advancement_failures(response=response, history=history)
+                    )
             row = {
                 "id": turn["id"],
                 "mode": turn.get("mode", "explicit"),

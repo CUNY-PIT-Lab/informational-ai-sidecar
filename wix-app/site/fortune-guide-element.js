@@ -9,6 +9,7 @@
   const TAG_NAME = "fortune-digital-equity-guide";
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v1";
   const STARTERS = Object.freeze([
     { label: "Page summary", prompt: "What is the main information here?" },
     { label: "Next step", prompt: "Where should I go next?" }
@@ -396,7 +397,7 @@
             <details class="meta">
               <summary>Info</summary>
               <div class="info">
-                <p class="context-count">Context · this page · 0/3</p>
+                <p class="context-count">Context · conversation · 0/3</p>
                 <p class="capture-notice">Starting…</p>
                 <p>Don’t include your Fortune ID, name, contact, case, or health information.</p>
                 <p class="model-status">Starting…</p>
@@ -468,7 +469,12 @@
         if (event.key === "Escape" && !this.panel.hidden) this.close();
       });
 
-      this.renderSuggestions();
+      if (this.restoreConversation()) {
+        this.panel.classList.add("expanded");
+        this.renderConversation();
+      } else {
+        this.renderSuggestions();
+      }
       this.updateContextCount();
       this.loadCapturePolicy();
       this.warmModel();
@@ -505,6 +511,106 @@
       };
     }
 
+    conversationStorage() {
+      try {
+        return window.sessionStorage;
+      } catch {
+        return null;
+      }
+    }
+
+    storedPayload(payload = {}, answer = "") {
+      const safeRows = (rows) => (Array.isArray(rows) ? rows : []).slice(0, 4).map((row) => ({
+        id: cleanText(row?.id).slice(0, 160),
+        title: cleanText(row?.title).slice(0, 240),
+        url: String(row?.url || "").slice(0, 1000)
+      })).filter((row) => row.title && row.url);
+      const choices = (Array.isArray(payload?.choices) ? payload.choices : []).slice(0, 3).map((choice) => ({
+        label: cleanText(choice?.label).slice(0, 160),
+        prompt: cleanText(choice?.prompt || choice?.label).slice(0, 600)
+      })).filter((choice) => choice.label && choice.prompt);
+      return {
+        kind: ["answer", "clarify", "handoff"].includes(payload?.kind) ? payload.kind : "answer",
+        message: redactSixDigitValues(cleanText(answer || payload?.message)).slice(0, 4000),
+        retrieval_scope: ["page", "site", "staff"].includes(payload?.retrieval_scope)
+          ? payload.retrieval_scope
+          : "site",
+        choices,
+        sources: safeRows(payload?.sources),
+        related: safeRows(payload?.related)
+      };
+    }
+
+    storedTurn(value) {
+      const question = cleanText(value?.question).slice(0, 600);
+      const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
+      if (!question || !answer || personalInformationDetected(question)) return null;
+      return {
+        question,
+        answer,
+        payload: this.storedPayload(value?.payload, answer),
+        editable: true
+      };
+    }
+
+    clearPersistedConversation() {
+      try {
+        this.conversationStorage()?.removeItem(CONVERSATION_STORAGE_KEY);
+      } catch {
+        // Storage is optional; the in-memory conversation still works.
+      }
+    }
+
+    persistConversation() {
+      const storage = this.conversationStorage();
+      if (!storage) return;
+      if (!this.turns.length) {
+        this.clearPersistedConversation();
+        return;
+      }
+      try {
+        storage.setItem(CONVERSATION_STORAGE_KEY, JSON.stringify({
+          version: 1,
+          turns: this.turns.slice(-3).map((turn) => this.storedTurn(turn)).filter(Boolean),
+          conversationId: this.conversationId,
+          conversationToken: this.conversationToken
+        }));
+      } catch {
+        // A storage quota or policy failure must not break the guide.
+      }
+    }
+
+    restoreConversation() {
+      const storage = this.conversationStorage();
+      if (!storage) return false;
+      try {
+        const saved = JSON.parse(storage.getItem(CONVERSATION_STORAGE_KEY) || "null");
+        if (saved?.version !== 1 || !Array.isArray(saved.turns)) return false;
+        const restored = saved.turns.slice(-3).map((turn) => this.storedTurn(turn));
+        if (!restored.length || restored.some((turn) => !turn)) {
+          this.clearPersistedConversation();
+          return false;
+        }
+        this.turns = restored;
+        this.history = restored.flatMap((turn) => [
+          { role: "user", content: turn.question },
+          { role: "assistant", content: turn.answer }
+        ]).slice(-MAX_CONTEXT_MESSAGES);
+        this.lastQuestion = restored.at(-1)?.question || "";
+        this.conversationId = /^[0-9a-f-]{36}$/i.test(String(saved.conversationId || ""))
+          ? String(saved.conversationId)
+          : "";
+        this.conversationToken = /^[A-Za-z0-9_-]{32,128}$/.test(String(saved.conversationToken || ""))
+          ? String(saved.conversationToken)
+          : "";
+        this.suggestions.replaceChildren();
+        return true;
+      } catch {
+        this.clearPersistedConversation();
+        return false;
+      }
+    }
+
     renderSuggestions() {
       this.suggestions.replaceChildren();
       STARTERS.forEach(({ label, prompt }) => {
@@ -519,7 +625,7 @@
 
     updateContextCount() {
       const count = Math.min(MAX_CONTEXT_MESSAGES / 2, Math.floor(this.history.length / 2));
-      this.contextCount.textContent = `Context · this page · ${count}/${MAX_CONTEXT_MESSAGES / 2}`;
+      this.contextCount.textContent = `Context · conversation · ${count}/${MAX_CONTEXT_MESSAGES / 2}`;
     }
 
     resizeQuestionField() {
@@ -557,9 +663,9 @@
           if (mode === "transcript") {
             this.captureNotice.textContent = "This review build records questions and answers.";
           } else if (mode === "metadata") {
-            this.captureNotice.textContent = "This review build stores IDs and response data, not chat text.";
+            this.captureNotice.textContent = "This review build stores IDs and response data. Chat stays in this tab across pages.";
           } else {
-            this.captureNotice.textContent = "Chat text isn’t stored.";
+            this.captureNotice.textContent = "Up to 3 exchanges stay in this tab across pages.";
           }
           this.modelStatus.textContent = payload.model_enabled ? "Starting…" : "Source only";
           this.capturePolicyReady = true;
@@ -611,6 +717,7 @@
       this.editingQuestion = "";
       this.conversationId = "";
       this.conversationToken = "";
+      this.clearPersistedConversation();
       this.form.classList.remove("is-editing");
       this.cancelEditButton.hidden = true;
       this.questionLabel.textContent = "Question";
@@ -708,6 +815,7 @@
         this.status.textContent = "";
         this.updateContextCount();
         this.renderConversation();
+        this.persistConversation();
         this.revealResult();
       } catch (error) {
         if (error?.payload?.idempotency_complete) {

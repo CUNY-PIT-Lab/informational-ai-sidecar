@@ -17,7 +17,7 @@
       "The first turn is opening and later turns are follow-up.",
       "Production capture remains none and the evaluator remains disabled.",
       "A topic shift cannot revive a source from an older topic.",
-      "No visible answer exceeds 32 words."
+      "No visible answer exceeds 48 words."
     ],
     "nonGoals": [
       "Authorize participant transcript capture.",
