@@ -128,6 +128,23 @@ class EvaluationStoreBoundaryTests(unittest.TestCase):
         self.assertTrue(store.csrf_matches("same-token", csrf_digest))
         self.assertFalse(store.csrf_matches("same-token", session_digest))
 
+    def test_claimed_account_reset_revokes_sessions_without_deleting_reviewer_data(self):
+        source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        script = (DEMO / "scripts" / "reset_evaluator_invite.py").read_text(
+            encoding="utf-8"
+        )
+        reset = source.split("def reset_account_invitation", 1)[1].split(
+            "def list_accounts", 1
+        )[0]
+        self.assertIn("UPDATE evaluator_sessions", reset)
+        self.assertIn("revoked_at = NOW()", reset)
+        self.assertIn("auth_version = auth_version + 1", reset)
+        self.assertIn("password_hash = NULL", reset)
+        self.assertIn("claimed_at = NULL", reset)
+        self.assertNotIn("DELETE FROM", reset)
+        self.assertIn("credential_reset", reset)
+        self.assertIn("--confirm-reset", script)
+
 
 class EvaluationFrontendContractTests(unittest.TestCase):
     def test_review_surface_fits_multiple_buckets_and_stays_concise(self):

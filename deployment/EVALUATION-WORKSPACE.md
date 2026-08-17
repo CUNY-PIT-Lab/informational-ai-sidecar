@@ -24,6 +24,16 @@ After the admin account is claimed, the administrator can open **Account** in th
 
 Returning testers sign in at `/evaluation` with the email and password they chose during registration. Their queue placements, buckets, conversation notes, and message annotations are stored in PostgreSQL by reviewer account and remain available after reload, sign-out, and a new browser session. Interface preferences are browser-local and reviewer-scoped.
 
+If a claimed account must be reassigned, use the private operator command below. It revokes active sessions and clears only that slot's authentication fields; reviewer buckets, placements, notes, annotations, and audit history remain attached to the same slot.
+
+```bash
+python3 scripts/reset_evaluator_invite.py admin \
+  --confirm-reset admin \
+  --base-url https://<staging-domain>
+```
+
+The replacement link follows the same single-use, 24-hour, private-delivery rules. Resetting a claimed account is destructive to its existing login and requires explicit owner authorization.
+
 ## Staging variables
 
 ```text

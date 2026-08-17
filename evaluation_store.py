@@ -575,6 +575,82 @@ class EvaluationStore:
             connection.commit()
         return result
 
+    def reset_account_invitation(
+        self,
+        slot_key: str,
+        *,
+        email: str | None = None,
+        actor_slot: str = "admin",
+        operation_id: str | None = None,
+    ) -> str:
+        """Revoke a claimed account's login and return one replacement invite."""
+        if slot_key not in SLOT_KEYS:
+            raise EvaluationValidation("Unknown account slot.")
+        normalized_email = _normalize_email(email) if email else None
+        token = secrets.token_urlsafe(32)
+        operation = _uuid(operation_id or uuid.uuid4(), "operation_id")
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                cursor.execute(
+                    "SELECT * FROM evaluator_accounts WHERE slot_key = %s FOR UPDATE",
+                    (slot_key,),
+                )
+                account = cursor.fetchone()
+                if not account or account.get("claimed_at") is None:
+                    raise EvaluationConflict("That account slot is not claimed.")
+                cursor.execute(
+                    """
+                    UPDATE evaluator_sessions
+                    SET revoked_at = NOW()
+                    WHERE account_slot = %s AND revoked_at IS NULL
+                    """,
+                    (slot_key,),
+                )
+                revoked_sessions = cursor.rowcount
+                cursor.execute(
+                    """
+                    UPDATE evaluator_accounts
+                    SET email_normalized = %s,
+                        display_name = NULL,
+                        password_hash = NULL,
+                        claimed_at = NULL,
+                        invite_token_hash = %s,
+                        invite_expires_at = NOW() + (%s * INTERVAL '1 second'),
+                        invited_at = NOW(),
+                        disabled_at = NULL,
+                        auth_version = auth_version + 1,
+                        failed_login_count = 0,
+                        locked_until = NULL,
+                        updated_at = NOW()
+                    WHERE slot_key = %s
+                    """,
+                    (
+                        normalized_email,
+                        self._digest("invite", token),
+                        self.invite_seconds,
+                        slot_key,
+                    ),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO evaluation_audit_events
+                        (id, operation_id, actor_slot, action, metadata)
+                    VALUES (%s, %s, %s, 'account.invite', %s)
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        operation,
+                        actor_slot,
+                        self._jsonb({
+                            "slot_key": slot_key,
+                            "credential_reset": True,
+                            "sessions_revoked": revoked_sessions,
+                        }),
+                    ),
+                )
+            connection.commit()
+        return token
+
     def list_accounts(self) -> list[dict]:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
