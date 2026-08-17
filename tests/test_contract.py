@@ -82,6 +82,7 @@ class RetrievalTests(unittest.TestCase):
     def test_natural_skill_terms_retrieve_specific_source_pages(self):
         expected = {
             "I need help getting started with spreadsheets": server.INTRO_EXCEL_ID,
+            "How can I make spreadsheets easier to read?": server.EXCEL_FORMATTING_ID,
             "How can I avoid online scams?": server.DIGITAL_SAFETY_ONLINE_ID,
             "Which class covers attachments in email?": server.INTRO_EMAIL_ID,
         }

@@ -792,7 +792,7 @@ def likely_source_ids(text, fallback=True):
     })
     if spreadsheet_terms:
         formatting_focus = word_set.intersection({
-            "format", "formatting", "readable", "date", "dates", "number", "numbers",
+            "format", "formatting", "read", "readable", "date", "dates", "number", "numbers",
         })
         organizing_focus = word_set.intersection({
             "duplicate", "duplicates", "filter", "organize", "organizing", "record",
@@ -807,7 +807,7 @@ def likely_source_ids(text, fallback=True):
         if not word_set.intersection({
             "chart", "charts", "formula", "formulas", "format", "formatting",
             "organize", "organizing", "present", "presenting", "sort", "sorting",
-            "duplicate", "duplicates", "filter", "function", "functions",
+            "duplicate", "duplicates", "filter", "function", "functions", "read",
         }):
             add(INTRO_EXCEL_ID)
     if word_set.intersection({"scam", "scams", "fraud", "phishing"}):
@@ -1845,7 +1845,7 @@ def ambiguity_response(question, language_code=None):
             ],
             [],
         ))
-    elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing"}):
+    elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing", "scam", "scams", "fraud", "phishing"}):
         cases.append((
             "Do you need internet service, help connecting a device, or help using the internet?",
             [
