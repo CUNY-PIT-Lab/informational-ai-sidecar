@@ -2620,7 +2620,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     actor_slot=account["slot_key"],
                     operation_id=request.get("operation_id"),
                 )
-                self._json(201, {"invitation_token": token})
+                self._json(201, {
+                    "invitation_path": (
+                        "/evaluation#invite="
+                        + urllib.parse.quote(token, safe="")
+                    ),
+                    "expires_in_seconds": EVALUATION_STORE.invite_seconds,
+                })
                 return
             self.send_error(404)
         except AuthenticationFailed as error:
