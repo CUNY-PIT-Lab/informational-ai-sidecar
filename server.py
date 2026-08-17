@@ -72,7 +72,7 @@ MAX_HISTORY = 6
 MAX_QUESTION_CHARS = 600
 MAX_RETRIEVED = 10
 MAX_MODEL_EXCERPT_CHARS = 700
-MAX_MESSAGE_WORDS = 48
+MAX_MESSAGE_WORDS = 35
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
@@ -383,8 +383,15 @@ _VISUAL_SCAFFOLD = (
 )
 
 _PERSONAL_PATTERNS = [
-    re.compile(r"\b(?:social security|ssn|date of birth|dob|password|passcode)\b", re.I),
-    re.compile(r"\b(?:my|their|participant'?s?)\s+(?:fortune\s+)?(?:id|case number)\b", re.I),
+    re.compile(
+        r"\b(?:social security|ssn|date of birth|dob|password|passcode|my health|my diagnosis)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\b(?:my|their|participant'?s?)\s+(?:fortune\s+)?"
+        r"(?:id|case number|name|address|phone|email)\b",
+        re.I,
+    ),
     re.compile(r"(?<!\d)\d{3}(?:[-‐‑‒–—.\s]?\d{3})(?!\d)"),
     re.compile(r"\b\d{3}[-. ]?\d{2}[-. ]?\d{4}\b"),
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
@@ -562,6 +569,7 @@ def tokens(value, keep_stopwords=False):
 
 _QUERY_TERM_GROUPS = (
     frozenset({"address", "addresses"}),
+    frozenset({"background", "experience"}),
     frozenset({"calendar", "hours", "schedule"}),
     frozenset({"class", "classes"}),
     frozenset({"device", "devices"}),
@@ -740,6 +748,15 @@ def request_kind(question):
         return "clarification"
     if re.search(r"\b(?:how do i|how can i|steps?|apply|register|sign up|what do i need|como|pasos?|solicitar|registrarme|inscribirme|que necesito)\b", value):
         return "procedure"
+    words = set(tokens(value, keep_stopwords=True))
+    if (
+        words.intersection({"which", "cual"})
+        and words.intersection({
+            "class", "course", "program", "workshop",
+            "clase", "curso", "programa", "taller",
+        })
+    ):
+        return "navigation"
     if re.search(r"\b(?:where|find|page|contact|go next|which class|which program|donde|encontrar|pagina|contacto|cual clase|cual programa)\b", value):
         return "navigation"
     return "retrieval"
@@ -1160,7 +1177,7 @@ def likely_source_ids(text, fallback=True):
     if (
         word_set.intersection({"laptop", "laptops"})
         and (
-            word_set.intersection({"automatic", "automatically", "every", "participant", "qualify"})
+            word_set.intersection({"all", "any", "automatic", "automatically", "every"})
             or "automatically qualify" in lowered
         )
     ):
@@ -2113,7 +2130,7 @@ def current_faq_sources(question):
     elif (
         words.intersection({"laptop", "laptops"})
         and (
-            words.intersection({"automatic", "automatically", "every", "participant", "qualify"})
+            words.intersection({"all", "any", "automatic", "automatically", "every"})
             or "automatically qualify" in value
         )
     ):
@@ -2149,7 +2166,11 @@ def retrieval_plan(question, page_context=None):
         return "site", guided
 
     current = approved_current_page_source(page_context)
-    if current and question_refers_to_current_page(question):
+    if (
+        current
+        and ". follow-up:" not in fold_text(question)
+        and question_refers_to_current_page(question)
+    ):
         return "page", [current]
     faq = current_faq_sources(question)
     if faq:
@@ -2562,6 +2583,8 @@ _GROUNDING_EQUIVALENT_GROUPS = (
     frozenset({"account", "cuenta"}),
     frozenset({"attachment", "attachments", "adjunto", "adjuntos"}),
     frozenset({"available", "availability", "disponible", "disponibles"}),
+    frozenset({"background", "experience"}),
+    frozenset({"calendar", "hours", "schedule", "time"}),
     frozenset({"class", "classes", "clase", "clases", "course", "curso", "taller"}),
     frozenset({"computer", "computers", "computadora", "computadoras"}),
     frozenset({"device", "devices", "dispositivo", "dispositivos"}),
@@ -2577,6 +2600,13 @@ _GROUNDING_EQUIVALENT_GROUPS = (
     frozenset({"phone", "cellphone", "telefono", "celular"}),
     frozenset({"spreadsheet", "spreadsheets", "worksheet", "worksheets", "hoja", "hojas"}),
     frozenset({"training", "trainings", "workshop", "workshops", "capacitacion"}),
+    frozenset({"mon", "monday", "mondays"}),
+    frozenset({"tue", "tues", "tuesday", "tuesdays"}),
+    frozenset({"wed", "wednesday", "wednesdays"}),
+    frozenset({"thu", "thur", "thurs", "thursday", "thursdays"}),
+    frozenset({"fri", "friday", "fridays"}),
+    frozenset({"sat", "saturday", "saturdays"}),
+    frozenset({"sun", "sunday", "sundays"}),
 )
 
 _RISKY_QUALIFIER_GROUPS = (
@@ -2626,9 +2656,9 @@ _UNIVERSAL_CLAIM_PATTERNS = (
 )
 
 _ENTITY_PATTERN = re.compile(
-    r"\b[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’.-]*"
+    r"\b[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’-]*"
     r"(?:\s+(?:(?:and|de|del|of|the|to|y)\s+)?"
-    r"[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’.-]*)*"
+    r"[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’-]*)*"
 )
 
 
@@ -2652,18 +2682,18 @@ def _claim_numbers(value):
 def _claim_number_unit_pairs(value):
     words = tokens(value, keep_stopwords=True)
     pairs = set()
+    barriers = {"and", "by", "for", "in", "of", "or", "through", "to", "with"}
     for index, word in enumerate(words):
         number = word if word.isdigit() else _NUMBER_WORDS.get(word)
         if number is None:
             continue
-        unit = next(
-            (
-                _CLAIM_UNITS[candidate]
-                for candidate in words[index + 1:index + 4]
-                if candidate in _CLAIM_UNITS
-            ),
-            None,
-        )
+        unit = None
+        for candidate in words[index + 1:index + 6]:
+            if candidate in barriers:
+                break
+            if candidate in _CLAIM_UNITS:
+                unit = _CLAIM_UNITS[candidate]
+                break
         if unit:
             pairs.add((number, unit))
     return pairs
@@ -2672,22 +2702,48 @@ def _claim_number_unit_pairs(value):
 def _qualifier_polarities(value, group):
     words = tokens(value, keep_stopwords=True)
     negatives = {"cannot", "cant", "never", "no", "not", "nunca", "sin"}
+    leading_response_no = bool(re.match(r"^\s*no\s*[,;:]", str(value), re.I))
     polarities = set()
     for index, word in enumerate(words):
         if word not in group:
             continue
         prior = set(words[max(0, index - 3):index])
+        if leading_response_no:
+            prior.discard("no")
         polarities.add("negative" if prior.intersection(negatives) else "positive")
     return polarities
 
 
+def _source_qualifier_polarities(value, group):
+    """Recognize bounded source phrases that entail current availability."""
+
+    polarities = _qualifier_polarities(value, group)
+    if "available" not in group:
+        return polarities
+    folded = fold_text(value)
+    if re.search(
+        r"\b(?:not (?:currently )?available|unavailable|currently on hold|on hold|"
+        r"no longer (?:available|bookable|offered)|can no longer be booked|coming soon)\b",
+        folded,
+    ):
+        return {"negative"}
+    if polarities:
+        return polarities
+    if re.search(
+        r"\b(?:office hours?|support hours?|walk-?in|by appointment|"
+        r"schedule an appointment|currently offered|is offered|are offered)\b",
+        folded,
+    ):
+        return {"positive"}
+    return set()
+
+
 def _named_entities_are_supported(answer, source_text):
-    source_terms = set(tokens(source_text, keep_stopwords=True))
+    source_terms = _expanded_grounding_terms(source_text)
     for match in _ENTITY_PATTERN.finditer(answer):
-        entity_terms = [
-            term for term in tokens(match.group(0), keep_stopwords=True)
-            if term not in {"and", "de", "del", "of", "the", "to", "y"}
-        ]
+        entity_terms = _expanded_grounding_terms(match.group(0)).difference({
+            "and", "de", "del", "of", "the", "to", "y",
+        })
         prefix = answer[:match.start()].rstrip()
         at_sentence_start = not prefix or prefix[-1:] in ".!?"
         if len(entity_terms) == 1 and at_sentence_start:
@@ -2727,15 +2783,20 @@ def answers_near_duplicate(answer, prior_answer):
         set(tokens(sentence, keep_stopwords=True))
         for sentence in re.split(r"(?<=[.!?])\s+", str(prior_answer or ""))
     ]
+    sentence_matches = []
     for current_sentence in current_sentences:
         if len(current_sentence) < 5:
             continue
-        for prior_sentence in prior_sentences:
-            if len(prior_sentence) < 5:
-                continue
-            overlap = len(current_sentence.intersection(prior_sentence))
-            if overlap / min(len(current_sentence), len(prior_sentence)) >= 0.85:
-                return True
+        sentence_matches.append(any(
+            len(prior_sentence) >= 5
+            and len(current_sentence.intersection(prior_sentence))
+            / min(len(current_sentence), len(prior_sentence)) >= 0.85
+            for prior_sentence in prior_sentences
+        ))
+    if sentence_matches and all(sentence_matches):
+        return True
+    if any(sentence_matches) and not all(sentence_matches):
+        return False
     containment = len(current.intersection(prior)) / max(1, min(len(current), len(prior)))
     union = len(current.union(prior))
     return min(len(current), len(prior)) >= 6 and containment >= 0.82 and (
@@ -2761,6 +2822,10 @@ def model_answer_is_grounded(answer, source, question=""):
     if not answer or re.search(r"https?://|www\.", answer, flags=re.I):
         return False
     source_text = searchable_text(source)
+    source_claim_text = (
+        source_excerpt(source, question, limit=MAX_MODEL_EXCERPT_CHARS)
+        if question else source_text
+    ) or source_text
     if not _claim_numbers(answer).issubset(_claim_numbers(source_text)):
         return False
     if not _claim_number_unit_pairs(answer).issubset(_claim_number_unit_pairs(source_text)):
@@ -2778,7 +2843,7 @@ def model_answer_is_grounded(answer, source, question=""):
     for group in _RISKY_QUALIFIER_GROUPS:
         answer_polarities = _qualifier_polarities(answer, group)
         if answer_polarities and not answer_polarities.issubset(
-            _qualifier_polarities(source_text, group)
+            _source_qualifier_polarities(source_claim_text, group)
         ):
             return False
     generic = {
@@ -3310,9 +3375,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 interaction,
                 previous_answer=prior_answer,
             )}]
+            model_question = semantic_question(question) or routing_question
             messages.append({
                 "role": "user",
-                "content": routing_question[:MAX_QUESTION_CHARS],
+                "content": model_question[:MAX_QUESTION_CHARS],
             })
             raw = self._ollama(messages)
             retry_reason = model_selection_retry_reason(
@@ -3773,8 +3839,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "format": "json",
             "keep_alive": MODEL_KEEP_ALIVE,
             "options": {
-                "temperature": 0.5,
-                "seed": uuid.uuid4().int & 0x7FFFFFFF,
+                "temperature": 0,
             },
         })
         MODEL_WARMUP.mark_ready()

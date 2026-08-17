@@ -52,7 +52,7 @@ Internal Drive notes and meeting transcripts may shape navigation, ambiguity, tr
 
 ## Evaluation workspace
 
-Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Every authenticated evaluator sees and updates the same shared workspace: **Success**, **Needs work**, **Handoff**, the virtual **Unsorted** area, and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event attributed to the evaluator who made the change.
+Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Every authenticated evaluator sees and updates the same shared workspace: **Success**, **Needs work**, the virtual **Not yet reviewed** area, and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event attributed to the evaluator who made the change.
 
 The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. Shared conversation notes and message annotations can mark content as helpful, unclear, incorrect, a safety concern, or other; audit records retain the acting evaluator. Annotation records reference message IDs and never copy transcript text into evaluation or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
 

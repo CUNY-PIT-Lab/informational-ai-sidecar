@@ -42,6 +42,12 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("Pick ASK only", source_selector.SYSTEM_PROMPT)
         self.assertIn("answer instead of asking which page or class", source_selector.SYSTEM_PROMPT)
         self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
+        self.assertIn("automated Fortune Society Website Guide", source_selector.SYSTEM_PROMPT)
+        self.assertIn("not a Fortune staff member", source_selector.SYSTEM_PROMPT)
+        self.assertIn("plain, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
+        self.assertIn("avoid unexplained jargon, blame, or assumptions", source_selector.SYSTEM_PROMPT)
+        self.assertNotIn("conversation logs are recorded", source_selector.SYSTEM_PROMPT.lower())
+        self.assertNotIn("988", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("laptop", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("email class", source_selector.SYSTEM_PROMPT.lower())
 

@@ -48,10 +48,24 @@ class EvaluationSchemaTests(unittest.TestCase):
         self.assertIn("'Handoff'", sql)
         self.assertNotIn("conversation_messages.content", sql)
 
+    def test_handoff_taxonomy_migration_returns_placements_to_unreviewed(self):
+        sql = (DEMO / "migrations" / "008_remove_handoff_bucket.sql").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("SET bucket_id = NULL", sql)
+        self.assertIn("version = ce.version + 1", sql)
+        self.assertIn("b.standard_key = 'handoff'", sql)
+        self.assertIn("SET archived_at = COALESCE(archived_at, NOW())", sql)
+        self.assertIn("starter_version = '2026-08-17-v2'", sql)
+        self.assertNotIn("DELETE FROM evaluation_buckets", sql)
+        self.assertNotIn("standard_key = 'needs-work'", sql)
+        list_source = inspect.getsource(evaluation_store.EvaluationStore.list_buckets)
+        self.assertIn("b.archived_at IS NULL", list_source)
+
     def test_evaluation_schema_version_is_separate_from_capture_schema(self):
         self.assertEqual(
             evaluation_store.EVALUATION_SCHEMA_VERSION,
-            "007_prompt_proposals",
+            "008_remove_handoff_bucket",
         )
         self.assertEqual(evaluation_store.COOKIE_NAME, "__Host-fs_eval")
 
@@ -303,8 +317,10 @@ class EvaluationFrontendContractTests(unittest.TestCase):
             css,
         )
         self.assertIn('{ id: null, label: "Not yet reviewed"', javascript)
-        for label in ("Success", "Needs work", "Handoff"):
+        for label in ("Success", "Needs work"):
             self.assertIn(f'label: "{label}"', javascript)
+        self.assertNotIn('label: "Handoff"', javascript)
+        self.assertNotIn('"handoff"', javascript)
         self.assertNotIn('label: "Mostly works"', javascript)
         self.assertIn('addEventListener("drop"', javascript)
         self.assertIn("card-move", javascript)
@@ -314,6 +330,7 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('id="bucket-layout"', html)
         self.assertIn('board[data-layout="compact"]', css)
         self.assertIn('layout: "compact"', javascript)
+        self.assertIn('previewKey = "fortune-evaluation-preview-v5"', javascript)
         self.assertIn('viewKeyPrefix = "fortune-evaluation-view-v2"', javascript)
         self.assertIn("const UNREVIEWED_PAGE_SIZE = 8", javascript)
         self.assertIn('api("/api/evaluation/conversations?limit=500")', javascript)
@@ -359,7 +376,7 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         )
         self.assertIn('timeHtml(message.created_at, "message-time")', javascript)
         self.assertIn("readableTimestamp(detail.last_turn_at)", javascript)
-        self.assertIn("20260817-prompt-lab-2", html)
+        self.assertIn("20260817-taxonomy-v2", html)
 
     def test_prompt_lab_is_compact_shared_and_has_no_activation_control(self):
         html = (DEMO / "evaluation.html").read_text(encoding="utf-8")

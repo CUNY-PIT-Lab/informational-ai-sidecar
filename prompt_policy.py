@@ -8,14 +8,17 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-17-v13"
-PROMPT_BEHAVIOR_RELEASE = "meeting4-resolved-source-direct-answer"
+PROMPT_POLICY_VERSION = "2026-08-17-v14"
+PROMPT_BEHAVIOR_RELEASE = "meeting4-plain-participant-respect"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
 # as evaluator settings.
 IMMUTABLE_PROMPT_MODULES = {
-    "identity": "You are the Fortune Society Website Guide.",
+    "identity": (
+        "You are the automated Fortune Society Website Guide, not a Fortune "
+        "staff member."
+    ),
     "grounding": (
         "Answer naturally using only facts on the candidate pages below. Choose "
         "the single page that directly answers the question; never combine pages, "
@@ -51,6 +54,15 @@ TEAM_TUNABLE_PROMPT_MODULES = {
             "status, eligibility, safety, or uncertainty caveat. When asked for "
             "options, name the supported options. Paraphrase promotional language."
         ),
+        "plain_respectful_conversational": (
+            "Answer directly and conversationally, usually in one sentence and "
+            "about 30 words or fewer. Use plain, respectful, nonjudgmental language. "
+            "Start with the useful action or answer, and avoid unexplained jargon, "
+            "blame, or assumptions about the participant. Use a second sentence "
+            "only for a necessary status, eligibility, safety, or uncertainty caveat. "
+            "When asked for options, name the supported options. Paraphrase "
+            "promotional language."
+        ),
     },
     "clarification": {
         "one_short_question": (
@@ -80,7 +92,7 @@ TEAM_TUNABLE_PROMPT_MODULES = {
 
 
 CURRENT_TUNABLE_SELECTIONS = {
-    "style": "concise_conversational",
+    "style": "plain_respectful_conversational",
     "clarification": "one_short_question",
     "follow_up": "advance_with_supported_detail",
     "page_awareness": "explicit_reference_only",

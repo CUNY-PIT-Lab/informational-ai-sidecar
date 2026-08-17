@@ -13,7 +13,7 @@ This report omits meeting credentials and participant-private material.
 | Transcript review | Show timestamps, sort newest first, and paginate the unreviewed list. | Implemented on the shared staging evaluator. |
 | Prompt collaboration | Show the current reviewable modules and let evaluators share bounded drafts and comments without runtime activation. | Implemented with immutable proposal revisions; migration and staging verification remain release gates. |
 | Source currency | Refresh updated workshop descriptions and the new home/contact FAQs. Exclude Staging, Inactive, outdated, and non-answer surfaces from answer authority. | Implemented from one 138-route Wix revision 2063 snapshot; staging retrieval evaluation remains. |
-| Taxonomy | Define Success, Needs Work, Verbose, and any retained handoff category collaboratively; do not silently reinterpret existing placements. | Team decision required before taxonomy migration. |
+| Taxonomy | Keep Success and Needs Work, remove the Handoff review bucket, and return its existing placements to Not yet reviewed. | Implemented in migration 008; old bucket rows remain archived for history. |
 | Wix | Keep the canonical mock deployment as the test surface until integration is ready. Do not create a second PIT Lab deployment. | Deferred by design. |
 
 ## Prompt intervention

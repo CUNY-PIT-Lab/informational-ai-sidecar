@@ -19,7 +19,7 @@ from prompt_policy import (
 )
 
 
-EVALUATION_SCHEMA_VERSION = "007_prompt_proposals"
+EVALUATION_SCHEMA_VERSION = "008_remove_handoff_bucket"
 COOKIE_NAME = "__Host-fs_eval"
 SLOT_KEYS = ("admin", "editor-1", "editor-2", "editor-3")
 SHARED_BUCKET_OWNER = "admin"
@@ -1212,7 +1212,9 @@ class EvaluationStore:
                            b.sort_position, b.version, b.archived_at
                     FROM evaluation_buckets b
                     JOIN evaluation_bucket_sets s ON s.id = b.bucket_set_id
-                    WHERE s.account_slot = %s AND s.archived_at IS NULL
+                    WHERE s.account_slot = %s
+                      AND s.archived_at IS NULL
+                      AND b.archived_at IS NULL
                     ORDER BY b.sort_position, b.id
                     """,
                     (SHARED_BUCKET_OWNER,),

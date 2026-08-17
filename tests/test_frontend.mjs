@@ -179,7 +179,11 @@ test("other obvious personal-information forms are held", () => {
     "Email me at person@example.com",
     "My SSN is 123-45-6789",
     "My case number is ABC-12",
+    "My name is Rosa",
+    "Their phone is in my contacts",
+    "My email is not working",
     "My address is 123 Example Street",
+    "I need help with my health",
     "My diagnosis is private",
   ]) {
     assert.equal(Core.personalInformationDetected(value), true, value);

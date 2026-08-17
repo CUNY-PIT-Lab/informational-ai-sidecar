@@ -167,6 +167,68 @@ class EvaluationContractV2Tests(unittest.TestCase):
             ),
         )
 
+    def test_excluded_text_distinguishes_denials_from_positive_claims(self):
+        case = {
+            "expect": {
+                "status": 200,
+                "kind_in": ["answer"],
+                "message_excludes": ["can replace"],
+            }
+        }
+        source = {
+            "id": "individual-support",
+            "title": "Individual Support",
+            "url": "https://www.fortunedigitalequity.org/support",
+        }
+
+        denied = response_contract(
+            message=(
+                "The support page does not say whether staff can replace "
+                "a cracked phone screen."
+            ),
+            sources=[source],
+        )
+        self.assertEqual(single.expected_failures(case, 200, denied, "none"), [])
+
+        unverified = response_contract(
+            message="I can't confirm whether staff can replace a cracked phone screen.",
+            sources=[source],
+        )
+        self.assertEqual(single.expected_failures(case, 200, unverified, "none"), [])
+
+        asserted = response_contract(
+            message="The support page says staff can replace a cracked phone screen.",
+            sources=[source],
+        )
+        self.assertIn(
+            "message: excluded text 'can replace' was present",
+            single.expected_failures(case, 200, asserted, "none"),
+        )
+
+        contradicted = response_contract(
+            message=(
+                "The support page does not say whether staff can replace screens, "
+                "but staff can replace cracked phone screens."
+            ),
+            sources=[source],
+        )
+        self.assertIn(
+            "message: excluded text 'can replace' was present",
+            single.expected_failures(case, 200, contradicted, "none"),
+        )
+
+        unrelated_denial = response_contract(
+            message=(
+                "The support page does not list repair hours and says staff can "
+                "replace cracked phone screens."
+            ),
+            sources=[source],
+        )
+        self.assertIn(
+            "message: excluded text 'can replace' was present",
+            single.expected_failures(case, 200, unrelated_denial, "none"),
+        )
+
     def test_clarification_authority_uses_choice_labels_and_prompts(self):
         case = {
             "expect": {

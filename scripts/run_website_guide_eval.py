@@ -334,6 +334,57 @@ def blob_contains(blob: str, term: str) -> bool:
     return bool(normalized_term) and normalized_term in normalize(raw_blob)
 
 
+_NEGATED_EVIDENCE_FRAME = re.compile(
+    r"(?:"
+    r"\b(?:do|does|did|can|could|will|would|should|has|have|had)\s+not\s+"
+    r"(?:[^\W\d_]+ly\s+){0,2}"
+    r"(?:say|state|show|indicate|confirm|verify|establish|support|mention|"
+    r"promise|guarantee|specify|list)\b"
+    r"|\b(?:don't|doesn't|didn't|can't|cannot|couldn't|won't|wouldn't|"
+    r"shouldn't|hasn't|haven't|hadn't)\s+"
+    r"(?:[^\W\d_]+ly\s+){0,2}"
+    r"(?:say|state|show|indicate|confirm|verify|establish|support|mention|"
+    r"promise|guarantee|specify|list)\b"
+    r"|\b(?:is|are|was|were)\s+not\s+"
+    r"(?:clear|confirmed|verified|stated|shown|indicated|specified|listed)\b"
+    r"|\b(?:isn't|aren't|wasn't|weren't)\s+"
+    r"(?:clear|confirmed|verified|stated|shown|indicated|specified|listed)\b"
+    r"|\bno\s+(?:clear\s+)?"
+    r"(?:evidence|confirmation|indication|statement)\b"
+    r")"
+)
+_NEGATION_BREAK = re.compile(r"\b(?:but|however|yet|nevertheless)\b")
+_POSITIVE_EVIDENCE_FRAME = re.compile(
+    r"\b(?:says?|states?|shows?|indicates?|confirms?|verifies?|establishes?|"
+    r"supports?|mentions?|promises?|guarantees?|specifies?|lists?)\b"
+)
+
+
+def message_has_unnegated_excluded_text(message: str, term: str) -> bool:
+    """Return true when an excluded phrase occurs outside an evidence denial."""
+
+    folded_message = str(message or "").casefold()
+    folded_term = str(term or "").casefold()
+    if not folded_term:
+        return False
+    occurrences = list(re.finditer(re.escape(folded_term), folded_message))
+    if not occurrences:
+        return False
+    for occurrence in occurrences:
+        prefix = folded_message[max(0, occurrence.start() - 180) : occurrence.start()]
+        boundary = max(prefix.rfind(mark) for mark in (".", "!", "?", ";", ":", "\n"))
+        clause = prefix[boundary + 1 :]
+        breaks = list(_NEGATION_BREAK.finditer(clause))
+        if breaks:
+            clause = clause[breaks[-1].end() :]
+        negated_frames = list(_NEGATED_EVIDENCE_FRAME.finditer(clause))
+        if not negated_frames:
+            return True
+        if _POSITIVE_EVIDENCE_FRAME.search(clause[negated_frames[-1].end() :]):
+            return True
+    return False
+
+
 def allowed_url(value: object) -> bool:
     try:
         parsed = urllib.parse.urlsplit(str(value or ""))
@@ -474,7 +525,7 @@ def expected_failures(case: dict, status: int, response: dict, capture_mode: str
         failures.append(f"message: none of {message_terms!r} was present")
     for value in expect.get("message_excludes", []):
         term = str(value).casefold()
-        if term and term in folded_message:
+        if message_has_unnegated_excluded_text(folded_message, term):
             failures.append(f"message: excluded text {value!r} was present")
     return failures
 

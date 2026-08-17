@@ -54,7 +54,7 @@
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
-  const previewKey = "fortune-evaluation-preview-v4";
+  const previewKey = "fortune-evaluation-preview-v5";
   const viewKeyPrefix = "fortune-evaluation-view-v2";
   const defaultView = { visibility: "all", sort: "default", layout: "compact" };
   const UNREVIEWED_PAGE_SIZE = 8;
@@ -82,15 +82,14 @@
   const previewBuckets = [
     { id: "success", label: "Success", color_key: "sky", standard_key: "success" },
     { id: "needs", label: "Needs work", color_key: "coral", standard_key: "needs" },
-    { id: "handoff", label: "Handoff", color_key: "blue", standard_key: "handoff" },
   ];
   const previewConversations = [
     ["7b8d3e", "Digital Literacy Workshops", 6, null],
     ["4c6e8f", "Internet Access Support", 7, null],
     ["9f2a1c", "Device Distribution", 8, "success"],
     ["6e7f9g", "Legal Help Referrals", 6, "needs"],
-    ["3h6j8k", "Benefits Assistance", 5, "handoff"],
-    ["5k9l0m", "Theory of Change", 4, "handoff"],
+    ["3h6j8k", "Benefits Assistance", 5, null],
+    ["5k9l0m", "Theory of Change", 4, null],
     ["1a2b3c", "Computer Basics", 5, null],
     ["2b3c4d", "Intro to Email", 4, null],
     ["3c4d5e", "Microsoft Excel", 7, null],
@@ -116,12 +115,12 @@
     scope: "shared",
     shared: true,
     deployed: {
-      version: "2026-08-17-v11",
-      behavior_release: "meeting4-modular-grounded-generation",
+      version: "2026-08-17-v14",
+      behavior_release: "meeting4-plain-participant-respect",
       editable: false,
     },
     editable_modules: [
-      { key: "style", label: "Tone and concision", current_variant: "concise_conversational", current_value: "Keep the answer concise and conversational. Paraphrase the record instead of copying promotional language.", maximum_length: 500 },
+      { key: "style", label: "Tone and concision", current_variant: "plain_respectful_conversational", current_value: "Use plain, respectful, nonjudgmental language. Start with the useful action or answer, and avoid unexplained jargon, blame, or assumptions about the participant.", maximum_length: 500 },
       { key: "clarification", label: "Clarification style", current_variant: "one_short_question", current_value: "When clarification is needed, ask one short question without unsupported facts.", maximum_length: 500 },
       { key: "follow_up", label: "Follow-up advancement", current_variant: "advance_with_supported_detail", current_value: "Answer follow-ups with a different supported detail instead of repeating the prior answer.", maximum_length: 500 },
       { key: "page_awareness", label: "Page awareness and flow", current_variant: "explicit_reference_only", current_value: "Treat the current page as a hint only when the visitor explicitly refers to it.", maximum_length: 500 },

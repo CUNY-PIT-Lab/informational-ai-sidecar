@@ -197,6 +197,13 @@ class RetrievalTests(unittest.TestCase):
                 self.assertEqual([source["id"] for source in sources], source_ids)
                 self.assertTrue(all(source["authority"] == "answer" for source in sources))
 
+        scope, sources = server.retrieval_plan(
+            "I took five classes. Do I qualify for a laptop?",
+            {"url": server.ROOT_URL},
+        )
+        self.assertEqual(scope, "site")
+        self.assertEqual(sources[0]["id"], "devices")
+
     def test_acp_enrollment_language_remains_on_current_device_evidence(self):
         question = "Can Fortune enroll me in the old ACP discount today?"
         scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
@@ -420,6 +427,25 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual([source["id"] for source in captured["payload"]["sources"]], ["devices"])
         self.assertTrue(captured["payload"]["model_called"])
         self.assertEqual(len(model_calls), 1)
+
+    def test_follow_up_uses_context_for_retrieval_but_original_question_for_answering(self):
+        question = "Where are they held?"
+        captured, model_calls = self.dispatch_chat(
+            question,
+            server.ROOT_URL,
+            model_source_id="calendar",
+            history=[
+                {"role": "user", "content": "What is the current class schedule?"},
+                {"role": "assistant", "content": "The calendar lists current classes."},
+            ],
+            model_answer="Classes are held in Long Island City and the Bronx (SRP).",
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(
+            [record["id"] for record in self.retrieval_records(model_calls)],
+            ["calendar"],
+        )
+        self.assertEqual(model_calls[0][1]["content"], "Where are they held")
 
     def test_help_using_a_device_routes_to_specific_support_not_distribution(self):
         question = "I need help using a device"
@@ -948,6 +974,10 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
     def test_spanish_requests_are_detected_and_clarified_in_spanish(self):
         self.assertEqual(server.detect_language("Necesito ayuda con una clase"), "es")
         self.assertEqual(server.request_kind("¿Cómo puedo registrarme?"), "procedure")
+        self.assertEqual(
+            server.request_kind("Which Excel class teaches formatting?"),
+            "navigation",
+        )
         response = server.ambiguity_response("clase", "es")
         self.assertEqual(response["kind"], "clarify")
         self.assertIn("¿", response["message"])
@@ -960,9 +990,14 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
         cases = [
             "My Fortune ID is 12345",
             "My case number is ABC-9",
+            "My name is Rosa",
+            "Their phone is in my contacts",
+            "My email is not working",
             "Email me at demo@example.com",
             "My date of birth is January 2",
             "My address is 100 Example Street",
+            "I need help with my health",
+            "I want to discuss my diagnosis",
         ]
         for text in cases:
             self.assertTrue(server.contains_personal_details(text), text)
@@ -1193,6 +1228,72 @@ class ResponseContractTests(unittest.TestCase):
             )
         )
 
+    def test_grounding_accepts_supported_natural_status_schedule_and_language_phrasing(self):
+        spanish_id = server.source_id_for_path(
+            "/service-page/alfabetización-digital-básica-en-español"
+        )
+        cases = (
+            (
+                "individual",
+                "Where can I find support?",
+                "Yes, you can get individual technical support during office hours "
+                "or at the Support Desk. Support is available Tuesday and Wednesday, "
+                "11:30 AM to 1:30 PM, by appointment only.",
+            ),
+            (
+                spanish_id,
+                "¿Qué es esta clase?",
+                "Es un curso de alfabetización digital básica impartido por "
+                "Computers4People. Esta clase ya no se puede reservar.",
+            ),
+            (
+                "calendar",
+                "What is the current schedule?",
+                "Digital Equity classes meet in Long Island City on Tuesdays, "
+                "Wednesdays, and Thursdays from 2:00 PM to 3:30 PM. The Bronx "
+                "(SRP) schedule is by request only.",
+            ),
+            (
+                "devices",
+                "Can I get a phone?",
+                "No, free smartphones are not currently available. Distribution "
+                "is on hold after the loss of federal ACP funding.",
+            ),
+        )
+        for source_id, question, answer in cases:
+            with self.subTest(source_id=source_id):
+                self.assertTrue(
+                    server.model_answer_is_grounded(
+                        answer,
+                        server.SOURCE_BY_ID[source_id],
+                        question,
+                    )
+                )
+
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "Free smartphones are currently available.",
+                server.SOURCE_BY_ID["devices"],
+                "Can I get a phone?",
+            )
+        )
+
+    def test_number_unit_grounding_allows_source_modifiers_but_not_a_new_unit(self):
+        source = copy.deepcopy(server.SOURCE_BY_ID["devices"])
+        source["description"] = "Complete at least 5 Digital Equity Program workshops."
+        source["blocks"] = [source["description"]]
+        source["facts"] = []
+        self.assertTrue(
+            server.model_answer_is_grounded(
+                "Complete at least 5 workshops.", source, "What is required?"
+            )
+        )
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "Complete at least 5 months.", source, "What is required?"
+            )
+        )
+
     def test_grounded_model_output_changes_when_the_approved_record_changes(self):
         question = "What would I learn in the email class?"
         original = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
@@ -1364,6 +1465,18 @@ class ResponseContractTests(unittest.TestCase):
         repeated = "Multi-part workshops on special topics may require full attendance."
         self.assertTrue(server.answers_near_duplicate(repeated, prior))
 
+        advanced = (
+            "Multi-part workshops on special topics may require full attendance. "
+            "The formatting class covers currency, percentages, borders, and cell styles."
+        )
+        self.assertFalse(server.answers_near_duplicate(advanced, prior))
+        self.assertTrue(
+            server.question_requests_prior_detail(
+                "Do I need design experience?",
+                "No design background is needed.",
+            )
+        )
+
     def test_malformed_model_output_abstains_instead_of_guessing(self):
         retrieved = server.retrieve_sources("free laptop")
         result = server.parse_model_selection(
@@ -1505,7 +1618,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "keep_alive": server.MODEL_KEEP_ALIVE,
         }])
 
-    def test_answer_generation_uses_bounded_variation(self):
+    def test_answer_generation_uses_reproducible_low_variance_settings(self):
         payloads = []
         original_request = server.ollama_request
         server.ollama_request = lambda payload: payloads.append(payload) or {
@@ -1518,9 +1631,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         finally:
             server.ollama_request = original_request
         options = payloads[0]["options"]
-        self.assertEqual(options["temperature"], 0.5)
-        self.assertGreaterEqual(options["seed"], 0)
-        self.assertLessEqual(options["seed"], 0x7FFFFFFF)
+        self.assertEqual(options, {"temperature": 0})
 
     def test_warmup_endpoint_requires_an_allowed_origin(self):
         handler = server.Handler.__new__(server.Handler)

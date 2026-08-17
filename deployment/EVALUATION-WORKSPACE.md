@@ -59,6 +59,8 @@ Only a conversation satisfying every condition enters the shared review queue:
 
 Mixed or privacy-held conversations are withheld in full. Every authenticated evaluator receives the same placements, buckets, conversation notes, and message annotations. Annotation rows reference canonical message IDs and never copy transcript text. Mutations retain evaluator attribution in the append-only audit log. All evaluation records cascade away when the conversation expires.
 
+The shared review taxonomy includes **Success**, **Needs work**, the virtual **Not yet reviewed** area, and custom buckets. Migration `008_remove_handoff_bucket.sql` returns old Handoff placements to Not yet reviewed and archives the old bucket rows without deleting their history.
+
 ## Prompt Lab boundary
 
 All authenticated evaluators share one Prompt Lab. Editors and the administrator can create or revise draft suggestions and add comments for four presentation modules only: style, clarification, page awareness, and follow-up behavior. The administrator can mark a proposal ready for code review or archive it.
@@ -78,8 +80,8 @@ Prompt Lab never edits the compiled system prompt and has no activation or publi
 
 1. Run `./run.sh test` and both snapshot checks.
 2. Apply migrations through Railway's pre-deploy command.
-3. Confirm `/health` reports evaluation schema `007_prompt_proposals`, four total slots, and the expected claimed/unassigned slot counts.
-4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
+3. Confirm `/health` reports evaluation schema `008_remove_handoff_bucket`, four total slots, and the expected claimed/unassigned slot counts.
+4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, `/migrations/008_remove_handoff_bucket.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
 5. Confirm `/evaluation` shows the login surface and no reviewer data without a session.
 6. Claim the admin account, create one editor link from **Account**, and verify first-use registration signs the editor in without exposing the token in an HTTP request path or server log.
 7. Save a bucket placement, note, and annotation as one evaluator; sign in as another evaluator and confirm the same state is visible. Make a second change and confirm the first evaluator sees it after reload.

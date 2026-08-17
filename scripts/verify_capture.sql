@@ -8,7 +8,7 @@ SELECT json_build_object(
     ),
     'evaluation_schema_current', EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '007_prompt_proposals'
+        WHERE version = '008_remove_handoff_bucket'
     ),
     'evaluation_slot_count', (
         SELECT COUNT(*) FROM evaluator_accounts
