@@ -62,6 +62,7 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn(prompt_policy.RETRY_INSTRUCTIONS["unsupported factual wording"], retry)
         resolved = prompt_policy.build_retry_prompt(base, "resolved source can answer")
         self.assertIn(prompt_policy.RETRY_INSTRUCTIONS["resolved source can answer"], resolved)
+        self.assertIn("Return that page ID, not ASK", resolved)
         self.assertEqual(
             prompt_policy.build_retry_prompt(base, "participant supplied text"),
             base,

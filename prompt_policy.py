@@ -8,8 +8,8 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-17-v12"
-PROMPT_BEHAVIOR_RELEASE = "meeting4-direct-grounded-conversation"
+PROMPT_POLICY_VERSION = "2026-08-17-v13"
+PROMPT_BEHAVIOR_RELEASE = "meeting4-resolved-source-direct-answer"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
@@ -103,9 +103,9 @@ PROMPT_LAB_TUNABLE_MODULES = (
 # allowlisted; no participant or evaluator text is interpolated into a prompt.
 RETRY_INSTRUCTIONS = {
     "resolved source can answer": (
-        "One relevant page is already resolved. If it contains any fact that "
-        "addresses the question, answer directly from it. Pick ASK only if the "
-        "missing information prevents a supported answer."
+        "One relevant page is already resolved. Return that page ID, not ASK. "
+        "Answer directly with facts from that record. If it does not confirm the "
+        "exact detail, say so briefly without guessing."
     ),
     "unsupported factual wording": (
         "The prior draft used wording that was not explicitly supported. "

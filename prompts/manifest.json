@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "hash_kind": "sha256-of-artifact-bytes",
-  "current_policy_id": "2026-08-17-v12",
+  "current_policy_id": "2026-08-17-v13",
   "current_policy_source": "../prompt_policy.py",
-  "current_policy_source_sha256": "6b88018b615d00903ab07c76f5714d996ca369d1b0975ff37bbfccc137f672ac",
+  "current_policy_source_sha256": "6700eb35feaf63aabc4ebb0eebd49b07719256719555e50028da7ff5f9d10210",
   "current_compiled_prompt_sha256": "3e9b467a124736cda3aae6363d1d8efe4f804f0ffd23719880e964d4fb766b5b",
   "versions": [
     {
@@ -107,8 +107,21 @@
       "behavior_release": "meeting4-direct-grounded-conversation",
       "artifact": "versions/2026-08-17-v12.md",
       "artifact_sha256": "4d9790cae06fa90779bbff20f05a214b3d4282e3b3ccdbb35c114a50cef22951",
-      "compiled_prompt_artifact": "current.md",
+      "compiled_prompt_artifact": "versions/2026-08-17-v12-compiled.md",
       "compiled_prompt_artifact_sha256": "4ccf6ea8e9199d3286e776790fb8b5e0399a29b32007f162b73e648b7244269c"
+    },
+    {
+      "policy_id": "2026-08-17-v13",
+      "label": "Resolved-source direct-answer prompt",
+      "reconstructed": false,
+      "source_commit": "acfce8ada22ac02db23a044546d5c9945905a595",
+      "source_state": "authored change after targeted v12 staging smoke evaluation",
+      "source_date": "2026-08-17",
+      "behavior_release": "meeting4-resolved-source-direct-answer",
+      "artifact": "versions/2026-08-17-v13.md",
+      "artifact_sha256": "1315462806b5d4d2c95d8df6f3f152306e1b0a199eea09687cf6cd075942994b",
+      "compiled_prompt_artifact": "current.md",
+      "compiled_prompt_artifact_sha256": "13b25cfe9ab497a28a1432702fe2e8c4048800ad5da92eff374b658bd04c822e"
     }
   ]
 }
