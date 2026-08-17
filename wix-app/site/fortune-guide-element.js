@@ -342,18 +342,24 @@
           }
           .info p { margin: 0; color: var(--guide-muted); font-size: 11px; line-height: 1.45; }
           .info p + p { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--guide-line); }
+          .reset,
           .contact {
             min-height: 44px;
             display: inline-flex;
             align-items: center;
-            margin-left: auto;
             padding: 0 6px;
             color: var(--guide-ink);
+            border: 0;
+            background: transparent;
             font-size: 12px;
             font-weight: 700;
             text-decoration: none;
+            cursor: pointer;
           }
+          .reset:hover,
           .contact:hover { text-decoration: underline; text-underline-offset: 4px; }
+          .reset:disabled { color: var(--guide-muted); cursor: wait; }
+          .contact { margin-left: auto; }
           @media (max-width: 520px) {
             :host { inset: auto 8px 8px 8px; }
             .panel { width: 100%; max-height: calc(100dvh - 16px); }
@@ -403,6 +409,7 @@
                 <p class="model-status">Starting…</p>
               </div>
             </details>
+            <button class="reset" type="button" aria-label="Start a new conversation" hidden>Start over</button>
             <a class="contact" href="${CONTACT_URL}">Contact</a>
           </footer>
         </section>
@@ -423,6 +430,7 @@
       this.contextCount = root.querySelector(".context-count");
       this.modelStatus = root.querySelector(".model-status");
       this.status = root.querySelector(".status");
+      this.resetButton = root.querySelector(".reset");
       this.contactLink = root.querySelector(".contact");
 
       const configuredContact = this.getAttribute("contact-url") || CONTACT_URL;
@@ -435,6 +443,7 @@
       this.toggleButton.addEventListener("click", () => this.open());
       this.closeButton.addEventListener("click", () => this.close());
       this.cancelEditButton.addEventListener("click", () => this.cancelEdit());
+      this.resetButton.addEventListener("click", () => this.resetConversation());
       this.form.addEventListener("submit", (event) => {
         event.preventDefault();
         this.ask(this.input.value);
@@ -689,6 +698,7 @@
       this.sendButton.disabled = value;
       this.input.readOnly = value;
       this.cancelEditButton.disabled = value;
+      this.resetButton.disabled = value;
       this.suggestions.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("select").forEach((select) => { select.disabled = value; });
@@ -875,6 +885,32 @@
       this.renderConversation();
     }
 
+    resetConversation() {
+      if (this.answering) return;
+      this.editingQuestion = "";
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
+      this.lastQuestion = "";
+      this.history = [];
+      this.turns = [];
+      this.conversationId = "";
+      this.conversationToken = "";
+      this.input.value = "";
+      this.resizeQuestionField();
+      this.sendButton.textContent = "Send";
+      this.form.classList.remove("is-editing");
+      this.cancelEditButton.hidden = true;
+      this.questionLabel.textContent = "Question";
+      this.setEditStatus();
+      this.status.textContent = "";
+      this.panel.classList.remove("expanded");
+      this.clearPersistedConversation();
+      this.renderConversation();
+      this.renderSuggestions();
+      this.updateContextCount();
+      this.input.focus({ preventScroll: true });
+    }
+
     warmModel() {
       if (this.warmupPromise) return this.warmupPromise;
       let warmupUrl;
@@ -961,6 +997,7 @@
 
     renderConversation() {
       this.transcript.replaceChildren();
+      this.resetButton.hidden = !this.turns.length;
       const latestEditable = [...this.turns].reverse().find((turn) => turn.editable);
 
       this.turns.forEach((turn) => {

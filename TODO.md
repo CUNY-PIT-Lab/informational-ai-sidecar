@@ -1,6 +1,21 @@
 # Website Guide — next steps
 
-## Bounded source selector — 2026-08-12
+## Grounded generation and shared evaluation — 2026-08-17
+
+- [x] Add **Start over** to the Pages and Wix clients; clear only tab-local turns, continuation credentials, and session storage without deleting captured evaluation data.
+- [x] Replace the production model's page-ID-only contract with one reusable grounded-generation contract: one approved source ID plus a concise answer, or one clarifying question.
+- [x] Send only the resolved question, approved excerpts, and relevant prior guide answer; keep raw participant history and excluded pages out of the provider prompt.
+- [x] Reject unknown sources, invented numbers, external links, unsupported selections, malformed JSON, and answers without meaningful source overlap.
+- [x] Allow alternate natural phrasings grounded in the same source, and route **What does the program offer?** to live generation instead of a canned branch.
+- [x] Remove the remaining runtime factual fallback: without the live model, the guide abstains instead of extracting or serving a canned answer; source-mutation tests prove accepted factual output follows the approved record.
+- [x] Make the evaluator queue, buckets, placements, notes, and annotations shared across all four authenticated evaluator accounts while preserving actor attribution in the audit log.
+- [x] Keep existing captured conversations intact; the shared workspace uses the existing admin-owned bucket set and does not delete editor-specific legacy rows.
+- [x] Timestamp conversation cards, transcript headers, and individual messages; sort every bucket newest first before paginating **Not yet reviewed**.
+- [x] Serialize initial shared note, placement, and annotation writes so simultaneous evaluators receive a version conflict instead of silently overwriting one another.
+- [ ] Deploy this exact revision to Railway staging and verify model variation, grounding rejection, browser reset, persistence after navigation, and shared visibility across two evaluator accounts.
+- [ ] Promote only after the staging evidence is green; keep public production capture disabled.
+
+## Superseded bounded source-selector baseline — 2026-08-12
 
 - [x] Replace the prose-generating model contract with one reusable decision: return one allowed page ID or `ASK`.
 - [x] Keep raw conversation history out of the provider request; send only the server-resolved question and bounded approved candidates.
@@ -61,7 +76,7 @@
 - [ ] Assign the Fortune representative and two student delegates only after Fortune names the three accounts.
 - [x] Make each invite single-use, account-bound, and valid for 24 hours; keep raw tokens out of request paths, commits, variables, and logs.
 - [ ] Deliver the named testers' links privately after Fortune supplies the account emails.
-- [ ] Re-run the staging acceptance pass: save, reopen, and remove one note and annotation; confirm reviewer isolation, a stale-version `409`, and `orphan_annotations=0`.
+- [ ] Re-run the staging acceptance pass: save, reopen, and remove one note and annotation; confirm shared visibility from two evaluator accounts, a stale-version `409`, and `orphan_annotations=0`.
 
 ## 4. Wix pilot — blocked on the site owner account
 

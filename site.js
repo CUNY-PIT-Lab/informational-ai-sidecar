@@ -139,42 +139,6 @@
     return Core.pageFamily(page);
   }
 
-  function normalizeTokens(value) {
-    return Core.normalizeTokens(value);
-  }
-
-  function blockForQuestion(page, question) {
-    const blocks = usefulBlocks(page);
-    if (!blocks.length) return "";
-    const queryTokens = [...new Set(normalizeTokens(question))];
-    const ranked = blocks.map((block, index) => {
-      const value = block.normalize("NFKD").toLowerCase();
-      let score = queryTokens.reduce((total, token) => total + (value.includes(token) ? 2 : 0), 0);
-      if (/\bcover|learn|class|workshop\b/i.test(question) && /\bclass|learn|cover|skill|workshop\b/i.test(block)) score += 5;
-      return { block, index, score };
-    }).sort((a, b) => b.score - a.score || a.index - b.index);
-    return ranked[0].score > 0 ? ranked[0].block : blocks[0];
-  }
-
-  function evidenceFor(question, page) {
-    return Core.evidenceFor(question, page);
-  }
-
-  function currentPageCanAnswer(question, page) {
-    return Core.currentPageCanAnswer(question, page);
-  }
-
-  function rankPages(question, current) {
-    return state.pages
-      .filter(page => page.authority === "answer" && Number(page.status) === 200)
-      .map(page => {
-        const evidence = evidenceFor(question, page);
-        return { page, score: evidence.score, genuine: evidence.genuine };
-      })
-      .filter(row => row.genuine && row.score > 0)
-      .sort((a, b) => b.score - a.score || cleanTitle(a.page.title).localeCompare(cleanTitle(b.page.title)));
-  }
-
   function fallbackDestination(question, current) {
     const value = cleanText(question).toLowerCase();
     const candidates = [];
@@ -258,89 +222,6 @@
       related: [linkRecord(destination, "Continue to the most relevant section")],
       handoff_url: CONTACT_URL,
       model_called: false,
-    };
-  }
-
-  function staticAnswer(question, current = state.current) {
-    const ambiguous = ambiguityAnswer(question, current);
-    if (ambiguous) return ambiguous;
-
-    const guidedPrompt = cleanText(question).toLowerCase().replace(/[?.!&]/g, " ").replace(/\s+/g, " ").trim();
-    const guidedDestination = {
-      "class topics": RESERVE_URL,
-      "dates locations": CALENDAR_URL,
-      register: RESERVE_URL,
-    }[guidedPrompt];
-    if (guidedDestination) {
-      const page = state.byUrl.get(canonicalUrl(guidedDestination));
-      const message = guidedPrompt === "dates locations"
-        ? "The calendar lists current class dates and locations."
-        : guidedPrompt === "register"
-          ? "The class catalog has registration links."
-          : "The class catalog lists current workshop topics.";
-      return {
-        kind: "answer",
-        message,
-        reason: "The answer uses the selected public class page.",
-        choices: [],
-        sources: [linkRecord(guidedDestination)],
-        related: [linkRecord(guidedDestination, page ? cleanTitle(page.title) : "Open class information")],
-        handoff_url: CONTACT_URL,
-        model_called: false,
-        retrieval_scope: "site",
-      };
-    }
-
-    const localEvidence = currentPageCanAnswer(question, current);
-    const ranked = localEvidence ? [] : rankPages(question, current);
-    if (!localEvidence && !ranked.length) {
-      const fallback = canonicalUrl(current?.url) === CONTACT_URL ? TRAININGS_URL : CONTACT_URL;
-      return {
-        kind: "handoff",
-        message: "I could not find that information on this page or elsewhere in the approved Digital Equity website. Please ask Digital Equity staff.",
-        reason: "The guide does not use unrelated pages or supply information that is absent from the public website.",
-        choices: [],
-        sources: [linkRecord(CONTACT_URL)],
-        related: [linkRecord(fallback, fallback === CONTACT_URL ? "Contact Digital Equity staff" : "Go to current trainings")],
-        handoff_url: CONTACT_URL,
-        model_called: false,
-        retrieval_scope: "staff",
-      };
-    }
-
-    const scope = localEvidence ? "page" : "site";
-    const best = localEvidence ? current : ranked[0].page;
-    const blocks = usefulBlocks(best);
-    const selectedBlock = blockForQuestion(best, question);
-    const excerpt = clipWords(selectedBlock || best?.description || "The public Digital Equity pages list program information, classes, resources, and contact routes.", 28);
-    const bestTitle = cleanTitle(best?.title);
-    const onCurrentPage = scope === "page";
-    let message = onCurrentPage ? `This page says: ${excerpt}` : `${bestTitle} is the closest public page. ${excerpt}`;
-
-    const statusBlock = blocks.find(block => /\b(?:on hold|not available|ended|coming soon)\b/i.test(block));
-    if (statusBlock && statusBlock !== selectedBlock) message += ` ${clipWords(statusBlock, 12)}`;
-
-    const volatile = Boolean(best?.volatile) || /date|time|schedule|available|availability|eligible|eligibility|inventory|location|register|session/i.test(question);
-    if (volatile) message += " Confirm current dates and availability on the live page or with staff.";
-
-    let destination = ranked.map(row => row.page.url).find(url => canonicalUrl(url) !== canonicalUrl(current?.url));
-    if (!destination) destination = fallbackDestination(question, current);
-    if (canonicalUrl(destination) === canonicalUrl(current?.url)) destination = CONTACT_URL;
-
-    const sourcePages = (scope === "page" ? [best] : [best, ...ranked.slice(1, 3).map(row => row.page)])
-      .filter(Boolean)
-      .filter((page, index, pages) => pages.findIndex(candidate => candidate.url === page.url) === index)
-      .slice(0, 3);
-    return {
-      kind: "answer",
-      message: clipWords(message, BOT_MESSAGE_WORD_LIMIT),
-      reason: "The answer uses the current public site index for this page.",
-      choices: [],
-      sources: sourcePages.map(page => linkRecord(page.url)),
-      related: [linkRecord(destination, `Go to ${cleanTitle(state.byUrl.get(canonicalUrl(destination))?.title)}`)],
-      handoff_url: CONTACT_URL,
-      model_called: false,
-      retrieval_scope: scope,
     };
   }
 
@@ -487,6 +368,5 @@
     isKnown: value => state.byUrl.has(canonicalUrl(value)),
     navigate,
     setMemberState,
-    staticAnswer,
   });
 })();

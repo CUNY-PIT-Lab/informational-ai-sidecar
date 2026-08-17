@@ -17,6 +17,19 @@ sys.path.insert(0, str(DEMO))
 import server
 
 
+def model_response(source, question="", answer=""):
+    """Return a valid grounded model response for contract tests."""
+
+    if not answer:
+        excerpt = server.source_excerpt(
+            source,
+            question,
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
+        )
+        answer = next((line for line in excerpt.splitlines() if line.strip()), "")
+    return json.dumps({"pick": source["id"], "answer": answer})
+
+
 class SiteIndexTests(unittest.TestCase):
     def test_complete_public_sitemap_inventory_is_present(self):
         self.assertTrue(server.SITE_INDEX_PATH.exists())
@@ -66,6 +79,21 @@ class RetrievalTests(unittest.TestCase):
     def test_retrieval_keeps_device_question_on_device_route(self):
         self.assertEqual(server.retrieve_sources("Can I get a free laptop?")[0]["id"], "devices")
 
+    def test_natural_skill_terms_retrieve_specific_source_pages(self):
+        expected = {
+            "I need help getting started with spreadsheets": server.INTRO_EXCEL_ID,
+            "How can I make spreadsheets easier to read?": server.EXCEL_FORMATTING_ID,
+            "How can I avoid online scams?": server.DIGITAL_SAFETY_ONLINE_ID,
+            "Which class covers attachments in email?": server.INTRO_EMAIL_ID,
+        }
+        for question, source_id in expected.items():
+            with self.subTest(question=question):
+                scope, sources = server.retrieval_plan(question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(scope, "site")
+                self.assertEqual(sources[0]["id"], source_id)
+
     def test_retrieval_never_returns_non_answer_authority(self):
         for query in ("2022 Tech Fair", "old blog post", "sample class", "member files"):
             for source in server.retrieve_sources(query):
@@ -97,8 +125,18 @@ class RetrievalTests(unittest.TestCase):
 
 
 class StagedRetrievalTests(unittest.TestCase):
-    def dispatch_chat(self, question, page_url, model_source_id="devices", history=None):
+    def dispatch_chat(
+        self,
+        question,
+        page_url,
+        model_source_id="devices",
+        history=None,
+        model_answer="",
+        model_answers=None,
+        model_enabled=True,
+    ):
         model_calls = []
+        answer_sequence = list(model_answers or [])
         body = json.dumps({
             "message": question,
             "page_context": {"url": page_url, "title": "Current page"},
@@ -113,11 +151,17 @@ class StagedRetrievalTests(unittest.TestCase):
 
         def record_model_call(_handler, messages):
             model_calls.append(messages)
-            return json.dumps({"pick": model_source_id})
+            records = json.loads(messages[0]["content"].split("\nCANDIDATE RECORDS:\n", 1)[1])
+            selected = next((row for row in records if row["id"] == model_source_id), records[0])
+            answer = (answer_sequence.pop(0) if answer_sequence else model_answer) or next(
+                (line for line in selected["content"].splitlines() if line.strip()),
+                "",
+            )
+            return json.dumps({"pick": selected["id"], "answer": answer})
 
         handler._ollama = record_model_call.__get__(handler, server.Handler)
         original_key = server.KEY
-        server.KEY = "test-only-placeholder"
+        server.KEY = "test-only-placeholder" if model_enabled else ""
         try:
             handler.do_POST()
         finally:
@@ -138,8 +182,8 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["status"], 200)
         self.assertEqual(captured["payload"]["retrieval_scope"], "page")
         self.assertEqual([source["id"] for source in captured["payload"]["sources"]], ["devices"])
-        self.assertFalse(captured["payload"]["model_called"])
-        self.assertEqual(model_calls, [])
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
 
     def test_help_using_a_device_routes_to_specific_support_not_distribution(self):
         question = "I need help using a device"
@@ -152,6 +196,11 @@ class StagedRetrievalTests(unittest.TestCase):
         captured, model_calls = self.dispatch_chat(
             question,
             "https://www.fortunedigitalequity.org/",
+            model_source_id="individual",
+            model_answer=(
+                "You can get one-to-one tutoring online or in person, plus technical support "
+                "at listed locations or by appointment."
+            ),
         )
         payload = captured["payload"]
         self.assertEqual(captured["status"], 200)
@@ -164,11 +213,11 @@ class StagedRetrievalTests(unittest.TestCase):
             max_sentences=2,
         )
         self.assertTrue(retrieved_evidence)
-        self.assertTrue(payload["message"].startswith(retrieved_evidence))
+        self.assertTrue(server.model_answer_is_grounded(payload["message"], server.SOURCE_BY_ID["individual"]))
         self.assertIn("technical support", payload["message"].lower())
         self.assertIn("appointment", payload["message"].lower())
         self.assertNotIn("Laptop supply", payload["message"])
-        self.assertEqual(model_calls, [])
+        self.assertEqual(len(model_calls), 1)
 
         for support_question in (
             "Can someone help me use my laptop?",
@@ -288,8 +337,8 @@ class StagedRetrievalTests(unittest.TestCase):
         )
         self.assertEqual(captured["payload"]["retrieval_scope"], "site")
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
-        self.assertFalse(captured["payload"]["model_called"])
-        self.assertEqual(model_calls, [])
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
 
     def test_model_receives_resolved_question_and_candidates_not_raw_history(self):
         source_id = server.source_id_for_path("/techfair/qa")
@@ -306,9 +355,69 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(len(model_calls), 1)
         messages = model_calls[0]
         self.assertEqual([message["role"] for message in messages], ["system", "user"])
-        self.assertNotIn("Earlier answer text", json.dumps(messages))
+        self.assertIn("Earlier answer text", json.dumps(messages))
         records = self.retrieval_records(model_calls)
         self.assertIn(source_id, [record["id"] for record in records])
+
+    def test_follow_up_uses_only_latest_answer_and_retries_repetition_once(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Email is part of everything from appointments and applications to work "
+            "and everyday communication."
+        )
+        advanced = (
+            "You would practice reading, composing, sending, replying to, and forwarding "
+            "emails, along with adding and opening attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What would I learn there?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "Tell me about classes."},
+                {"role": "assistant", "content": "This older answer must not be reused."},
+                {"role": "user", "content": "Which beginner email class fits?"},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[prior, advanced],
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], advanced)
+        self.assertEqual(len(model_calls), 2)
+        first_prompt = model_calls[0][0]["content"]
+        self.assertIn(prior, first_prompt)
+        self.assertNotIn("This older answer must not be reused.", first_prompt)
+
+    def test_repeated_retry_clarifies_after_exactly_two_model_calls(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Email is part of everything from appointments and applications to work "
+            "and everyday communication."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What would I learn there?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "Which beginner email class fits?"},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[prior, prior],
+        )
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(len(model_calls), 2)
+
+    def test_missing_model_abstains_instead_of_extracting_a_factual_answer(self):
+        captured, model_calls = self.dispatch_chat(
+            "Can I get a free laptop?",
+            "https://www.fortunedigitalequity.org/devices",
+            model_enabled=False,
+        )
+        self.assertEqual(captured["payload"]["kind"], "handoff")
+        self.assertFalse(captured["payload"]["model_called"])
+        self.assertEqual(model_calls, [])
+        handler_source = inspect.getsource(server.Handler.do_POST)
+        self.assertNotIn("grounded_answer_message", handler_source)
 
     def test_page_reference_uses_only_the_current_page(self):
         captured, model_calls = self.dispatch_chat(
@@ -318,8 +427,21 @@ class StagedRetrievalTests(unittest.TestCase):
         )
         self.assertEqual(captured["payload"]["retrieval_scope"], "page")
         self.assertEqual([source["id"] for source in captured["payload"]["sources"]], ["trainings"])
-        self.assertFalse(captured["payload"]["model_called"])
-        self.assertEqual(model_calls, [])
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
+
+    def test_program_overview_reaches_grounded_generation_instead_of_a_canned_branch(self):
+        question = "What does the program offer?"
+        self.assertIsNone(server.ambiguity_response(question))
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/",
+            model_source_id="home",
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "home")
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
 
     def test_no_evidence_uses_staff_route_without_calling_model(self):
         captured, model_calls = self.dispatch_chat(
@@ -379,7 +501,7 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
         for question in (
             "help", "device", "class", "internet", "How can I get started?",
             "What programs are available?", "Can I get help?", "Where do I begin?",
-            "Can you help me get started?", "Please tell me what programs you offer.",
+            "Can you help me get started?",
         ):
             response = server.ambiguity_response(question)
             self.assertIsNotNone(response, question)
@@ -542,22 +664,23 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
 
 
 class ResponseContractTests(unittest.TestCase):
-    def test_selector_parser_accepts_only_one_allowed_pick_field(self):
+    def test_selector_parser_requires_one_allowed_pick_and_grounded_answer(self):
         allowed = {"one", "two"}
-        self.assertEqual(server.parse_selector_pick('{"pick":"one"}', allowed), "one")
-        self.assertEqual(server.parse_selector_pick('{"pick":"ASK"}', allowed), "ASK")
-        self.assertEqual(server.parse_selector_pick('{"pick":"three"}', allowed), "ASK")
         self.assertEqual(
-            server.parse_selector_pick(
-                '{"pick":"one","message":"invented"}', allowed
-            ),
-            "ASK",
+            server.parse_selector_response('{"pick":"one","answer":"Grounded answer."}', allowed),
+            {"pick": "one", "answer": "Grounded answer."},
         )
-        self.assertEqual(server.parse_selector_pick("one", allowed), "ASK")
+        self.assertEqual(
+            server.parse_selector_response('{"pick":"ASK","answer":"Which class?"}', allowed),
+            {"pick": "ASK", "answer": "Which class?"},
+        )
+        self.assertIsNone(server.parse_selector_response('{"pick":"three","answer":"No."}', allowed))
+        self.assertIsNone(server.parse_selector_response('{"pick":"one"}', allowed))
+        self.assertIsNone(server.parse_selector_response("one", allowed))
 
     def test_every_answer_has_source_related_route_handoff_and_continuation(self):
         retrieved = server.retrieve_sources("free laptop")
-        raw = json.dumps({"pick": retrieved[0]["id"]})
+        raw = model_response(retrieved[0], "free laptop")
         result = server.parse_model_selection(raw, "free laptop", retrieved)
         self.assertTrue(result["sources"])
         self.assertTrue(result["related"])
@@ -576,13 +699,17 @@ class ResponseContractTests(unittest.TestCase):
         question = "Where can I ask a Tech Fair speaker a question?"
         retrieved = server.retrieve_sources(question)
         wrong = server.parse_model_selection(
-            json.dumps({"pick": server.source_id_for_path("/techfair")}),
+            model_response(server.SOURCE_BY_ID[server.source_id_for_path("/techfair")], question),
             question,
             retrieved,
             routing_question=question,
         )
         right = server.parse_model_selection(
-            json.dumps({"pick": server.source_id_for_path("/techfair/qa")}),
+            model_response(
+                server.SOURCE_BY_ID[server.source_id_for_path("/techfair/qa")],
+                question,
+                "Visitors can submit questions for Tech Fair speakers on the Q&A page.",
+            ),
             question,
             retrieved,
             routing_question=question,
@@ -600,7 +727,11 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources(question)
         about_id = server.source_id_for_path("/about")
         result = server.parse_model_selection(
-            json.dumps({"pick": about_id}),
+            model_response(
+                server.SOURCE_BY_ID[about_id],
+                question,
+                "The Digital Equity team includes Adrienne Whaley and Mark Solomon.",
+            ),
             question,
             retrieved,
             routing_question=question,
@@ -634,11 +765,78 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources("free laptop")
         raw = json.dumps({
             "pick": "devices",
-            "message": "Free laptops are definitely available today with no wait.",
+            "answer": "Free laptops are definitely available within 2 days.",
         })
         result = server.parse_model_selection(raw, "free laptop", retrieved, "page")
-        self.assertNotIn("definitely available today", result["message"])
+        self.assertNotIn("within 2 days", result["message"])
         self.assertEqual(result["kind"], "clarify")
+
+    def test_grounding_guard_rejects_unsupported_numbers_entities_and_absolutes_in_both_languages(self):
+        source = server.SOURCE_BY_ID["devices"]
+        unsupported = (
+            "Free laptops are available to everyone within two days.",
+            "Free laptops are guaranteed for every participant.",
+            "Free laptops are available through Acme Computers.",
+            "Las computadoras portátiles gratis están disponibles para todos en dos días.",
+            "Las computadoras portátiles están garantizadas por Acme Computers.",
+        )
+        for answer in unsupported:
+            with self.subTest(answer=answer):
+                self.assertFalse(server.model_answer_is_grounded(answer, source))
+                result = server.parse_model_selection(
+                    model_response(source, "Can I get a laptop?", answer),
+                    "Can I get a laptop?",
+                    [source],
+                    "site",
+                )
+                self.assertEqual(result["kind"], "clarify")
+
+        timed = copy.deepcopy(source)
+        timed["description"] = "The workshop lasts 2 months."
+        timed["facts"] = []
+        timed["blocks"] = [timed["description"]]
+        self.assertTrue(server.model_answer_is_grounded("The workshop lasts 2 months.", timed))
+        self.assertFalse(server.model_answer_is_grounded("The workshop lasts 2 days.", timed))
+
+    def test_grounded_model_output_changes_when_the_approved_record_changes(self):
+        question = "What would I learn in the email class?"
+        original = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+        mutated = copy.deepcopy(original)
+        changed_fact = "The revised class covers encrypted attachments and shared mailboxes."
+        mutated["description"] = changed_fact
+        mutated["facts"] = []
+        mutated["blocks"] = [changed_fact]
+        original_prompt = server.retrieval_prompt(question, [original])
+        changed_prompt = server.retrieval_prompt(question, [mutated])
+        self.assertNotIn(changed_fact, original_prompt)
+        self.assertIn(changed_fact, changed_prompt)
+        result = server.parse_model_selection(
+            model_response(mutated, question, changed_fact),
+            question,
+            [mutated],
+            "site",
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["message"], changed_fact)
+
+    def test_alternative_phrasings_can_be_grounded_in_the_same_source(self):
+        source = server.SOURCE_BY_ID["home"]
+        question = "What does the Digital Equity Program offer?"
+        answers = (
+            "The program offers Fortune participants support and training for inclusion in the digital world.",
+            "Fortune participants can get training and support to help them take part in the digital world.",
+        )
+        results = [
+            server.parse_model_selection(
+                model_response(source, question, answer),
+                question,
+                [source],
+                "page",
+            )
+            for answer in answers
+        ]
+        self.assertTrue(all(result["kind"] == "answer" for result in results))
+        self.assertEqual([result["message"] for result in results], list(answers))
 
     def test_fast_answers_are_complete_short_sentences(self):
         devices = server.SOURCE_BY_ID["devices"]
@@ -710,7 +908,7 @@ class ResponseContractTests(unittest.TestCase):
 
     def test_spanish_answer_uses_selected_source_content_not_fixed_navigation_copy(self):
         retrieved = server.retrieve_sources("computadora")
-        raw = json.dumps({"pick": retrieved[0]["id"]})
+        raw = model_response(retrieved[0], "computadora")
         interaction = {
             "request_language": "es",
             "chat_stage": "opening",
@@ -725,7 +923,7 @@ class ResponseContractTests(unittest.TestCase):
         self.assertNotIn("disponibles hoy", result["message"])
         self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
 
-    def test_prompt_keeps_the_model_job_to_one_source_pick(self):
+    def test_prompt_asks_for_one_grounded_source_and_a_natural_answer(self):
         retrieved = server.retrieve_sources("computer class")
         interaction = {
             "request_kind": "procedure",
@@ -736,8 +934,8 @@ class ResponseContractTests(unittest.TestCase):
         prompt = server.retrieval_prompt(
             "¿Cómo me registro?", retrieved, None, interaction
         )
-        self.assertIn('{"pick":"<candidate ID or ASK>"}', prompt)
-        self.assertNotIn("participant-facing text", prompt)
+        self.assertIn('{"pick":"<candidate ID or ASK>","answer":"<grounded answer or short clarification>"}', prompt)
+        self.assertIn("Answer the resolved question naturally", prompt)
         self.assertNotIn("rebuilding routines", prompt)
         self.assertNotIn("request_kind", prompt)
         records = json.loads(prompt.split("\nCANDIDATE RECORDS:\n", 1)[1])
@@ -749,7 +947,7 @@ class ResponseContractTests(unittest.TestCase):
     def test_model_can_abstain_without_generating_participant_copy(self):
         retrieved = server.retrieve_sources("free laptop")
         result = server.parse_model_selection(
-            '{"pick":"ASK"}',
+            '{"pick":"ASK","answer":"Which device do you need help with?"}',
             "Can I get a free laptop?",
             retrieved,
             "page",
@@ -768,7 +966,8 @@ class ResponseContractTests(unittest.TestCase):
 
     def test_answer_length_is_capped(self):
         retrieved = server.retrieve_sources("computer class")
-        raw = json.dumps({"pick": retrieved[0]["id"]})
+        grounded = server.source_excerpt(retrieved[0], "computer class").splitlines()[0]
+        raw = model_response(retrieved[0], "computer class", " ".join([grounded] * 10))
         result = server.parse_model_selection(raw, "computer class", retrieved)
         self.assertLessEqual(len(result["message"].split()), 90)
         self.assertLessEqual(len(result["reason"].split()), 30)
@@ -898,6 +1097,23 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "keep_alive": server.MODEL_KEEP_ALIVE,
         }])
 
+    def test_answer_generation_uses_bounded_variation(self):
+        payloads = []
+        original_request = server.ollama_request
+        server.ollama_request = lambda payload: payloads.append(payload) or {
+            "message": {"content": "{}"}
+        }
+        try:
+            server.Handler.__new__(server.Handler)._ollama([
+                {"role": "user", "content": "public test question"}
+            ])
+        finally:
+            server.ollama_request = original_request
+        options = payloads[0]["options"]
+        self.assertEqual(options["temperature"], 0.5)
+        self.assertGreaterEqual(options["seed"], 0)
+        self.assertLessEqual(options["seed"], 0x7FFFFFFF)
+
     def test_warmup_endpoint_requires_an_allowed_origin(self):
         handler = server.Handler.__new__(server.Handler)
         handler.path = "/api/warmup"
@@ -1008,13 +1224,13 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn('window.sessionStorage', app)
         self.assertIn("return window.parent.sessionStorage", app)
         self.assertIn('"fortune-website-guide:replica:v1"', app)
-        self.assertIn('frameUrl.searchParams.set("v", "20260813-conversation-persistence-1")', replica_shell)
+        self.assertIn('frameUrl.searchParams.set("v", "20260817-grounded-generation-1")', replica_shell)
         self.assertIn("persistConversation();", app)
         self.assertIn("restoreConversation();", app)
         self.assertIn("clearPersistedConversation();", app)
         self.assertNotIn("window.localStorage", app)
 
-        reset = app[app.index("function resetForPage") : app.index("function setEditStatus")]
+        reset = app[app.index("function resetForPage") : app.index("function resetConversation")]
         for destructive_reset in (
             "history = []",
             "turns = []",
@@ -1030,6 +1246,30 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("this.restoreConversation()", wix)
         self.assertNotIn("window.localStorage", wix)
         self.assertIn("tab-scoped session storage", readme)
+
+    def test_start_over_clears_only_the_local_conversation_state(self):
+        html = (DEMO / "index.html").read_text(encoding="utf-8")
+        app = (DEMO / "app.js").read_text(encoding="utf-8")
+        wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="guide-reset"', html)
+        reset = app[app.index("function resetConversation") : app.index("function setEditStatus")]
+        for expected in (
+            "history = []", "turns = []", 'conversationId = ""',
+            'conversationToken = ""', "clearPersistedConversation()",
+            "renderSuggestions(",
+        ):
+            self.assertIn(expected, reset)
+        self.assertIn("resetButton.hidden = false", app)
+        self.assertNotIn("fetch(", reset)
+        wix_reset = wix[wix.index("resetConversation() {") : wix.index("warmModel() {")]
+        for expected in (
+            "this.history = []", "this.turns = []", 'this.conversationId = ""',
+            'this.conversationToken = ""', "this.clearPersistedConversation()",
+            "this.renderSuggestions()",
+        ):
+            self.assertIn(expected, wix_reset)
+        self.assertNotIn("fetch(", wix_reset)
 
     def test_guide_starts_compact_and_expands_to_reveal_the_answer(self):
         styles = (DEMO / "styles.css").read_text(encoding="utf-8")
@@ -1231,20 +1471,15 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("OLLAMA_API_KEY", app)
         self.assertNotIn("OLLAMA_API_KEY", wix)
 
-    def test_static_directory_fallback_is_not_used_as_an_unlogged_chat_answer(self):
+    def test_static_directory_has_no_local_factual_answer_path(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
-        fallback = site[site.index("function staticAnswer") : site.index("function selectedUrl")]
         ask = app[app.index("async function ask") : app.index("async function checkHealth")]
         self.assertNotIn("const FAQS", app)
-        self.assertLess(fallback.index("ambiguityAnswer"), fallback.index("rankPages"))
-        self.assertIn("onCurrentPage", fallback)
-        self.assertIn("fallbackDestination", fallback)
-        self.assertIn("sources:", fallback)
-        self.assertIn("related:", fallback)
-        self.assertIn("handoff_url:", fallback)
-        self.assertIn("model_called: false", fallback)
+        self.assertNotIn("function staticAnswer", site)
+        self.assertNotIn("function rankPages", site)
+        self.assertNotIn("function blockForQuestion", site)
         self.assertIn("distinctDestination(data)", app)
         self.assertIn("data?.choices", app)
         self.assertIn("payload?.choices", wix)

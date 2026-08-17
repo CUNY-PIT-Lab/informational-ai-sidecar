@@ -3,9 +3,9 @@
 
 The browser receives no provider credential. A complete public-site index is
 searched locally for each question, and only the most relevant approved
-records are sent to Ollama Cloud. Model-selected source IDs are validated on
-the server. Every response also receives deterministic next links so a visitor
-never reaches a terminal FAQ card.
+records are sent to Ollama Cloud. Model-selected sources and grounded answers
+are validated on the server. Every response also receives deterministic next
+links so a visitor never reaches a terminal FAQ card.
 """
 
 import collections
@@ -47,7 +47,7 @@ from evaluation_store import (
 from source_selector import ASK as SELECTOR_ASK
 from source_selector import SYSTEM_PROMPT as SELECTOR_SYSTEM_PROMPT
 from source_selector import build_prompt as build_selector_prompt
-from source_selector import parse_pick as parse_selector_pick
+from source_selector import parse_response as parse_selector_response
 
 
 HERE = pathlib.Path(__file__).parent
@@ -70,7 +70,7 @@ MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-17-v7"
+PROMPT_POLICY_VERSION = "2026-08-17-v10"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -450,6 +450,7 @@ IMPACT_ID = source_id_for_path("/about/impact")
 INTRO_EMAIL_ID = source_id_for_path("/service-page/intro-to-email")
 ADVANCED_EMAIL_ID = source_id_for_path("/service-page/advanced-email")
 EMAIL_PART_TWO_ID = source_id_for_path("/service-page/intro-to-email-pt-2")
+INTRO_EXCEL_ID = source_id_for_path("/service-page/intro-to-microsoft-excel")
 INTRO_COMPUTERS_ID = source_id_for_path("/service-page/intro-to-computers")
 INTRO_CANVA_ID = source_id_for_path("/service-page/intro-to-canva")
 CANVA_DESIGN_TOOLS_ID = source_id_for_path("/service-page/canva-design-tools")
@@ -460,6 +461,10 @@ EXCEL_CHARTS_ID = source_id_for_path("/service-page/microsoft-excel-charts")
 EXCEL_FORMULAS_ID = source_id_for_path("/service-page/excel-formulas-functions")
 EXCEL_FORMATTING_ID = source_id_for_path("/service-page/excel-formatting-data")
 EXCEL_ORGANIZING_ID = source_id_for_path("/service-page/excel-organizing-data")
+DIGITAL_SAFETY_COMPUTERS_ID = source_id_for_path("/service-page/digital-safety-computers")
+DIGITAL_SAFETY_EMAIL_ID = source_id_for_path("/service-page/digital-safety-email")
+DIGITAL_SAFETY_MOBILE_ID = source_id_for_path("/service-page/digital-safety-mobile-devices")
+DIGITAL_SAFETY_ONLINE_ID = source_id_for_path("/service-page/digital-safety-online")
 RESUME_AI_ID = source_id_for_path("/service-page/resume-writing-in-an-ai-world")
 JOB_SEARCH_ID = source_id_for_path("/service-page/job-searching-online")
 TECH_FAIR_QA_ID = source_id_for_path("/techfair/qa")
@@ -472,7 +477,8 @@ SPECIFIC_CLASS_TERMS = {
     "certifications", "chart", "charts", "computacion", "correo", "email",
     "electronico", "excel", "formula", "formulas", "job", "microsoft",
     "phone", "powerpoint", "practice", "resume", "robotics", "safety",
-    "smartphone", "smartphones", "spanish", "word", "zoom",
+    "scam", "scams", "smartphone", "smartphones", "spanish", "spreadsheet",
+    "spreadsheets", "word", "zoom",
 }
 
 HISTORY_TOPIC_TERMS = SPECIFIC_CLASS_TERMS.union({
@@ -761,6 +767,11 @@ def likely_source_ids(text, fallback=True):
         if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
             ranked.append(source_id)
 
+    if (
+        word_set.intersection({"program", "programs"})
+        and word_set.intersection({"describe", "does", "offer", "offers", "overview", "provide", "provides"})
+    ):
+        add("home")
     if device_use_support_intent(lowered):
         add("individual")
     if any(term in lowered for term in (
@@ -776,6 +787,41 @@ def likely_source_ids(text, fallback=True):
     ))
     if schedule_intent:
         add("calendar")
+    spreadsheet_terms = word_set.intersection({
+        "excel", "spreadsheet", "spreadsheets", "worksheet", "worksheets",
+    })
+    if spreadsheet_terms:
+        formatting_focus = word_set.intersection({
+            "format", "formatting", "read", "readable", "date", "dates", "number", "numbers",
+        })
+        organizing_focus = word_set.intersection({
+            "duplicate", "duplicates", "filter", "organize", "organizing", "record",
+            "records", "sort", "sorting",
+        })
+        if formatting_focus and not organizing_focus:
+            add(EXCEL_FORMATTING_ID)
+        if organizing_focus and not formatting_focus:
+            add(EXCEL_ORGANIZING_ID)
+        if word_set.intersection({"beginner", "basic", "basics", "intro", "introduction", "new", "start", "starting"}):
+            add(INTRO_EXCEL_ID)
+        if not word_set.intersection({
+            "chart", "charts", "formula", "formulas", "format", "formatting",
+            "organize", "organizing", "present", "presenting", "sort", "sorting",
+            "duplicate", "duplicates", "filter", "function", "functions", "read",
+        }):
+            add(INTRO_EXCEL_ID)
+    if word_set.intersection({"scam", "scams", "fraud", "phishing"}):
+        if word_set.intersection({"email", "correo", "electronico"}):
+            add(DIGITAL_SAFETY_EMAIL_ID)
+        elif word_set.intersection({"mobile", "phone", "smartphone", "telefono"}):
+            add(DIGITAL_SAFETY_MOBILE_ID)
+        elif word_set.intersection({"computer", "computadora"}):
+            add(DIGITAL_SAFETY_COMPUTERS_ID)
+        else:
+            add(DIGITAL_SAFETY_ONLINE_ID)
+            add(DIGITAL_SAFETY_EMAIL_ID)
+    if word_set.intersection({"attachment", "attachments", "adjunto", "adjuntos"}):
+        add(INTRO_EMAIL_ID)
     if "word" in word_set and word_set.intersection({"certification", "certifications", "certified"}):
         add(WORD_CERTIFICATION_ID)
     if word_set.intersection({"certification", "certifications", "certified"}):
@@ -900,6 +946,14 @@ def source_evidence_score(query, source):
         "donde": ("where", "location"),
         "electronico": ("email",),
         "espanol": ("spanish", "alfabetizacion"),
+        "attachment": ("attachments", "email"),
+        "attachments": ("attachment", "email"),
+        "fraud": ("safety", "online"),
+        "phishing": ("safety", "email", "online"),
+        "scam": ("safety", "online"),
+        "scams": ("safety", "online"),
+        "spreadsheet": ("excel", "worksheet", "workbook"),
+        "spreadsheets": ("excel", "worksheet", "workbook"),
         "learning": ("learn", "intro", "introduction"),
         "new": ("intro", "introduction", "beginner"),
         "registrarme": ("register", "reserve", "sign up"),
@@ -1219,6 +1273,7 @@ def distinctive_query_terms(query):
         "after", "ask", "asks", "cover", "covered", "covers", "else", "explain",
         "find", "learn", "making", "now", "its", "need", "offered", "read",
         "say", "says", "show", "shows", "teach", "teaches", "use", "uses", "who",
+        "class", "classes", "course", "courses", "workshop", "workshops",
     }
     known = {
         term: DOCUMENT_FREQUENCY[term]
@@ -1725,13 +1780,18 @@ def ambiguity_response(question, language_code=None):
         "eligibility", "eligible", "lifeline", "tech", "one-to-one", "certification",
         "certifications", "microsoft", "assessment", "assessments", "practice", "canva",
         "excel", "formula", "formulas", "chart", "charts", "smartphone", "smartphones",
+        "spreadsheet", "spreadsheets", "scam", "scams", "fraud", "phishing",
+        "attachment", "attachments",
         "digital", "equity", "partners", "impact", "overview", "android", "apple", "phones",
     }
     generic_request_terms = {
         "start", "started", "begin", "help", "support", "assistance", "program", "programs",
         "service", "services", "option", "options", "available", "offered", "offer",
     }
-    broad_start_or_help = (
+    program_overview = bool(words.intersection({"program", "programs"})) and bool(
+        words.intersection({"describe", "does", "offer", "offers", "overview", "provide", "provides"})
+    )
+    broad_start_or_help = not program_overview and (
         lowered in {
             "help", "i need help", "i want help", "can i get help", "support", "i need support",
             "how can you help me", "what can you help with", "how do i get started", "how can i get started",
@@ -1785,7 +1845,7 @@ def ambiguity_response(question, language_code=None):
             ],
             [],
         ))
-    elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing"}):
+    elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing", "scam", "scams", "fraud", "phishing"}):
         cases.append((
             "Do you need internet service, help connecting a device, or help using the internet?",
             [
@@ -1867,7 +1927,13 @@ def human_handoff_response(question="", language_code="en"):
 BASE_SYSTEM_PROMPT = SELECTOR_SYSTEM_PROMPT
 
 
-def retrieval_prompt(query, sources, page_context=None, interaction=None):
+def retrieval_prompt(
+    query,
+    sources,
+    page_context=None,
+    interaction=None,
+    previous_answer="",
+):
     records = []
     for source in sources:
         records.append({
@@ -1886,6 +1952,7 @@ def retrieval_prompt(query, sources, page_context=None, interaction=None):
     return build_selector_prompt(
         records,
         current_page_id=current["id"] if current else "",
+        previous_answer=clip_words(previous_answer, MAX_MESSAGE_WORDS),
     )
 
 
@@ -1904,6 +1971,7 @@ def selector_clarification_response(
     retrieval_scope="site",
     interaction=None,
     routing_question=None,
+    model_question="",
 ):
     interaction = dict(interaction or {})
     language_code = interaction.get("request_language") or "en"
@@ -1929,6 +1997,12 @@ def selector_clarification_response(
         message = "Which class do you mean?" if class_candidates else "Which page do you mean?"
         prompt_template = "Tell me about {title}."
         reason = "Choose one option."
+    model_question = clip_words(model_question, 24).strip()
+    if (
+        model_question.endswith("?")
+        and not re.search(r"https?://|www\.", model_question, flags=re.I)
+    ):
+        message = model_question
     choices = []
     for source in candidates:
         title = clean_source_title(source)
@@ -1950,6 +2024,199 @@ def selector_clarification_response(
     return response
 
 
+_GROUNDING_EQUIVALENT_GROUPS = (
+    frozenset({"account", "cuenta"}),
+    frozenset({"attachment", "attachments", "adjunto", "adjuntos"}),
+    frozenset({"available", "availability", "disponible", "disponibles"}),
+    frozenset({"class", "classes", "clase", "clases", "course", "curso", "taller"}),
+    frozenset({"computer", "computers", "computadora", "computadoras"}),
+    frozenset({"device", "devices", "dispositivo", "dispositivos"}),
+    frozenset({"eligible", "eligibility", "elegible", "elegibles", "qualify", "qualifies"}),
+    frozenset({"email", "correo", "electronico"}),
+    frozenset({"free", "gratis", "gratuita", "gratuitas", "gratuito", "gratuitos"}),
+    frozenset({"help", "support", "ayuda", "apoyo"}),
+    frozenset({"laptop", "laptops", "portatil", "portatiles"}),
+    frozenset({"learn", "learning", "aprender"}),
+    frozenset({"limited", "limitada", "limitado", "limitadas", "limitados"}),
+    frozenset({"message", "messages", "mensaje", "mensajes"}),
+    frozenset({"participant", "participants", "participante", "participantes"}),
+    frozenset({"phone", "cellphone", "telefono", "celular"}),
+    frozenset({"spreadsheet", "spreadsheets", "worksheet", "worksheets", "hoja", "hojas"}),
+    frozenset({"training", "trainings", "workshop", "workshops", "capacitacion"}),
+)
+
+_RISKY_QUALIFIER_GROUPS = (
+    frozenset({"available", "availability", "disponible", "disponibles"}),
+    frozenset({"eligible", "eligibility", "elegible", "elegibles", "qualify", "qualifies"}),
+    frozenset({"free", "gratis", "gratuita", "gratuitas", "gratuito", "gratuitos"}),
+    frozenset({
+        "guarantee", "guaranteed", "garantia", "garantizado", "garantizada",
+        "garantizados", "garantizadas",
+    }),
+    frozenset({"immediate", "immediately", "inmediato", "inmediata", "inmediatamente"}),
+    frozenset({"limited", "limitada", "limitado", "limitadas", "limitados"}),
+    frozenset({"unlimited", "ilimitada", "ilimitado", "ilimitadas", "ilimitados"}),
+    frozenset({"within", "dentro"}),
+)
+
+_NUMBER_WORDS = {
+    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
+    "five": "5", "six": "6",
+    "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11",
+    "twelve": "12", "cero": "0", "uno": "1", "dos": "2", "tres": "3",
+    "cuatro": "4", "cinco": "5", "seis": "6",
+    "siete": "7", "ocho": "8", "nueve": "9", "diez": "10", "once": "11",
+    "doce": "12",
+}
+
+_CLAIM_UNITS = {
+    "class": "class", "classes": "class", "clase": "class", "clases": "class",
+    "day": "day", "days": "day", "dia": "day", "dias": "day",
+    "device": "device", "devices": "device", "dispositivo": "device", "dispositivos": "device",
+    "hour": "hour", "hours": "hour", "hora": "hour", "horas": "hour",
+    "laptop": "laptop", "laptops": "laptop", "portatil": "laptop", "portatiles": "laptop",
+    "minute": "minute", "minutes": "minute", "minuto": "minute", "minutos": "minute",
+    "month": "month", "months": "month", "mes": "month", "meses": "month",
+    "participant": "person", "participants": "person", "people": "person", "person": "person",
+    "participante": "person", "participantes": "person", "persona": "person", "personas": "person",
+    "phone": "phone", "phones": "phone", "telefono": "phone", "telefonos": "phone",
+    "session": "session", "sessions": "session", "sesion": "session", "sesiones": "session",
+    "week": "week", "weeks": "week", "semana": "week", "semanas": "week",
+    "workshop": "workshop", "workshops": "workshop", "taller": "workshop", "talleres": "workshop",
+    "year": "year", "years": "year", "ano": "year", "anos": "year",
+}
+
+_UNIVERSAL_CLAIM_PATTERNS = (
+    re.compile(r"\b(?:anyone|everyone|every participant|all participants)\b", re.I),
+    re.compile(r"\b(?:cualquier persona|para todos|todas las personas|todos los participantes)\b", re.I),
+)
+
+_ENTITY_PATTERN = re.compile(
+    r"\b[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’.-]*"
+    r"(?:\s+(?:(?:and|de|del|of|the|to|y)\s+)?"
+    r"[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’.-]*)*"
+)
+
+
+def _expanded_grounding_terms(value):
+    terms = set(tokens(value))
+    for group in _GROUNDING_EQUIVALENT_GROUPS:
+        if terms.intersection(group):
+            terms.update(group)
+    return terms
+
+
+def _claim_numbers(value):
+    folded = fold_text(value)
+    found = set(re.findall(r"(?<![\w])\d+(?![\w])", folded))
+    for word in re.findall(r"[a-z]+", folded):
+        if word in _NUMBER_WORDS:
+            found.add(_NUMBER_WORDS[word])
+    return found
+
+
+def _claim_number_unit_pairs(value):
+    words = tokens(value, keep_stopwords=True)
+    pairs = set()
+    for index, word in enumerate(words):
+        number = word if word.isdigit() else _NUMBER_WORDS.get(word)
+        if number is None:
+            continue
+        unit = next(
+            (
+                _CLAIM_UNITS[candidate]
+                for candidate in words[index + 1:index + 4]
+                if candidate in _CLAIM_UNITS
+            ),
+            None,
+        )
+        if unit:
+            pairs.add((number, unit))
+    return pairs
+
+
+def _qualifier_polarities(value, group):
+    words = tokens(value, keep_stopwords=True)
+    negatives = {"cannot", "cant", "never", "no", "not", "nunca", "sin"}
+    polarities = set()
+    for index, word in enumerate(words):
+        if word not in group:
+            continue
+        prior = set(words[max(0, index - 3):index])
+        polarities.add("negative" if prior.intersection(negatives) else "positive")
+    return polarities
+
+
+def _named_entities_are_supported(answer, source_text):
+    source_terms = set(tokens(source_text, keep_stopwords=True))
+    for match in _ENTITY_PATTERN.finditer(answer):
+        entity_terms = [
+            term for term in tokens(match.group(0), keep_stopwords=True)
+            if term not in {"and", "de", "del", "of", "the", "to", "y"}
+        ]
+        prefix = answer[:match.start()].rstrip()
+        at_sentence_start = not prefix or prefix[-1:] in ".!?"
+        if len(entity_terms) == 1 and at_sentence_start:
+            continue
+        if any(term not in source_terms for term in entity_terms):
+            return False
+    return True
+
+
+def answers_near_duplicate(answer, prior_answer):
+    """Catch a follow-up that merely repeats the latest guide response."""
+
+    current = set(tokens(answer, keep_stopwords=True))
+    prior = set(tokens(prior_answer, keep_stopwords=True))
+    if not current or not prior:
+        return False
+    current_text = " ".join(tokens(answer, keep_stopwords=True))
+    prior_text = " ".join(tokens(prior_answer, keep_stopwords=True))
+    if current_text == prior_text:
+        return True
+    containment = len(current.intersection(prior)) / max(1, min(len(current), len(prior)))
+    union = len(current.union(prior))
+    return min(len(current), len(prior)) >= 6 and containment >= 0.82 and (
+        len(current.intersection(prior)) / max(1, union)
+    ) >= 0.62
+
+
+def model_answer_is_grounded(answer, source):
+    """Reject unsupported factual anchors after a model uses one approved record."""
+
+    answer = clip_words(re.sub(r"<[^>]+>", " ", str(answer or "")), MAX_MESSAGE_WORDS)
+    if not answer or re.search(r"https?://|www\.", answer, flags=re.I):
+        return False
+    source_text = searchable_text(source)
+    if not _claim_numbers(answer).issubset(_claim_numbers(source_text)):
+        return False
+    if not _claim_number_unit_pairs(answer).issubset(_claim_number_unit_pairs(source_text)):
+        return False
+    route_identity = urllib.parse.urlsplit(source.get("url", "")).path.replace("-", " ")
+    route_identity = re.sub(r"\btechfair\b", "tech fair", route_identity, flags=re.I)
+    if not _named_entities_are_supported(answer, f"{source_text} {route_identity}"):
+        return False
+    for pattern in _UNIVERSAL_CLAIM_PATTERNS:
+        if pattern.search(answer) and not any(row.search(source_text) for row in _UNIVERSAL_CLAIM_PATTERNS):
+            return False
+    for group in _RISKY_QUALIFIER_GROUPS:
+        answer_polarities = _qualifier_polarities(answer, group)
+        if answer_polarities and not answer_polarities.issubset(
+            _qualifier_polarities(source_text, group)
+        ):
+            return False
+    generic = {
+        "answer", "digital", "equity", "fortune", "guide", "information",
+        "page", "program", "society", "website", "guia", "informacion",
+        "pagina", "programa",
+    }
+    answer_terms = _expanded_grounding_terms(answer).difference(generic)
+    source_terms = _expanded_grounding_terms(source_text).difference(generic)
+    if len(answer_terms.intersection(source_terms)) < min(2, len(answer_terms)):
+        return False
+    return True
+
+
 def parse_model_selection(
     raw,
     question,
@@ -1962,9 +2229,17 @@ def parse_model_selection(
     retrieved = list(retrieved or retrieve_sources(question))
     interaction = dict(interaction or {})
     language_code = interaction.get("request_language") or "en"
-    chat_stage = interaction.get("chat_stage") or "opening"
     allowed = {source["id"]: source for source in retrieved}
-    selected_id = parse_selector_pick(raw, allowed)
+    parsed = parse_selector_response(raw, allowed)
+    if not parsed:
+        return selector_clarification_response(
+            question,
+            retrieved,
+            retrieval_scope,
+            interaction,
+            routing_question,
+        )
+    selected_id = parsed["pick"]
     if selected_id == SELECTOR_ASK:
         return selector_clarification_response(
             question,
@@ -1972,6 +2247,7 @@ def parse_model_selection(
             retrieval_scope,
             interaction,
             routing_question,
+            parsed["answer"],
         )
     selected = allowed[selected_id]
     support_query = (
@@ -1979,7 +2255,10 @@ def parse_model_selection(
         if distinctive_query_terms(question)
         else (routing_question or question)
     )
-    if not source_supports_query(selected, support_query):
+    # A single candidate was already resolved by the server's deterministic
+    # intent router or current-page gate. Reapplying the lexical site-search
+    # filter here rejects natural wording such as "help using a device."
+    if len(retrieved) > 1 and not source_supports_query(selected, support_query):
         return selector_clarification_response(
             question,
             retrieved,
@@ -1987,16 +2266,20 @@ def parse_model_selection(
             interaction,
             routing_question,
         )
-    message = grounded_answer_message(
-        question,
-        [selected],
-        retrieval_scope,
-        language_code=language_code,
-        chat_stage=chat_stage,
-        routing_question=routing_question or question,
-        prior_answer=prior_answer,
-    )
-    if message == participant_copy("missing_message", language_code):
+    message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
+    if not model_answer_is_grounded(message, selected):
+        return selector_clarification_response(
+            question,
+            retrieved,
+            retrieval_scope,
+            interaction,
+            routing_question,
+        )
+    if (
+        interaction.get("chat_stage") == "follow_up"
+        and prior_answer
+        and answers_near_duplicate(message, prior_answer)
+    ):
         return selector_clarification_response(
             question,
             retrieved,
@@ -2018,6 +2301,27 @@ def parse_model_selection(
         model_called=True,
         retrieval_scope=retrieval_scope,
     )
+
+
+def model_selection_retry_reason(raw, retrieved, interaction=None, prior_answer=""):
+    """Return the one recoverable validation failure that merits a model retry."""
+
+    interaction = dict(interaction or {})
+    allowed = {source["id"]: source for source in retrieved}
+    parsed = parse_selector_response(raw, allowed)
+    if not parsed or parsed["pick"] == SELECTOR_ASK:
+        return ""
+    selected = allowed[parsed["pick"]]
+    message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
+    if not model_answer_is_grounded(message, selected):
+        return "unsupported factual wording"
+    if (
+        interaction.get("chat_stage") == "follow_up"
+        and prior_answer
+        and answers_near_duplicate(message, prior_answer)
+    ):
+        return "repeated prior answer"
+    return ""
 
 
 def sanitize_history(history):
@@ -2361,34 +2665,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             deterministic = deterministic_answer_sources(
                 routing_question, retrieved, retrieval_scope
             )
-            prior_answer = " ".join(
-                item.get("content", "")
-                for item in safe_history
-                if item.get("role") == "assistant"
+            prior_answer = next(
+                (
+                    item.get("content", "")
+                    for item in reversed(safe_history)
+                    if item.get("role") == "assistant"
+                ),
+                "",
             )
-            if deterministic:
-                self._chat_json(200, response_contract(
-                    kind="answer",
-                    message=grounded_answer_message(
-                        question,
-                        deterministic,
-                        retrieval_scope,
-                        language_code=interaction["request_language"],
-                        chat_stage=interaction["chat_stage"],
-                        routing_question=routing_question,
-                        prior_answer=prior_answer,
-                    ),
-                    reason=(
-                        "La respuesta viene de una página aprobada."
-                        if interaction["request_language"] == "es"
-                        else "From an approved Fortune page."
-                    ),
-                    sources=deterministic,
-                    question=question,
-                    model_called=False,
-                    retrieval_scope=retrieval_scope,
-                ), turn, question, started_at, interaction=interaction)
-                return
             if not KEY:
                 self._chat_json(200, response_contract(
                     kind="handoff",
@@ -2400,7 +2684,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     retrieval_scope=retrieval_scope,
                 ), turn, question, started_at, interaction=interaction)
                 return
-            if not MODEL_CALL_BUDGET.claim(self._client_identifier()):
+            client_identifier = self._client_identifier()
+            if not MODEL_CALL_BUDGET.claim(client_identifier):
                 self._chat_json(200, response_contract(
                     kind="handoff",
                     message=participant_copy("usage_message", interaction["request_language"]),
@@ -2411,20 +2696,46 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     retrieval_scope=retrieval_scope,
                 ), turn, question, started_at, error_code="usage_limit", interaction=interaction)
                 return
+            model_sources = deterministic or retrieved
             messages = [{"role": "system", "content": retrieval_prompt(
-                routing_question, retrieved, page_context, interaction
+                routing_question,
+                model_sources,
+                page_context,
+                interaction,
+                previous_answer=prior_answer,
             )}]
             messages.append({
                 "role": "user",
                 "content": routing_question[:MAX_QUESTION_CHARS],
             })
             raw = self._ollama(messages)
+            retry_reason = model_selection_retry_reason(
+                raw,
+                model_sources,
+                interaction,
+                prior_answer,
+            )
+            if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
+                retry_messages = [
+                    {
+                        "role": "system",
+                        "content": messages[0]["content"].replace(
+                            "\nCANDIDATE RECORDS:\n",
+                            "\nRETRY: The prior draft contained "
+                            + retry_reason
+                            + ". Use a different explicitly supported detail or pick ASK."
+                            + "\nCANDIDATE RECORDS:\n",
+                        ),
+                    },
+                    messages[1],
+                ]
+                raw = self._ollama(retry_messages)
             self._chat_json(
                 200,
                 parse_model_selection(
                     raw,
                     question,
-                    retrieved,
+                    model_sources,
                     retrieval_scope,
                     interaction,
                     routing_question=routing_question,
@@ -2793,6 +3104,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "think": False,
             "format": "json",
             "keep_alive": MODEL_KEEP_ALIVE,
+            "options": {
+                "temperature": 0.5,
+                "seed": uuid.uuid4().int & 0x7FFFFFFF,
+            },
         })
         MODEL_WARMUP.mark_ready()
         return data.get("message", {}).get("content") or ""

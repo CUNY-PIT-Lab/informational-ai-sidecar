@@ -2,6 +2,7 @@
 """Security and schema contracts for the evaluator foundation."""
 
 import pathlib
+import inspect
 import sys
 import unittest
 
@@ -55,6 +56,63 @@ class EvaluationSchemaTests(unittest.TestCase):
 
 
 class EvaluationStoreBoundaryTests(unittest.TestCase):
+    def test_all_evaluators_use_one_shared_review_workspace(self):
+        self.assertEqual(evaluation_store.SHARED_BUCKET_OWNER, "admin")
+        for method_name in ("_bucket_set_id", "list_buckets", "list_conversations", "get_conversation"):
+            source = inspect.getsource(getattr(evaluation_store.EvaluationStore, method_name))
+            self.assertIn("SHARED_BUCKET_OWNER", source, method_name)
+
+        save_source = inspect.getsource(evaluation_store.EvaluationStore.save_note)
+        self.assertIn("actor_slot", save_source)
+        self.assertIn("account_slot", save_source)
+
+    def test_first_shared_writes_serialize_before_reading_an_optional_row(self):
+        class RecordingCursor:
+            def __init__(self):
+                self.calls = []
+
+            def execute(self, query, params):
+                self.calls.append((" ".join(query.split()), params))
+
+        cursor = RecordingCursor()
+        evaluation_store.EvaluationStore._lock_review_record(
+            cursor, "set-1", "conversation-1"
+        )
+        evaluation_store.EvaluationStore._lock_review_record(
+            cursor, "set-1", "conversation-1", "message-1"
+        )
+        self.assertEqual(len(cursor.calls), 2)
+        for query, _ in cursor.calls:
+            self.assertIn("pg_advisory_xact_lock", query)
+            self.assertIn("hashtextextended", query)
+        self.assertEqual(cursor.calls[0][1], ("evaluation:set-1:conversation-1:",))
+        self.assertEqual(
+            cursor.calls[1][1],
+            ("annotation:set-1:conversation-1:message-1",),
+        )
+
+        for method_name, row_query in (
+            ("save_note", "SELECT bucket_id, note, transcript_version, version"),
+            ("move_conversation", "SELECT bucket_id, transcript_version, version"),
+            (
+                "save_annotation",
+                "SELECT message_id, category, note, transcript_version, version",
+            ),
+        ):
+            source = inspect.getsource(
+                getattr(evaluation_store.EvaluationStore, method_name)
+            )
+            self.assertLess(
+                source.index("_lock_review_record"), source.index(row_query)
+            )
+
+    def test_move_uses_the_same_inactive_conversation_gate_as_other_edits(self):
+        source = inspect.getsource(
+            evaluation_store.EvaluationStore.move_conversation
+        )
+        self.assertIn("_current_transcript_version", source)
+        self.assertNotIn("SELECT MAX(t.sequence)", source)
+
     def test_disabled_store_needs_no_database_or_auth_secret(self):
         store = evaluation_store.EvaluationStore(
             database_url="", enabled=False, auth_secret=""
@@ -128,6 +186,23 @@ class EvaluationStoreBoundaryTests(unittest.TestCase):
         self.assertTrue(store.csrf_matches("same-token", csrf_digest))
         self.assertFalse(store.csrf_matches("same-token", session_digest))
 
+    def test_claimed_account_reset_revokes_sessions_without_deleting_reviewer_data(self):
+        source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        script = (DEMO / "scripts" / "reset_evaluator_invite.py").read_text(
+            encoding="utf-8"
+        )
+        reset = source.split("def reset_account_invitation", 1)[1].split(
+            "def list_accounts", 1
+        )[0]
+        self.assertIn("UPDATE evaluator_sessions", reset)
+        self.assertIn("revoked_at = NOW()", reset)
+        self.assertIn("auth_version = auth_version + 1", reset)
+        self.assertIn("password_hash = NULL", reset)
+        self.assertIn("claimed_at = NULL", reset)
+        self.assertNotIn("DELETE FROM", reset)
+        self.assertIn("credential_reset", reset)
+        self.assertIn("--confirm-reset", script)
+
 
 class EvaluationFrontendContractTests(unittest.TestCase):
     def test_review_surface_fits_multiple_buckets_and_stays_concise(self):
@@ -158,6 +233,21 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('board[data-layout="compact"]', css)
         self.assertIn('layout: "compact"', javascript)
         self.assertIn('viewKeyPrefix = "fortune-evaluation-view-v2"', javascript)
+        self.assertIn("const UNREVIEWED_PAGE_SIZE = 8", javascript)
+        self.assertIn('api("/api/evaluation/conversations?limit=500")', javascript)
+        self.assertIn("items.slice(start, end)", javascript)
+        self.assertIn('aria-label="Not yet reviewed pages"', javascript)
+        self.assertIn('aria-current="page"', javascript)
+        self.assertIn('class="pagination-button pagination-next"', javascript)
+        self.assertIn(".bucket-pagination", css)
+        self.assertIn("min-height: 44px", css)
+        pagination_handler = javascript.split(
+            'board.querySelectorAll(".bucket-pagination [data-page]")', 1
+        )[1].split("async function moveConversation", 1)[0]
+        self.assertNotIn("api(", pagination_handler)
+        self.assertNotIn("previewSave", pagination_handler)
+        store_source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        self.assertIn("min(int(limit), 500)", store_source)
         self.assertIn('id="review-note"', html)
         self.assertIn('maxlength="1000"', html)
         self.assertIn("annotation-toggle", javascript)
@@ -166,6 +256,28 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('class="invite-form"', javascript)
         self.assertIn('"invitation_path"', (DEMO / "server.py").read_text(encoding="utf-8"))
         self.assertIn("Link ready · single use", javascript)
+
+    def test_shared_queue_and_transcripts_show_stored_time_newest_first(self):
+        store_source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        javascript = (DEMO / "evaluation.js").read_text(encoding="utf-8")
+        html = (DEMO / "evaluation.html").read_text(encoding="utf-8")
+
+        self.assertIn("ORDER BY e.last_turn_at DESC, e.id", store_source)
+        self.assertIn("m.created_at", store_source)
+        self.assertIn("ORDER BY t.sequence, m.ordinal", store_source)
+        self.assertIn("function newestFirst(items)", javascript)
+        self.assertIn(
+            "timestampValue(right.last_turn_at) - timestampValue(left.last_turn_at)",
+            javascript,
+        )
+        self.assertIn("return newestFirst(matches)", javascript)
+        self.assertIn(
+            'timeHtml(conversation.last_turn_at, "conversation-time")',
+            javascript,
+        )
+        self.assertIn('timeHtml(message.created_at, "message-time")', javascript)
+        self.assertIn("readableTimestamp(detail.last_turn_at)", javascript)
+        self.assertIn("20260817-timestamps-1", html)
 
 
 if __name__ == "__main__":

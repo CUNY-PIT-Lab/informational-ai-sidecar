@@ -1,4 +1,4 @@
-"""Authenticated, reviewer-specific evaluation data for synthetic guide transcripts."""
+"""Authenticated, shared evaluation data for synthetic guide transcripts."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from typing import Any
 EVALUATION_SCHEMA_VERSION = "006_transcript_annotations"
 COOKIE_NAME = "__Host-fs_eval"
 SLOT_KEYS = ("admin", "editor-1", "editor-2", "editor-3")
+SHARED_BUCKET_OWNER = "admin"
 COLOR_KEYS = {"blue", "sky", "eggplant", "coral"}
 ANNOTATION_CATEGORIES = {"helpful", "unclear", "incorrect", "unsafe", "other"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -575,6 +576,82 @@ class EvaluationStore:
             connection.commit()
         return result
 
+    def reset_account_invitation(
+        self,
+        slot_key: str,
+        *,
+        email: str | None = None,
+        actor_slot: str = "admin",
+        operation_id: str | None = None,
+    ) -> str:
+        """Revoke a claimed account's login and return one replacement invite."""
+        if slot_key not in SLOT_KEYS:
+            raise EvaluationValidation("Unknown account slot.")
+        normalized_email = _normalize_email(email) if email else None
+        token = secrets.token_urlsafe(32)
+        operation = _uuid(operation_id or uuid.uuid4(), "operation_id")
+        with self._pool.connection() as connection:
+            with connection.cursor(row_factory=self._dict_row) as cursor:
+                cursor.execute(
+                    "SELECT * FROM evaluator_accounts WHERE slot_key = %s FOR UPDATE",
+                    (slot_key,),
+                )
+                account = cursor.fetchone()
+                if not account or account.get("claimed_at") is None:
+                    raise EvaluationConflict("That account slot is not claimed.")
+                cursor.execute(
+                    """
+                    UPDATE evaluator_sessions
+                    SET revoked_at = NOW()
+                    WHERE account_slot = %s AND revoked_at IS NULL
+                    """,
+                    (slot_key,),
+                )
+                revoked_sessions = cursor.rowcount
+                cursor.execute(
+                    """
+                    UPDATE evaluator_accounts
+                    SET email_normalized = %s,
+                        display_name = NULL,
+                        password_hash = NULL,
+                        claimed_at = NULL,
+                        invite_token_hash = %s,
+                        invite_expires_at = NOW() + (%s * INTERVAL '1 second'),
+                        invited_at = NOW(),
+                        disabled_at = NULL,
+                        auth_version = auth_version + 1,
+                        failed_login_count = 0,
+                        locked_until = NULL,
+                        updated_at = NOW()
+                    WHERE slot_key = %s
+                    """,
+                    (
+                        normalized_email,
+                        self._digest("invite", token),
+                        self.invite_seconds,
+                        slot_key,
+                    ),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO evaluation_audit_events
+                        (id, operation_id, actor_slot, action, metadata)
+                    VALUES (%s, %s, %s, 'account.invite', %s)
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        operation,
+                        actor_slot,
+                        self._jsonb({
+                            "slot_key": slot_key,
+                            "credential_reset": True,
+                            "sessions_revoked": revoked_sessions,
+                        }),
+                    ),
+                )
+            connection.commit()
+        return token
+
     def list_accounts(self) -> list[dict]:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
@@ -594,15 +671,35 @@ class EvaluationStore:
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
     def _bucket_set_id(self, cursor, account_slot: str) -> str:
+        """Return the one shared workspace while retaining the actor separately."""
+
         cursor.execute(
             "SELECT id FROM evaluation_bucket_sets "
             "WHERE account_slot = %s AND archived_at IS NULL",
-            (account_slot,),
+            (SHARED_BUCKET_OWNER,),
         )
         row = cursor.fetchone()
         if not row:
             raise EvaluationUnavailable("The reviewer bucket set is unavailable.")
         return str(row.get("id") if isinstance(row, dict) else row[0])
+
+    @staticmethod
+    def _lock_review_record(
+        cursor,
+        bucket_set_id: str,
+        conversation_id: str,
+        message_id: str | None = None,
+    ) -> None:
+        """Serialize first writes where no evaluation row exists to lock yet."""
+
+        scope = "annotation" if message_id else "evaluation"
+        identity = ":".join(
+            (scope, str(bucket_set_id), str(conversation_id), str(message_id or ""))
+        )
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (identity,),
+        )
 
     def list_buckets(self, account_slot: str) -> list[dict]:
         with self._pool.connection() as connection:
@@ -616,7 +713,7 @@ class EvaluationStore:
                     WHERE s.account_slot = %s AND s.archived_at IS NULL
                     ORDER BY b.sort_position, b.id
                     """,
-                    (account_slot,),
+                    (SHARED_BUCKET_OWNER,),
                 )
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
@@ -694,7 +791,7 @@ class EvaluationStore:
         """
 
     def list_conversations(self, account_slot: str, limit: int = 100) -> list[dict]:
-        limit = max(1, min(int(limit), 200))
+        limit = max(1, min(int(limit), 500))
         query = self._eligible_cte() + """
             SELECT e.id, e.last_turn_at, e.turn_count, e.transcript_version,
                    COALESCE(e.page_context ->> 'title', 'Unknown page') AS page_title,
@@ -709,7 +806,7 @@ class EvaluationStore:
         """
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
-                cursor.execute(query, (self.min_inactive_seconds, account_slot, limit))
+                cursor.execute(query, (self.min_inactive_seconds, SHARED_BUCKET_OWNER, limit))
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
     def get_conversation(self, account_slot: str, conversation_value: Any) -> dict:
@@ -730,7 +827,7 @@ class EvaluationStore:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 cursor.execute(
                     query,
-                    (self.min_inactive_seconds, account_slot, conversation_id),
+                    (self.min_inactive_seconds, SHARED_BUCKET_OWNER, conversation_id),
                 )
                 conversation = cursor.fetchone()
                 if not conversation:
@@ -738,7 +835,8 @@ class EvaluationStore:
                 set_id = str(conversation["bucket_set_id"])
                 cursor.execute(
                     """
-                    SELECT m.id, m.turn_id, m.ordinal, m.role, m.content
+                    SELECT m.id, m.turn_id, m.ordinal, m.role, m.content,
+                           m.created_at
                     FROM conversation_messages m
                     JOIN conversation_turns t ON t.id = m.turn_id
                     WHERE m.conversation_id = %s
@@ -810,6 +908,7 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(cursor, set_id, conversation_id)
                 actual_transcript_version = self._current_transcript_version(
                     cursor, conversation_id
                 )
@@ -902,6 +1001,9 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(
+                    cursor, set_id, conversation_id, message_id
+                )
                 actual_transcript_version = self._current_transcript_version(
                     cursor, conversation_id
                 )
@@ -1014,6 +1116,7 @@ class EvaluationStore:
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 set_id = self._bucket_set_id(cursor, account_slot)
+                self._lock_review_record(cursor, set_id, conversation_id)
                 cursor.execute(
                     "SELECT 1 FROM evaluation_audit_events WHERE operation_id = %s",
                     (operation_id,),
@@ -1027,25 +1130,9 @@ class EvaluationStore:
                     )
                     if not cursor.fetchone():
                         raise EvaluationValidation("That bucket is not available.")
-                cursor.execute(
-                    """
-                    SELECT MAX(t.sequence)::BIGINT AS transcript_version
-                    FROM conversations c
-                    JOIN conversation_turns t ON t.conversation_id = c.id
-                    WHERE c.id = %s AND c.capture_mode = 'transcript'
-                      AND c.client_surface = 'synthetic' AND c.expires_at > NOW()
-                    HAVING BOOL_AND(
-                        t.status = 'complete' AND t.privacy_state = 'clear'
-                        AND t.review_state = 'ready'
-                        AND (SELECT COUNT(*) FROM conversation_messages m WHERE m.turn_id = t.id) = 2
-                    )
-                    """,
-                    (conversation_id,),
+                actual_transcript_version = self._current_transcript_version(
+                    cursor, conversation_id
                 )
-                transcript_row = cursor.fetchone()
-                if not transcript_row:
-                    raise EvaluationForbidden("That conversation is not available for review.")
-                actual_transcript_version = int(transcript_row["transcript_version"])
                 cursor.execute(
                     """
                     SELECT bucket_id, transcript_version, version
