@@ -79,6 +79,20 @@ class RetrievalTests(unittest.TestCase):
     def test_retrieval_keeps_device_question_on_device_route(self):
         self.assertEqual(server.retrieve_sources("Can I get a free laptop?")[0]["id"], "devices")
 
+    def test_natural_skill_terms_retrieve_specific_source_pages(self):
+        expected = {
+            "I need help getting started with spreadsheets": server.INTRO_EXCEL_ID,
+            "How can I avoid online scams?": server.DIGITAL_SAFETY_ONLINE_ID,
+            "Which class covers attachments in email?": server.INTRO_EMAIL_ID,
+        }
+        for question, source_id in expected.items():
+            with self.subTest(question=question):
+                scope, sources = server.retrieval_plan(question, {
+                    "url": "https://www.fortunedigitalequity.org/",
+                })
+                self.assertEqual(scope, "site")
+                self.assertEqual(sources[0]["id"], source_id)
+
     def test_retrieval_never_returns_non_answer_authority(self):
         for query in ("2022 Tech Fair", "old blog post", "sample class", "member files"):
             for source in server.retrieve_sources(query):
@@ -117,8 +131,11 @@ class StagedRetrievalTests(unittest.TestCase):
         model_source_id="devices",
         history=None,
         model_answer="",
+        model_answers=None,
+        model_enabled=True,
     ):
         model_calls = []
+        answer_sequence = list(model_answers or [])
         body = json.dumps({
             "message": question,
             "page_context": {"url": page_url, "title": "Current page"},
@@ -135,7 +152,7 @@ class StagedRetrievalTests(unittest.TestCase):
             model_calls.append(messages)
             records = json.loads(messages[0]["content"].split("\nCANDIDATE RECORDS:\n", 1)[1])
             selected = next((row for row in records if row["id"] == model_source_id), records[0])
-            answer = model_answer or next(
+            answer = (answer_sequence.pop(0) if answer_sequence else model_answer) or next(
                 (line for line in selected["content"].splitlines() if line.strip()),
                 "",
             )
@@ -143,7 +160,7 @@ class StagedRetrievalTests(unittest.TestCase):
 
         handler._ollama = record_model_call.__get__(handler, server.Handler)
         original_key = server.KEY
-        server.KEY = "test-only-placeholder"
+        server.KEY = "test-only-placeholder" if model_enabled else ""
         try:
             handler.do_POST()
         finally:
@@ -340,6 +357,66 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertIn("Earlier answer text", json.dumps(messages))
         records = self.retrieval_records(model_calls)
         self.assertIn(source_id, [record["id"] for record in records])
+
+    def test_follow_up_uses_only_latest_answer_and_retries_repetition_once(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Email is part of everything from appointments and applications to work "
+            "and everyday communication."
+        )
+        advanced = (
+            "You would practice reading, composing, sending, replying to, and forwarding "
+            "emails, along with adding and opening attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What would I learn there?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "Tell me about classes."},
+                {"role": "assistant", "content": "This older answer must not be reused."},
+                {"role": "user", "content": "Which beginner email class fits?"},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[prior, advanced],
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], advanced)
+        self.assertEqual(len(model_calls), 2)
+        first_prompt = model_calls[0][0]["content"]
+        self.assertIn(prior, first_prompt)
+        self.assertNotIn("This older answer must not be reused.", first_prompt)
+
+    def test_repeated_retry_clarifies_after_exactly_two_model_calls(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Email is part of everything from appointments and applications to work "
+            "and everyday communication."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What would I learn there?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "Which beginner email class fits?"},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[prior, prior],
+        )
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(len(model_calls), 2)
+
+    def test_missing_model_abstains_instead_of_extracting_a_factual_answer(self):
+        captured, model_calls = self.dispatch_chat(
+            "Can I get a free laptop?",
+            "https://www.fortunedigitalequity.org/devices",
+            model_enabled=False,
+        )
+        self.assertEqual(captured["payload"]["kind"], "handoff")
+        self.assertFalse(captured["payload"]["model_called"])
+        self.assertEqual(model_calls, [])
+        handler_source = inspect.getsource(server.Handler.do_POST)
+        self.assertNotIn("grounded_answer_message", handler_source)
 
     def test_page_reference_uses_only_the_current_page(self):
         captured, model_calls = self.dispatch_chat(
@@ -692,6 +769,54 @@ class ResponseContractTests(unittest.TestCase):
         result = server.parse_model_selection(raw, "free laptop", retrieved, "page")
         self.assertNotIn("within 2 days", result["message"])
         self.assertEqual(result["kind"], "clarify")
+
+    def test_grounding_guard_rejects_unsupported_numbers_entities_and_absolutes_in_both_languages(self):
+        source = server.SOURCE_BY_ID["devices"]
+        unsupported = (
+            "Free laptops are available to everyone within two days.",
+            "Free laptops are guaranteed for every participant.",
+            "Free laptops are available through Acme Computers.",
+            "Las computadoras portátiles gratis están disponibles para todos en dos días.",
+            "Las computadoras portátiles están garantizadas por Acme Computers.",
+        )
+        for answer in unsupported:
+            with self.subTest(answer=answer):
+                self.assertFalse(server.model_answer_is_grounded(answer, source))
+                result = server.parse_model_selection(
+                    model_response(source, "Can I get a laptop?", answer),
+                    "Can I get a laptop?",
+                    [source],
+                    "site",
+                )
+                self.assertEqual(result["kind"], "clarify")
+
+        timed = copy.deepcopy(source)
+        timed["description"] = "The workshop lasts 2 months."
+        timed["facts"] = []
+        timed["blocks"] = [timed["description"]]
+        self.assertTrue(server.model_answer_is_grounded("The workshop lasts 2 months.", timed))
+        self.assertFalse(server.model_answer_is_grounded("The workshop lasts 2 days.", timed))
+
+    def test_grounded_model_output_changes_when_the_approved_record_changes(self):
+        question = "What would I learn in the email class?"
+        original = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+        mutated = copy.deepcopy(original)
+        changed_fact = "The revised class covers encrypted attachments and shared mailboxes."
+        mutated["description"] = changed_fact
+        mutated["facts"] = []
+        mutated["blocks"] = [changed_fact]
+        original_prompt = server.retrieval_prompt(question, [original])
+        changed_prompt = server.retrieval_prompt(question, [mutated])
+        self.assertNotIn(changed_fact, original_prompt)
+        self.assertIn(changed_fact, changed_prompt)
+        result = server.parse_model_selection(
+            model_response(mutated, question, changed_fact),
+            question,
+            [mutated],
+            "site",
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["message"], changed_fact)
 
     def test_alternative_phrasings_can_be_grounded_in_the_same_source(self):
         source = server.SOURCE_BY_ID["home"]
@@ -1345,20 +1470,15 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertNotIn("OLLAMA_API_KEY", app)
         self.assertNotIn("OLLAMA_API_KEY", wix)
 
-    def test_static_directory_fallback_is_not_used_as_an_unlogged_chat_answer(self):
+    def test_static_directory_has_no_local_factual_answer_path(self):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         site = (DEMO / "site.js").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
-        fallback = site[site.index("function staticAnswer") : site.index("function selectedUrl")]
         ask = app[app.index("async function ask") : app.index("async function checkHealth")]
         self.assertNotIn("const FAQS", app)
-        self.assertLess(fallback.index("ambiguityAnswer"), fallback.index("rankPages"))
-        self.assertIn("onCurrentPage", fallback)
-        self.assertIn("fallbackDestination", fallback)
-        self.assertIn("sources:", fallback)
-        self.assertIn("related:", fallback)
-        self.assertIn("handoff_url:", fallback)
-        self.assertIn("model_called: false", fallback)
+        self.assertNotIn("function staticAnswer", site)
+        self.assertNotIn("function rankPages", site)
+        self.assertNotIn("function blockForQuestion", site)
         self.assertIn("distinctDestination(data)", app)
         self.assertIn("data?.choices", app)
         self.assertIn("payload?.choices", wix)

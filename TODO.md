@@ -7,8 +7,11 @@
 - [x] Send only the resolved question, approved excerpts, and relevant prior guide answer; keep raw participant history and excluded pages out of the provider prompt.
 - [x] Reject unknown sources, invented numbers, external links, unsupported selections, malformed JSON, and answers without meaningful source overlap.
 - [x] Allow alternate natural phrasings grounded in the same source, and route **What does the program offer?** to live generation instead of a canned branch.
+- [x] Remove the remaining runtime factual fallback: without the live model, the guide abstains instead of extracting or serving a canned answer; source-mutation tests prove accepted factual output follows the approved record.
 - [x] Make the evaluator queue, buckets, placements, notes, and annotations shared across all four authenticated evaluator accounts while preserving actor attribution in the audit log.
 - [x] Keep existing captured conversations intact; the shared workspace uses the existing admin-owned bucket set and does not delete editor-specific legacy rows.
+- [x] Timestamp conversation cards, transcript headers, and individual messages; sort every bucket newest first before paginating **Not yet reviewed**.
+- [x] Serialize initial shared note, placement, and annotation writes so simultaneous evaluators receive a version conflict instead of silently overwriting one another.
 - [ ] Deploy this exact revision to Railway staging and verify model variation, grounding rejection, browser reset, persistence after navigation, and shared visibility across two evaluator accounts.
 - [ ] Promote only after the staging evidence is green; keep public production capture disabled.
 
