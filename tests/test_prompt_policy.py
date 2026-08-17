@@ -37,9 +37,11 @@ class PromptPolicyTests(unittest.TestCase):
 
     def test_selector_uses_compiled_reviewed_policy(self):
         self.assertEqual(source_selector.SYSTEM_PROMPT, prompt_policy.SYSTEM_PROMPT)
-        self.assertIn("one candidate record", source_selector.SYSTEM_PROMPT)
-        self.assertIn("Do not combine records", source_selector.SYSTEM_PROMPT)
-        self.assertIn("pick ASK", source_selector.SYSTEM_PROMPT)
+        self.assertIn("single page", source_selector.SYSTEM_PROMPT)
+        self.assertIn("never combine pages", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Pick ASK only", source_selector.SYSTEM_PROMPT)
+        self.assertIn("answer instead of asking which page or class", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("laptop", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("email class", source_selector.SYSTEM_PROMPT.lower())
 
@@ -58,6 +60,8 @@ class PromptPolicyTests(unittest.TestCase):
         base = prompt_policy.SYSTEM_PROMPT + "\nCANDIDATE RECORDS:\n[]"
         retry = prompt_policy.build_retry_prompt(base, "unsupported factual wording")
         self.assertIn(prompt_policy.RETRY_INSTRUCTIONS["unsupported factual wording"], retry)
+        resolved = prompt_policy.build_retry_prompt(base, "resolved source can answer")
+        self.assertIn(prompt_policy.RETRY_INSTRUCTIONS["resolved source can answer"], resolved)
         self.assertEqual(
             prompt_policy.build_retry_prompt(base, "participant supplied text"),
             base,
@@ -94,8 +98,10 @@ class PromptPolicyTests(unittest.TestCase):
                     compiled_digest,
                     entry["policy_id"],
                 )
-            if entry["policy_id"] != prompt_policy.PROMPT_POLICY_VERSION:
-                self.assertTrue(entry["reconstructed"], entry["policy_id"])
+            if entry["reconstructed"]:
+                self.assertTrue(entry.get("source_commit"), entry["policy_id"])
+            else:
+                self.assertTrue(entry.get("source_state"), entry["policy_id"])
 
 
 if __name__ == "__main__":

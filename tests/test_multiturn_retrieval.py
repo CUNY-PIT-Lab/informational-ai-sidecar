@@ -75,6 +75,63 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         _, sources = server.retrieval_plan(routed, HOME)
         self.assertEqual(sources[0]["id"], server.EXCEL_FORMULAS_ID)
 
+    def test_natural_generic_follow_ups_keep_the_latest_support_and_calendar_topics(self):
+        support_history = [
+            {"role": "user", "content": "What one-on-one technology help is available?"},
+            {"role": "assistant", "content": "Fortune lists tutoring and technical support."},
+        ]
+        support_routed = server.contextual_routing_question(
+            "What kinds of help are offered?",
+            support_history,
+        )
+        self.assertIn("one-to-one", support_routed)
+        self.assertIsNone(server.ambiguity_response(support_routed))
+        _, support_sources = server.retrieval_plan(support_routed, HOME)
+        self.assertEqual(support_sources[0]["id"], "individual")
+
+        calendar_history = [
+            {"role": "user", "content": "What current schedule is shown on this page?"},
+            {"role": "assistant", "content": "The calendar lists current sessions."},
+        ]
+        calendar_routed = server.contextual_routing_question(
+            "What are the regular class hours?",
+            calendar_history,
+        )
+        self.assertIn("current schedule", calendar_routed)
+        self.assertIsNone(
+            server.ambiguity_response(
+                calendar_routed,
+                page_context={"url": server.CALENDAR_URL},
+            )
+        )
+        scope, calendar_sources = server.retrieval_plan(
+            calendar_routed,
+            {"url": server.CALENDAR_URL},
+        )
+        self.assertEqual(scope, "page")
+        self.assertEqual(calendar_sources[0]["id"], "calendar")
+
+    def test_explicit_catalog_and_schedule_topic_shifts_do_not_inherit_a_device_topic(self):
+        history = [
+            {"role": "user", "content": "Can I get a free laptop?"},
+            {"role": "assistant", "content": "Laptop supply is limited."},
+        ]
+
+        catalog_question = "What kinds of classes are offered?"
+        catalog_routed = server.contextual_routing_question(catalog_question, history)
+        self.assertEqual(catalog_routed, server.semantic_question(catalog_question))
+        catalog_clarification = server.ambiguity_response(catalog_routed)
+        self.assertIsNotNone(catalog_clarification)
+        self.assertNotIn("device", catalog_clarification["message"].lower())
+
+        schedule_question = "What are the regular class hours?"
+        schedule_routed = server.contextual_routing_question(schedule_question, history)
+        self.assertEqual(schedule_routed, server.semantic_question(schedule_question))
+        self.assertIsNone(server.ambiguity_response(schedule_routed))
+        scope, schedule_sources = server.retrieval_plan(schedule_routed, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual(schedule_sources[0]["id"], "calendar")
+
     def test_conversational_it_does_not_mean_the_host_page(self):
         self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
         self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))
@@ -226,6 +283,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "QRCode for Pre-Computer Safety Survey",
             "Your content has been submitted",
             "Ended Ended Main Office (LIC)",
+            "Computer Lab Clip Art",
             "IMG_0210_edited.jpg",
         ]
         for fragment in fragments:

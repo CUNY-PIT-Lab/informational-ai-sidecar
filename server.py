@@ -47,6 +47,7 @@ from evaluation_store import (
 from prompt_policy import (
     PROMPT_BEHAVIOR_RELEASE,
     PROMPT_POLICY_VERSION,
+    RETRY_INSTRUCTIONS,
     build_retry_prompt,
 )
 from source_selector import ASK as SELECTOR_ASK
@@ -376,6 +377,8 @@ _VISUAL_SCAFFOLD = (
     re.compile(r"^a digital navigator helping\b", re.I),
     re.compile(r"^participant being helped\b", re.I),
     re.compile(r"^the crowd at the annual fortune society tech fair\b", re.I),
+    re.compile(r"^.+\s+badge$", re.I),
+    re.compile(r"^.+\s+clip art$", re.I),
     re.compile(r"^.+\.(?:gif|jpe?g|png|webp)$", re.I),
 )
 
@@ -535,7 +538,7 @@ def semantic_question(value):
         flags=re.I,
     )
     text = re.sub(
-        r"\b(?:tell|show|reveal|give)\s+(?:me\s+)?(?:the\s+)?"
+        r"\b(?:tell|show|reveal|give)\s+(?:me\s+)?(?:the\s+)?(?:your\s+)?"
         r"(?:hidden\s+|system\s+|developer\s+|internal\s+)*(?:prompt|instructions?|rules?)\b",
         " ",
         text,
@@ -560,9 +563,11 @@ def tokens(value, keep_stopwords=False):
 _QUERY_TERM_GROUPS = (
     frozenset({"class", "classes"}),
     frozenset({"device", "devices"}),
+    frozenset({"eligible", "eligibility", "qualify", "qualified", "requirements"}),
     frozenset({"laptop", "laptops"}),
     frozenset({"phone", "phones", "smartphone", "smartphones"}),
     frozenset({"register", "registered", "registration"}),
+    frozenset({"skill", "skills"}),
     frozenset({"workshop", "workshops"}),
 )
 
@@ -775,7 +780,8 @@ def device_use_support_intent(text):
         re.search(
             r"\b(?:help (?:me )?(?:use|using|with)|learn(?:ing)? (?:how )?to use|"
             r"teach (?:me )?(?:how )?to use|using|set ?up|navigate|personalize|"
-            r"troubleshoot|not working|problem|issue|repair|fix|broken)\b",
+            r"troubleshoot|not working|problem|issue|repair|replace|cracked|"
+            r"screen|fix|broken)\b",
             value,
         )
     )
@@ -796,11 +802,22 @@ def device_distribution_intent(text):
     """Recognize named device programs without treating generic enrollment as one."""
 
     value = fold_text(semantic_question(text))
-    return bool(re.search(
+    if re.search(
         r"\b(?:acp|affordable connectivity program|lifeline|computers 4 people|"
-        r"device distribution|phone service|laptop referral)\b",
+        r"device distribution|mobile distribution|phone service|free (?:smart)?phones?|"
+        r"smartphone distribution|laptop referral)\b",
         value,
-    ))
+    ):
+        return True
+    words = set(tokens(value, keep_stopwords=True))
+    return bool(
+        words.intersection({
+            "computer", "device", "laptop", "phone", "phones", "smartphone", "smartphones",
+        })
+        and words.intersection({
+            "available", "eligible", "free", "get", "obtain", "qualify", "receive",
+        })
+    )
 
 
 def content_detail_intent(text):
@@ -828,6 +845,65 @@ def retired_class_intent(text):
     return resume_class or pivot_class
 
 
+def registration_intent(text):
+    """Recognize an explicit request to register or reserve a class."""
+
+    value = fold_text(semantic_question(text))
+    return bool(re.search(
+        r"\b(?:register|registered|registration|sign up|reserve|registrarme|"
+        r"registro|inscribirme)\b",
+        value,
+    ))
+
+
+def schedule_intent(text):
+    """Recognize dates, locations, and operating hours, not class duration."""
+
+    value = fold_text(semantic_question(text))
+    words = set(tokens(value, keep_stopwords=True))
+    if re.search(r"\b(?:how many hours?|how long|duration|class length)\b", value):
+        return False
+    return bool(re.search(
+        r"\b(?:calendar|current dates?|class dates?|this week|next class|"
+        r"when (?:is|are|does|do|will)|hours?|schedule|locations?|where is|"
+        r"calendario|fechas?|cuando|donde)\b",
+        value,
+    )) or bool(
+        words.intersection({"today", "tomorrow", "tonight"})
+        and words.intersection({
+            "calendar", "class", "classes", "course", "courses", "event", "events",
+            "session", "sessions", "training", "trainings", "workshop", "workshops",
+        })
+    )
+
+
+def exact_named_source_ids(text):
+    """Resolve a public page title named in the question before broad directories.
+
+    This is title-based routing only: it selects a current approved record and
+    never supplies participant-facing factual prose.
+    """
+
+    value = " ".join(tokens(fold_text(semantic_question(text)), keep_stopwords=True))
+    matches = []
+    for source in RETRIEVABLE_SOURCES:
+        title = re.sub(
+            r"\s*[|·]\s*FS Digital Equity\s*$",
+            "",
+            str(source.get("title") or ""),
+            flags=re.I,
+        )
+        title_value = " ".join(tokens(fold_text(title), keep_stopwords=True))
+        title_terms = title_value.split()
+        if len(title_terms) < 2:
+            continue
+        aliases = {title_value, title_value.replace(" and ", " ")}
+        if any(re.search(rf"(?:^| )({re.escape(alias)})(?: |$)", value) for alias in aliases):
+            matches.append((len(title_terms), source["id"]))
+    matches.sort(key=lambda row: (-row[0], row[1]))
+    return [source_id for _, source_id in matches]
+
+
 def likely_source_ids(text, fallback=True):
     lowered = fold_text(semantic_question(text))
     word_set = set(tokens(lowered, keep_stopwords=True))
@@ -836,6 +912,21 @@ def likely_source_ids(text, fallback=True):
     def add(source_id):
         if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
             ranked.append(source_id)
+
+    # Action-specific routes come first. A real schedule or registration
+    # request can supersede a named class because those details live on the
+    # calendar/contact pages.
+    if registration_intent(lowered):
+        add("contact")
+        add("calendar")
+    if schedule_intent(lowered):
+        add("calendar")
+
+    # An exact public title outranks broad program, support, and directory
+    # language. This remains routing only; all visible facts come from the
+    # selected current source record at model time.
+    for source_id in exact_named_source_ids(lowered):
+        add(source_id)
 
     if (
         word_set.intersection({"program", "programs"})
@@ -851,42 +942,42 @@ def likely_source_ids(text, fallback=True):
     if retired_class:
         add("trainings")
         add("contact")
-    registration_intent = any(term in lowered for term in (
-        "register", "registration", "sign up", "reserve", "registrarme",
-        "registro", "inscribirme",
-    ))
-    if registration_intent:
-        add("contact")
-        add("calendar")
-    schedule_intent = bool(re.search(
-        r"\b(?:calendar|current dates?|class dates?|this week|next class|"
-        r"when (?:is|are|does|do|will)|schedule|locations?|where is|"
-        r"calendario|fechas?|cuando|donde)\b",
-        lowered,
-    ))
-    if schedule_intent:
-        add("calendar")
     spreadsheet_terms = word_set.intersection({
         "excel", "spreadsheet", "spreadsheets", "worksheet", "worksheets",
     })
     if spreadsheet_terms and not retired_class:
         formatting_focus = word_set.intersection({
-            "format", "formatting", "read", "readable", "date", "dates", "number", "numbers",
+            "border", "borders", "cell", "cells", "currency", "date", "dates",
+            "format", "formatting", "number", "numbers", "percent", "percentage",
+            "percentages", "read", "readable", "style", "styles",
         })
         organizing_focus = word_set.intersection({
             "duplicate", "duplicates", "filter", "organize", "organizing", "record",
             "records", "sort", "sorting",
         })
-        if formatting_focus and not organizing_focus:
+        presenting_focus = word_set.intersection({
+            "chart", "charts", "layout", "layouts", "pdf", "print", "printing",
+            "scale", "scaling", "sparkline", "sparklines", "visual", "visuals",
+        })
+        formula_focus = word_set.intersection({"formula", "formulas", "function", "functions"})
+        focus_groups = [formatting_focus, organizing_focus, presenting_focus, formula_focus]
+        focused_count = sum(bool(group) for group in focus_groups)
+        if formatting_focus and focused_count == 1:
             add(EXCEL_FORMATTING_ID)
-        if organizing_focus and not formatting_focus:
+        if organizing_focus and focused_count == 1:
             add(EXCEL_ORGANIZING_ID)
-        if word_set.intersection({"beginner", "basic", "basics", "intro", "introduction", "new", "start", "starting"}):
+        if presenting_focus and focused_count == 1:
+            add(EXCEL_PRESENTING_ID)
+        if formula_focus and focused_count == 1:
+            add(EXCEL_FORMULAS_ID)
+        if (
+            focused_count == 0
+            and word_set.intersection({"beginner", "basic", "basics", "intro", "introduction", "new", "start", "starting"})
+        ):
             add(INTRO_EXCEL_ID)
-        if not word_set.intersection({
-            "chart", "charts", "formula", "formulas", "format", "formatting",
-            "organize", "organizing", "present", "presenting", "sort", "sorting",
-            "duplicate", "duplicates", "filter", "function", "functions", "read",
+        if focused_count == 0 and not word_set.intersection({
+            "present", "presenting", "sort", "sorting", "duplicate", "duplicates",
+            "filter", "read",
         }):
             add(INTRO_EXCEL_ID)
     if word_set.intersection({"scam", "scams", "fraud", "phishing"}):
@@ -999,8 +1090,19 @@ def likely_source_ids(text, fallback=True):
             or word_set.intersection({"catalog", "uncatalogued"})
         )
     ):
-        add("individual")
+        add("home")
         add("contact")
+        add("individual")
+    if (
+        word_set.intersection({"laptop", "laptops"})
+        and (
+            word_set.intersection({"automatic", "automatically", "every", "participant", "qualify"})
+            or "automatically qualify" in lowered
+        )
+    ):
+        add("home")
+        add("contact")
+        add("devices")
 
     rules = [
         ("individual", ("one-to-one", "one to one", "tutor", "tutoring", "tech support", "computer lab", "appointment", "individual help", "repair", "fix", "broken", "ayuda individual", "tutoria")),
@@ -1147,21 +1249,93 @@ def source_excerpt(source, query, limit=1800):
     ):
         query_terms.update({"attend", "class", "register", "registered", "registration"})
     availability_requested = bool(re.search(
-        r"\b(?:available|availability|current|does .+ have|is there|offered|when)\b",
+        r"\b(?:available|availability|current|currently|does .+ have|eligible|"
+        r"eligibility|is there|offered|qualify|requirements?|status|still|today|"
+        r"tomorrow|when)\b",
         query_value,
     ))
+    raw_blocks = (
+        [source.get("description", "")]
+        + list(source.get("facts", []))
+        + list(source.get("blocks", []))
+    )
+    cleaned_blocks = [clean_evidence_fragment(block) for block in raw_blocks]
+    priorities = collections.defaultdict(float)
+    headings = {
+        fold_text(clean_evidence_fragment(value))
+        for value in source.get("headings", [])
+        if clean_evidence_fragment(value)
+    }
+
+    # Keep an FAQ answer next to the matching public question. Wix exposes
+    # those as adjacent blocks; scoring each block independently can otherwise
+    # retain the question while truncating its answer.
+    faq_matches = []
+    for index, block in enumerate(cleaned_blocks):
+        if not block.endswith("?"):
+            continue
+        overlap = len(query_terms.intersection(expanded_query_terms(block)))
+        if overlap < 2:
+            continue
+        faq_matches.append((overlap, index))
+    matched_faq_indices = set()
+    if faq_matches:
+        overlap, index = max(faq_matches, key=lambda row: (row[0], -row[1]))
+        matched_faq_indices.add(index)
+        priorities[index] = max(priorities[index], 140 + overlap)
+        if index + 1 < len(cleaned_blocks) and cleaned_blocks[index + 1]:
+            matched_faq_indices.add(index + 1)
+            priorities[index + 1] = max(priorities[index + 1], 139 + overlap)
+
+    # When the question names a source heading, keep that contiguous section
+    # together. This preserves eligibility and availability details without
+    # encoding any participant-facing answer in the router.
+    active_section = False
+    section_offset = 0
+    matched_section_indices = set()
+    for index, block in enumerate(cleaned_blocks):
+        block_value = fold_text(block)
+        if block_value in headings:
+            active_section = bool(query_terms.intersection(expanded_query_terms(block)))
+            section_offset = 0
+        if not active_section:
+            continue
+        matched_section_indices.add(index)
+        priorities[index] = max(priorities[index], 90 - min(section_offset, 30))
+        section_offset += 1
+
+    list_requested = bool(re.search(
+        r"\b(?:which|what|list|name|names|option|options|certification|certifications)\b",
+        query_value,
+    ))
+    if list_requested:
+        for index, block in enumerate(cleaned_blocks):
+            if (
+                2 <= len(block.split()) <= 7
+                and re.search(r"\b(?:19|20)\d{2}\b", block)
+            ):
+                priorities[index] = max(priorities[index], 110)
+
     candidates = []
     template_contaminated = source_has_template_content(source)
-    for index, block in enumerate(
-        [source.get("description", "")] + list(source.get("facts", [])) + list(source.get("blocks", []))
-    ):
+    for index, block in enumerate(cleaned_blocks):
+        if matched_faq_indices and index not in matched_faq_indices:
+            continue
+        if (
+            not matched_faq_indices
+            and matched_section_indices
+            and index not in matched_section_indices
+            and index != 0
+        ):
+            continue
         if (
             template_contaminated
             and fold_text(str(block)).strip() in {"about us", "meet the team"}
         ):
             continue
-        block = clean_evidence_fragment(block)
         if not block:
+            continue
+        if re.search(r"\b(?:collage|logo)$", block, flags=re.I):
             continue
         block_value = fold_text(block)
         overlap = len(query_terms.intersection(tokens(block)))
@@ -1174,7 +1348,7 @@ def source_excerpt(source, query, limit=1800):
             )
             else 0
         )
-        candidates.append((overlap + status_bonus, -index, block))
+        candidates.append((priorities[index] + overlap + status_bonus, -index, block))
     candidates.sort(reverse=True)
     selected = []
     length = 0
@@ -1252,6 +1426,11 @@ def grounded_evidence_sentences(
         r"\b(?:what does|what is .+ for|purpose)\b",
         fold_text(query),
     ))
+    eligibility_requested = bool(
+        set(tokens(focus_query or query, keep_stopwords=True)).intersection({
+            "eligible", "eligibility", "qualify", "qualified", "requirements",
+        })
+    )
     seen = set()
     source_labels = {
         fold_text(clean_evidence_fragment(value)).strip(" .!?:;-")
@@ -1341,12 +1520,22 @@ def grounded_evidence_sentences(
                 if purpose_requested
                 else 0
             )
+            eligibility_bonus = (
+                14
+                if eligibility_requested
+                and sentence_terms.intersection({
+                    "active", "attendee", "attendees", "previous", "qualify",
+                    "required", "requirements", "workshop", "workshops",
+                })
+                else 0
+            )
             score = (
                 overlap_score
                 + focus_bonus
                 + title_bonus
                 + status_bonus
                 + purpose_bonus
+                + eligibility_bonus
                 - generic_summary_penalty
                 - (value_index * 0.01 + sentence_index * 0.001)
             )
@@ -1388,9 +1577,10 @@ def distinctive_query_terms(query):
 
     request_words = {
         "after", "ask", "asks", "cover", "covered", "covers", "else", "explain",
-        "find", "learn", "making", "now", "its", "need", "offered", "read",
+        "current", "find", "hours", "instead", "learn", "making", "now", "its",
+        "need", "offered", "read", "regular", "status", "still", "switch", "switching",
         "say", "says", "show", "shows", "teach", "teaches", "use", "uses", "who",
-        "class", "classes", "course", "courses", "workshop", "workshops",
+        "today", "tomorrow", "class", "classes", "course", "courses", "workshop", "workshops",
     }
     known = {
         term: DOCUMENT_FREQUENCY[term]
@@ -1424,6 +1614,10 @@ def source_supports_query(source, query):
         "one-to-one": {"one-on"},
         "resume": {"resumes"},
         "resumes": {"resume"},
+        "skill": {"skills"},
+        "skills": {"skill"},
+        "qualify": {"eligible", "eligibility", "qualified"},
+        "requirements": {"eligible", "eligibility", "qualify", "qualified"},
         "workshop": {"workshops"},
         "workshops": {"workshop"},
     }
@@ -1681,6 +1875,10 @@ def question_needs_history_context(question):
         r"\b(?:this|that) class\b",
         r"\b(?:which|is there) one\b",
         r"\bwhat (?:else|about|are they for|kind of help)\b",
+        r"\bwhat kinds? of (?:help|support|classes|services|workshops)\b",
+        r"\bwhat (?:are|is) (?:the )?(?:regular )?(?:class |support |office )?"
+        r"(?:hours|schedule)\b",
+        r"\b(?:can|do) i walk in\b",
         r"\bwhen is it offered\b",
         r"\bdo i need\b",
         r"\bhow do i confirm whether i qualify\b",
@@ -1708,12 +1906,68 @@ def history_topic_question(history):
     return fallback
 
 
+def explicit_follow_up_domain(question):
+    """Return the domain of a broad but independently routable new question."""
+
+    value = fold_text(semantic_question(question))
+    if re.search(
+        r"\b(?:what|which) kinds? of (?:classes|courses|trainings|workshops)\b|"
+        r"\b(?:class|course|training|workshop) catalog\b|"
+        r"\bwhat (?:classes|courses|trainings|workshops) (?:are )?(?:available|offered)\b",
+        value,
+    ):
+        return "catalog"
+    if re.search(
+        r"\b(?:calendar|current schedule|regular class hours|class schedule|"
+        r"schedule of classes|what (?:are|is) (?:the )?class hours)\b",
+        value,
+    ):
+        return "schedule"
+    if re.search(
+        r"\bwhat kinds? of (?:help|support|services)\b|"
+        r"\bwhat (?:help|support|services) (?:are|is) (?:available|offered)\b",
+        value,
+    ):
+        return "support"
+    return ""
+
+
+def routing_topic_domain(question):
+    """Classify only the broad domains needed to avoid stale-topic carryover."""
+
+    value = fold_text(semantic_question(question))
+    explicit = explicit_follow_up_domain(value)
+    if explicit:
+        return explicit
+    words = set(tokens(value, keep_stopwords=True))
+    if device_use_support_intent(value) or individual_support_intent(value):
+        return "support"
+    if device_distribution_intent(value):
+        return "device"
+    if re.search(r"\b(?:calendar|current schedule|class schedule|regular class hours)\b", value):
+        return "schedule"
+    if exact_named_source_ids(value) or words.intersection(
+        SPECIFIC_CLASS_TERMS.union({"class", "classes", "course", "courses", "training", "trainings", "workshop", "workshops"})
+    ):
+        return "catalog"
+    return ""
+
+
 def contextual_routing_question(question, history=None):
     """Add only the latest safe topic to genuinely elliptical retrieval turns."""
 
     question = semantic_question(question)
     if not question_needs_history_context(question):
         return question
+    topic = history_topic_question(history)
+    new_domain = explicit_follow_up_domain(question)
+    if new_domain:
+        prior_domain = routing_topic_domain(topic)
+        # A broad catalog question is independently routable even after a
+        # specific class. Schedule/support questions retain context only when
+        # the preceding turn was already in that same domain.
+        if new_domain == "catalog" or prior_domain != new_domain:
+            return question
     # A turn can contain conversational words such as "there" while still
     # naming a complete, independently routable topic.  In that case the new
     # topic must win over the previous exchange.  Calendar and registration
@@ -1723,7 +1977,6 @@ def contextual_routing_question(question, history=None):
     generic_follow_up_ids = {"calendar", "contact", "trainings"}
     if any(source_id not in generic_follow_up_ids for source_id in explicit_sources):
         return question
-    topic = history_topic_question(history)
     if not topic or fold_text(topic) == fold_text(question):
         return question
     return f"{topic}. Follow-up: {question}"
@@ -1779,7 +2032,15 @@ def current_faq_sources(question):
         words.intersection({"assistance", "help", "skill", "skills", "topic", "topics"})
         and ("not listed" in value or words.intersection({"catalog", "uncatalogued"}))
     ):
-        source_ids = ["contact", "individual"]
+        source_ids = ["home", "contact"]
+    elif (
+        words.intersection({"laptop", "laptops"})
+        and (
+            words.intersection({"automatic", "automatically", "every", "participant", "qualify"})
+            or "automatically qualify" in value
+        )
+    ):
+        source_ids = ["home", "contact", "devices"]
     return [
         SOURCE_BY_ID[source_id]
         for source_id in source_ids
@@ -2015,7 +2276,7 @@ def ambiguity_response(question, language_code=None, page_context=None):
         or (
             words.intersection({"class", "classes", "workshop", "workshops", "training"})
             and len(words) <= 6
-            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where", "assessment", "assessments", "certification", "certifications", "practice", "chart", "charts"})
+            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where", "hours", "schedule", "calendar", "assessment", "assessments", "certification", "certifications", "practice", "chart", "charts"})
         )
     ):
         cases.append((
@@ -2186,12 +2447,26 @@ def selector_clarification_response(
     ):
         message = model_question
     choices = []
-    for source in candidates:
-        title = clean_source_title(source)
-        choices.append({
-            "label": clip_words(title, 6),
-            "prompt": prompt_template.format(title=title),
-        })
+    if len(candidates) > 1:
+        for source in candidates:
+            title = clean_source_title(source)
+            choices.append({
+                "label": clip_words(title, 6),
+                "prompt": prompt_template.format(title=title),
+            })
+    elif candidates and not model_question:
+        title = clip_words(clean_source_title(candidates[0]), 6)
+        message = (
+            f"¿Qué necesitas saber sobre {title}?"
+            if language_code == "es"
+            else f"What do you need to know about {title}?"
+        )
+    if len(candidates) <= 1:
+        reason = (
+            "Un detalle ayudará."
+            if language_code == "es"
+            else "One detail will help."
+        )
     response = response_contract(
         kind="clarify",
         message=message,
@@ -2356,6 +2631,23 @@ def answers_near_duplicate(answer, prior_answer):
     prior_text = " ".join(tokens(prior_answer, keep_stopwords=True))
     if current_text == prior_text:
         return True
+    current_sentences = [
+        set(tokens(sentence, keep_stopwords=True))
+        for sentence in re.split(r"(?<=[.!?])\s+", str(answer or ""))
+    ]
+    prior_sentences = [
+        set(tokens(sentence, keep_stopwords=True))
+        for sentence in re.split(r"(?<=[.!?])\s+", str(prior_answer or ""))
+    ]
+    for current_sentence in current_sentences:
+        if len(current_sentence) < 5:
+            continue
+        for prior_sentence in prior_sentences:
+            if len(prior_sentence) < 5:
+                continue
+            overlap = len(current_sentence.intersection(prior_sentence))
+            if overlap / min(len(current_sentence), len(prior_sentence)) >= 0.85:
+                return True
     containment = len(current.intersection(prior)) / max(1, min(len(current), len(prior)))
     union = len(current.union(prior))
     return min(len(current), len(prior)) >= 6 and containment >= 0.82 and (
@@ -2491,8 +2783,10 @@ def model_selection_retry_reason(raw, retrieved, interaction=None, prior_answer=
     interaction = dict(interaction or {})
     allowed = {source["id"]: source for source in retrieved}
     parsed = parse_selector_response(raw, allowed)
-    if not parsed or parsed["pick"] == SELECTOR_ASK:
+    if not parsed:
         return ""
+    if parsed["pick"] == SELECTOR_ASK:
+        return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
     message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
     if not model_answer_is_grounded(message, selected):

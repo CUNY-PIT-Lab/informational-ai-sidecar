@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import hashlib
 import json
 import math
 import pathlib
 import platform
+import re
 import statistics
 import subprocess
 import sys
@@ -31,6 +33,14 @@ LEVELS = {"hard", "release", "diagnostic"}
 RESPONSE_KINDS = {"answer", "clarify", "handoff", "privacy"}
 REQUEST_KINDS = {
     "clarification", "navigation", "privacy", "procedure", "retrieval", "sensitive"
+}
+EXPECTATION_OVERRIDE_FIELDS = {
+    "advancement_required",
+    "max_message_words",
+    "message_contains_any",
+    "message_excludes",
+    "source_excludes",
+    "source_match_any",
 }
 REQUIRED_FIELDS = {
     "kind",
@@ -67,6 +77,91 @@ def load_json(path: pathlib.Path) -> dict:
 
 def file_hash(path: pathlib.Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def apply_grader_overrides(
+    document: dict,
+    spec: dict,
+    *,
+    unit_kind: str,
+) -> dict:
+    """Apply a bounded, versioned expectation overlay without changing cases."""
+
+    if unit_kind not in {"cases", "turns"}:
+        raise ValueError("unit_kind must be cases or turns")
+    grader_overrides = spec.get("grader_overrides", {})
+    if not grader_overrides:
+        return document
+    if not isinstance(grader_overrides, dict):
+        raise ValueError("grader_overrides must be an object")
+    expected_key = "case_expectations" if unit_kind == "cases" else "turn_expectations"
+    unexpected = set(grader_overrides).difference(
+        {expected_key, "clarification_authority"}
+    )
+    if unexpected:
+        raise ValueError(
+            "unsupported grader override groups: " + ", ".join(sorted(unexpected))
+        )
+    overrides = grader_overrides.get(expected_key, {})
+    if not isinstance(overrides, dict):
+        raise ValueError(f"{expected_key} must be an object")
+    clarification_authority = grader_overrides.get("clarification_authority")
+    if clarification_authority not in {None, "sources_or_choice_targets"}:
+        raise ValueError(
+            "clarification_authority must be sources_or_choice_targets when set"
+        )
+
+    result = copy.deepcopy(document)
+    if unit_kind == "cases":
+        units = {case.get("id"): case for case in result.get("cases", [])}
+    else:
+        units = {
+            f"{episode.get('id')}/{turn.get('id')}": turn
+            for episode in result.get("episodes", [])
+            for turn in episode.get("turns", [])
+        }
+    if clarification_authority == "sources_or_choice_targets":
+        for unit in units.values():
+            unit.setdefault("expect", {})[
+                "clarify_authority_from_choices"
+            ] = True
+    for unit_id, expectation_override in overrides.items():
+        if unit_id not in units:
+            raise ValueError(f"grader override references unknown {unit_kind[:-1]} {unit_id!r}")
+        if not isinstance(expectation_override, dict):
+            raise ValueError(f"grader override for {unit_id!r} must be an object")
+        unsupported = set(expectation_override).difference(EXPECTATION_OVERRIDE_FIELDS)
+        if unsupported:
+            raise ValueError(
+                f"grader override for {unit_id!r} has unsupported fields: "
+                + ", ".join(sorted(unsupported))
+            )
+        if "advancement_required" in expectation_override:
+            if unit_kind != "turns" or not isinstance(
+                expectation_override["advancement_required"], bool
+            ):
+                raise ValueError(
+                    "advancement_required is a boolean multi-turn expectation"
+                )
+        if "max_message_words" in expectation_override:
+            limit = expectation_override["max_message_words"]
+            if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 48:
+                raise ValueError("max_message_words must be an integer from 1 to 48")
+        for field in (
+            "message_contains_any",
+            "message_excludes",
+            "source_excludes",
+            "source_match_any",
+        ):
+            if field not in expectation_override:
+                continue
+            values = expectation_override[field]
+            if not isinstance(values, list) or not all(
+                isinstance(value, str) and value.strip() for value in values
+            ):
+                raise ValueError(f"{field} must be a list of non-empty strings")
+        units[unit_id].setdefault("expect", {}).update(expectation_override)
+    return result
 
 
 def git_value(*args: str) -> str:
@@ -211,6 +306,34 @@ def source_blob(response: dict) -> str:
     return " ".join(values).casefold()
 
 
+def choice_blob(response: dict) -> str:
+    values = []
+    for choice in response.get("choices", []):
+        if not isinstance(choice, dict):
+            continue
+        values.extend(str(choice.get(key, "")) for key in ("id", "label", "prompt", "url"))
+    return " ".join(values).casefold()
+
+
+def artifact_response(response: dict) -> dict:
+    """Preserve response evidence without publishing continuation credentials."""
+
+    result = copy.deepcopy(response)
+    if result.get("conversation_token"):
+        result["conversation_token"] = "[redacted]"
+    return result
+
+
+def blob_contains(blob: str, term: str) -> bool:
+    raw_blob = str(blob or "").casefold()
+    raw_term = str(term or "").casefold()
+    if raw_term in raw_blob:
+        return True
+    normalize = lambda value: " ".join(re.findall(r"[^\W_]+", value, flags=re.UNICODE))
+    normalized_term = normalize(raw_term)
+    return bool(normalized_term) and normalized_term in normalize(raw_blob)
+
+
 def allowed_url(value: object) -> bool:
     try:
         parsed = urllib.parse.urlsplit(str(value or ""))
@@ -320,17 +443,30 @@ def expected_failures(case: dict, status: int, response: dict, capture_mode: str
                 f"choices: expected {expect['choice_labels_exact']!r}, got {labels!r}"
             )
     blob = source_blob(response)
+    authority_blob = (
+        f"{blob} {choice_blob(response)}"
+        if response.get("kind") == "clarify"
+        and expect.get("clarify_authority_from_choices") is True
+        else blob
+    )
     source_terms = [str(value).casefold() for value in expect.get("source_match_any", [])]
-    if source_terms and not any(term in blob for term in source_terms):
+    if source_terms and not any(blob_contains(authority_blob, term) for term in source_terms):
         failures.append(f"sources: none matched {source_terms!r}")
     excluded_source_terms = [
         str(value).casefold() for value in expect.get("source_excludes", [])
     ]
     for term in excluded_source_terms:
-        if term in blob:
+        if blob_contains(authority_blob, term):
             failures.append(f"sources: excluded term {term!r} was present")
     message = str(response.get("message", ""))
     folded_message = message.casefold()
+    max_message_words = expect.get("max_message_words")
+    if isinstance(max_message_words, int) and not isinstance(max_message_words, bool):
+        message_words = len(message.split())
+        if message_words > max_message_words:
+            failures.append(
+                f"message: exceeds case limit of {max_message_words} words; got {message_words}"
+            )
     message_terms = [
         str(value).casefold() for value in expect.get("message_contains_any", [])
     ]
@@ -636,7 +772,12 @@ def run(args: argparse.Namespace) -> int:
     cases_path = pathlib.Path(args.cases).resolve()
     spec_path = pathlib.Path(args.spec).resolve()
     suite = load_json(cases_path)
-    load_json(spec_path)
+    spec = load_json(spec_path)
+    try:
+        suite = apply_grader_overrides(suite, spec, unit_kind="cases")
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
     validation_errors = validate_suite(suite)
     if validation_errors:
         for error in validation_errors:
@@ -717,7 +858,7 @@ def run(args: argparse.Namespace) -> int:
             "transport_error": transport_error,
             "passed": not failures,
             "failures": failures,
-            "response": response,
+            "response": artifact_response(response),
         }
         results.append(row)
         marker = "PASS" if row["passed"] else "FAIL"
@@ -735,7 +876,7 @@ def run(args: argparse.Namespace) -> int:
         "run_id": str(uuid.uuid4()),
         "created_at": timestamp,
         "suite": suite.get("suite_id"),
-        "suite_version": load_json(spec_path).get("identity", {}).get("version"),
+        "suite_version": spec.get("identity", {}).get("version"),
         "target": {
             "base_url": base_url,
             "health_status": health_status,

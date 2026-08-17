@@ -1,5 +1,40 @@
 # Website Guide — next steps
 
+## Meeting 4 release — 2026-08-17
+
+- [x] Review Sasha's forwarded Meeting 4 summary and record bot, source,
+  evaluator, prompt-review, persistence, and Wix interventions without copying
+  private meeting credentials into the repository.
+- [x] Refresh the public corpus atomically at Wix revision 2063: 138/138 live
+  routes, 90 answer-authority pages, current `/workshops`, `/support`, device
+  guidance, class descriptions, and the four current homepage/contact FAQs.
+- [x] Archive the meaningful historical prompt releases, compile a dedicated
+  current prompt, and add a bounded shared Prompt Lab whose proposals cannot
+  activate runtime behavior.
+- [x] Preserve the existing shared staging evaluator, timestamps, newest-first
+  ordering, pagination, notes, annotations, buckets, and transcript integrity.
+- [x] Run the frozen v11 staging gate: 41 scattershot cases plus 12 conversations
+  and 50 turns. All 91 requests completed, all 51 factual answers called the
+  model, and capture integrity passed; promotion correctly blocked on excessive
+  one-choice clarification.
+- [x] Preserve the failed v11 run as credential-redacted evidence and version
+  the corrected evaluator overlay without changing its 41 cases, 12
+  conversations, substantive grounding gates, or release-blocking outcome.
+- [x] Redact continuation credentials from every tracked evaluation artifact,
+  make both runners redact future artifacts, and rotate the staging token
+  secret without deleting transcripts or evaluator records.
+- [x] Implement the general v12 repair without factual response templates:
+  exact-title and feature routing, FAQ/section evidence packing, relative-date
+  routing, one-source `ASK` retry, concise direct-answer guidance, status
+  caveats, and sentence-level repetition detection.
+- [ ] Deploy the exact v12 commit to Railway staging, rerun the versioned suites,
+  and require the substantive hard gates to pass before promotion.
+- [ ] Mark PR #18 ready, merge it, verify the GitHub Pages workflow and browser,
+  then deploy that exact merged tree to Railway production with capture `none`,
+  no database, and evaluation disabled.
+- [x] Do not deploy or evaluate this guide on the CUNY PIT Lab website. PIT Lab
+  may link to the canonical zmuhls production URL only if requested.
+
 ## Grounded generation and shared evaluation — 2026-08-17
 
 - [x] Add **Start over** to the Pages and Wix clients; clear only tab-local turns, continuation credentials, and session storage without deleting captured evaluation data.
@@ -12,7 +47,10 @@
 - [x] Keep existing captured conversations intact; the shared workspace uses the existing admin-owned bucket set and does not delete editor-specific legacy rows.
 - [x] Timestamp conversation cards, transcript headers, and individual messages; sort every bucket newest first before paginating **Not yet reviewed**.
 - [x] Serialize initial shared note, placement, and annotation writes so simultaneous evaluators receive a version conflict instead of silently overwriting one another.
-- [ ] Deploy this exact revision to Railway staging and verify model variation, grounding rejection, browser reset, persistence after navigation, and shared visibility across two evaluator accounts.
+- [x] Deploy the v11 candidate to Railway staging and verify model-backed answers,
+  grounding rejection, browser reset, persistence after navigation, and the
+  shared evaluator boundary; the formal quality gate found a release-blocking
+  clarification defect now addressed by v12.
 - [ ] Promote only after the staging evidence is green; keep public production capture disabled.
 
 ## Superseded bounded source-selector baseline — 2026-08-12
@@ -48,7 +86,8 @@
 - [x] Merge the release PR, wait for GitHub Pages to finish, and verify the published asset hash.
 - [x] Capture successful live runs for clarification, navigation, procedure, retrieval, privacy, and sensitive requests.
 - [x] Re-run the immutable 41-case benchmark against production and attach its report to the release record.
-- [ ] Review and refresh the open PIT Lab mirror PR after the canonical release is accepted.
+- [x] Keep PIT Lab out of the deployment and evaluation path; use only the
+  canonical zmuhls release URL.
 
 ## Released baseline — 2026-08-09
 

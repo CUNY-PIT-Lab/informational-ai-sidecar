@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "hash_kind": "sha256-of-artifact-bytes",
-  "current_policy_id": "2026-08-17-v11",
+  "current_policy_id": "2026-08-17-v12",
   "current_policy_source": "../prompt_policy.py",
-  "current_policy_source_sha256": "7c45e76fe0f2447964fb0d1e8a0ca3db1d7bac603d109fd642b5fc93798fbaab",
-  "current_compiled_prompt_sha256": "851b0a79994b89dd7b7ea28a44cb79a46df065f56e5509704b026887c9fcfb3b",
+  "current_policy_source_sha256": "6b88018b615d00903ab07c76f5714d996ca369d1b0975ff37bbfccc137f672ac",
+  "current_compiled_prompt_sha256": "3e9b467a124736cda3aae6363d1d8efe4f804f0ffd23719880e964d4fb766b5b",
   "versions": [
     {
       "policy_id": "2026-07-24-v1-reconstructed",
@@ -95,9 +95,20 @@
       "source_date": "2026-08-17",
       "behavior_release": "meeting4-modular-grounded-generation",
       "artifact": "versions/2026-08-17-v11.md",
-      "artifact_sha256": "4fc02a1b106d34f0a3e8fef3d0ce344e138d26f6868bdec2aef96fe1fd8743bc",
+      "artifact_sha256": "5dba2a1c9d142159a1a5f9807b971494144b494d1710f3c30b021571d125131c"
+    },
+    {
+      "policy_id": "2026-08-17-v12",
+      "label": "Direct grounded conversation prompt",
+      "reconstructed": false,
+      "source_commit": "472f9a5ea06d0191589c40991d72b9b948eb3879",
+      "source_state": "authored change after formal v11 staging evaluation",
+      "source_date": "2026-08-17",
+      "behavior_release": "meeting4-direct-grounded-conversation",
+      "artifact": "versions/2026-08-17-v12.md",
+      "artifact_sha256": "4d9790cae06fa90779bbff20f05a214b3d4282e3b3ccdbb35c114a50cef22951",
       "compiled_prompt_artifact": "current.md",
-      "compiled_prompt_artifact_sha256": "c85a0ed3a83176371f5147d3b540dcf1c0439e6a69989fa753fc01277b3bd359"
+      "compiled_prompt_artifact_sha256": "4ccf6ea8e9199d3286e776790fb8b5e0399a29b32007f162b73e648b7244269c"
     }
   ]
 }
