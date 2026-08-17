@@ -2,6 +2,7 @@
 """Security and schema contracts for the evaluator foundation."""
 
 import pathlib
+import inspect
 import sys
 import unittest
 
@@ -55,6 +56,16 @@ class EvaluationSchemaTests(unittest.TestCase):
 
 
 class EvaluationStoreBoundaryTests(unittest.TestCase):
+    def test_all_evaluators_use_one_shared_review_workspace(self):
+        self.assertEqual(evaluation_store.SHARED_BUCKET_OWNER, "admin")
+        for method_name in ("_bucket_set_id", "list_buckets", "list_conversations", "get_conversation"):
+            source = inspect.getsource(getattr(evaluation_store.EvaluationStore, method_name))
+            self.assertIn("SHARED_BUCKET_OWNER", source, method_name)
+
+        save_source = inspect.getsource(evaluation_store.EvaluationStore.save_note)
+        self.assertIn("actor_slot", save_source)
+        self.assertIn("account_slot", save_source)
+
     def test_disabled_store_needs_no_database_or_auth_secret(self):
         store = evaluation_store.EvaluationStore(
             database_url="", enabled=False, auth_secret=""

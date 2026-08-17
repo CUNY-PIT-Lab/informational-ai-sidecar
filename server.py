@@ -47,7 +47,7 @@ from evaluation_store import (
 from source_selector import ASK as SELECTOR_ASK
 from source_selector import SYSTEM_PROMPT as SELECTOR_SYSTEM_PROMPT
 from source_selector import build_prompt as build_selector_prompt
-from source_selector import parse_pick as parse_selector_pick
+from source_selector import parse_response as parse_selector_response
 
 
 HERE = pathlib.Path(__file__).parent
@@ -70,7 +70,7 @@ MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-17-v7"
+PROMPT_POLICY_VERSION = "2026-08-17-v8"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -761,6 +761,11 @@ def likely_source_ids(text, fallback=True):
         if source_id and source_id in SOURCE_BY_ID and source_id not in ranked:
             ranked.append(source_id)
 
+    if (
+        word_set.intersection({"program", "programs"})
+        and word_set.intersection({"describe", "does", "offer", "offers", "overview", "provide", "provides"})
+    ):
+        add("home")
     if device_use_support_intent(lowered):
         add("individual")
     if any(term in lowered for term in (
@@ -1731,7 +1736,10 @@ def ambiguity_response(question, language_code=None):
         "start", "started", "begin", "help", "support", "assistance", "program", "programs",
         "service", "services", "option", "options", "available", "offered", "offer",
     }
-    broad_start_or_help = (
+    program_overview = bool(words.intersection({"program", "programs"})) and bool(
+        words.intersection({"describe", "does", "offer", "offers", "overview", "provide", "provides"})
+    )
+    broad_start_or_help = not program_overview and (
         lowered in {
             "help", "i need help", "i want help", "can i get help", "support", "i need support",
             "how can you help me", "what can you help with", "how do i get started", "how can i get started",
@@ -1867,7 +1875,13 @@ def human_handoff_response(question="", language_code="en"):
 BASE_SYSTEM_PROMPT = SELECTOR_SYSTEM_PROMPT
 
 
-def retrieval_prompt(query, sources, page_context=None, interaction=None):
+def retrieval_prompt(
+    query,
+    sources,
+    page_context=None,
+    interaction=None,
+    previous_answer="",
+):
     records = []
     for source in sources:
         records.append({
@@ -1886,6 +1900,7 @@ def retrieval_prompt(query, sources, page_context=None, interaction=None):
     return build_selector_prompt(
         records,
         current_page_id=current["id"] if current else "",
+        previous_answer=clip_words(previous_answer, MAX_MESSAGE_WORDS),
     )
 
 
@@ -1904,6 +1919,7 @@ def selector_clarification_response(
     retrieval_scope="site",
     interaction=None,
     routing_question=None,
+    model_question="",
 ):
     interaction = dict(interaction or {})
     language_code = interaction.get("request_language") or "en"
@@ -1929,6 +1945,12 @@ def selector_clarification_response(
         message = "Which class do you mean?" if class_candidates else "Which page do you mean?"
         prompt_template = "Tell me about {title}."
         reason = "Choose one option."
+    model_question = clip_words(model_question, 24).strip()
+    if (
+        model_question.endswith("?")
+        and not re.search(r"https?://|www\.", model_question, flags=re.I)
+    ):
+        message = model_question
     choices = []
     for source in candidates:
         title = clean_source_title(source)
@@ -1950,6 +1972,29 @@ def selector_clarification_response(
     return response
 
 
+def model_answer_is_grounded(answer, source):
+    """Apply cheap factual guards after a model answers from one approved record."""
+
+    answer = clip_words(re.sub(r"<[^>]+>", " ", str(answer or "")), MAX_MESSAGE_WORDS)
+    if not answer or re.search(r"https?://|www\.", answer, flags=re.I):
+        return False
+    source_text = searchable_text(source)
+    source_digits = {re.sub(r"\D", "", value) for value in re.findall(r"\d[\d() .+-]*\d|\d", source_text)}
+    answer_digits = {re.sub(r"\D", "", value) for value in re.findall(r"\d[\d() .+-]*\d|\d", answer)}
+    if any(value and value not in source_digits for value in answer_digits):
+        return False
+    if detect_language(answer) == "en":
+        generic = {
+            "answer", "digital", "equity", "fortune", "guide", "information",
+            "page", "program", "society", "website",
+        }
+        answer_terms = set(tokens(answer)).difference(generic)
+        source_terms = set(tokens(source_text)).difference(generic)
+        if len(answer_terms.intersection(source_terms)) < min(2, len(answer_terms)):
+            return False
+    return True
+
+
 def parse_model_selection(
     raw,
     question,
@@ -1962,9 +2007,17 @@ def parse_model_selection(
     retrieved = list(retrieved or retrieve_sources(question))
     interaction = dict(interaction or {})
     language_code = interaction.get("request_language") or "en"
-    chat_stage = interaction.get("chat_stage") or "opening"
     allowed = {source["id"]: source for source in retrieved}
-    selected_id = parse_selector_pick(raw, allowed)
+    parsed = parse_selector_response(raw, allowed)
+    if not parsed:
+        return selector_clarification_response(
+            question,
+            retrieved,
+            retrieval_scope,
+            interaction,
+            routing_question,
+        )
+    selected_id = parsed["pick"]
     if selected_id == SELECTOR_ASK:
         return selector_clarification_response(
             question,
@@ -1972,6 +2025,7 @@ def parse_model_selection(
             retrieval_scope,
             interaction,
             routing_question,
+            parsed["answer"],
         )
     selected = allowed[selected_id]
     support_query = (
@@ -1979,7 +2033,10 @@ def parse_model_selection(
         if distinctive_query_terms(question)
         else (routing_question or question)
     )
-    if not source_supports_query(selected, support_query):
+    # A single candidate was already resolved by the server's deterministic
+    # intent router or current-page gate. Reapplying the lexical site-search
+    # filter here rejects natural wording such as "help using a device."
+    if len(retrieved) > 1 and not source_supports_query(selected, support_query):
         return selector_clarification_response(
             question,
             retrieved,
@@ -1987,16 +2044,8 @@ def parse_model_selection(
             interaction,
             routing_question,
         )
-    message = grounded_answer_message(
-        question,
-        [selected],
-        retrieval_scope,
-        language_code=language_code,
-        chat_stage=chat_stage,
-        routing_question=routing_question or question,
-        prior_answer=prior_answer,
-    )
-    if message == participant_copy("missing_message", language_code):
+    message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
+    if not model_answer_is_grounded(message, selected):
         return selector_clarification_response(
             question,
             retrieved,
@@ -2366,7 +2415,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 for item in safe_history
                 if item.get("role") == "assistant"
             )
-            if deterministic:
+            if deterministic and not KEY:
                 self._chat_json(200, response_contract(
                     kind="answer",
                     message=grounded_answer_message(
@@ -2411,8 +2460,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     retrieval_scope=retrieval_scope,
                 ), turn, question, started_at, error_code="usage_limit", interaction=interaction)
                 return
+            model_sources = deterministic or retrieved
             messages = [{"role": "system", "content": retrieval_prompt(
-                routing_question, retrieved, page_context, interaction
+                routing_question,
+                model_sources,
+                page_context,
+                interaction,
+                previous_answer=prior_answer,
             )}]
             messages.append({
                 "role": "user",
@@ -2424,7 +2478,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 parse_model_selection(
                     raw,
                     question,
-                    retrieved,
+                    model_sources,
                     retrieval_scope,
                     interaction,
                     routing_question=routing_question,
@@ -2793,6 +2847,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "think": False,
             "format": "json",
             "keep_alive": MODEL_KEEP_ALIVE,
+            "options": {"temperature": 0.35},
         })
         MODEL_WARMUP.mark_ready()
         return data.get("message", {}).get("content") or ""

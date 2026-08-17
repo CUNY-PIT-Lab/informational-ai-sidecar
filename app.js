@@ -18,6 +18,7 @@
   const modelStatus = document.querySelector("#model-status");
   const contextWindowText = document.querySelector("#context-window-text");
   const contextWindowCopy = document.querySelector("#context-window-copy");
+  const resetButton = document.querySelector("#guide-reset");
   const API_BASE = String(window.FORTUNE_GUIDE_CONFIG?.apiBaseUrl || "").replace(/\/$/, "");
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
@@ -288,6 +289,7 @@
     if (turns.length) panel.classList.add("is-expanded");
     else panel.classList.remove("is-expanded");
     if (turns.length) suggestions.replaceChildren();
+    resetButton.hidden = !turns.length;
   }
 
   function restoreConversation() {
@@ -346,6 +348,23 @@
     else renderSuggestions(starter);
   }
 
+  function resetConversation() {
+    if (answering) return;
+    endEditing({ clearInput: true });
+    history = [];
+    turns = [];
+    latestTurn = null;
+    pendingClientEventId = "";
+    pendingQuestion = "";
+    conversationId = "";
+    conversationToken = "";
+    clearPersistedConversation();
+    renderConversation();
+    renderSuggestions(window.FortuneMockSite.getStarter(currentPage()));
+    updateContextWindow();
+    questionField.focus({ preventScroll: true });
+  }
+
   function setEditStatus(message = "") {
     editStatus.textContent = message;
     editStatus.hidden = !message;
@@ -357,6 +376,7 @@
     submitButton.disabled = value;
     questionField.readOnly = value;
     editCancel.disabled = value;
+    resetButton.disabled = value;
     transcript.querySelectorAll(".chat-edit-button").forEach(button => { button.disabled = value; });
     transcript.querySelectorAll(".answer-choice-select").forEach(select => { select.disabled = value; });
     panel.setAttribute("aria-busy", String(value));
@@ -545,6 +565,7 @@
       const turn = { question: safeQuestion, answer, payload: storedPayload(data, answer) };
       turns = (editing ? turns.slice(0, -1).concat(turn) : turns.concat(turn))
         .slice(-MAX_CONTEXT_EXCHANGES);
+      resetButton.hidden = false;
       latestTurn = { question: safeQuestion, answer, userArticle, assistantArticle };
       conversationId = String(data.conversation_id || (editing ? "" : conversationId));
       conversationToken = String(data.conversation_token || (editing ? "" : conversationToken));
@@ -643,6 +664,7 @@
     pendingQuestion = "";
     endEditing({ clearInput: true });
   });
+  resetButton.addEventListener("click", resetConversation);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && !panel.hidden) closeGuide();
   });
@@ -663,6 +685,7 @@
     ask,
     open: openGuide,
     close: closeGuide,
+    reset: resetConversation,
     privacyDetected: personalInformationDetected,
     state: () => ({
       apiReady,

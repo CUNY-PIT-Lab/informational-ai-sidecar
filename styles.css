@@ -580,6 +580,19 @@ a:hover { text-decoration-thickness: 2px; }
   text-decoration: none;
 }
 .guide-footer > a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.guide-reset {
+  min-height: 44px;
+  border: 0;
+  padding: 0 6px;
+  color: var(--guide-ink);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.guide-reset:hover { text-decoration: underline; text-underline-offset: 4px; }
+.guide-reset:disabled { color: var(--guide-muted); cursor: wait; }
 
 @media (max-width: 800px) {
   body { font-size: 17px; }

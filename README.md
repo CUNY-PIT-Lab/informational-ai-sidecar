@@ -29,12 +29,12 @@ After a question:
 2. The browser sends the question, a short in-memory history, and the canonical current-page URL, path, and title.
 3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
 4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
-5. The server checks the approved record for the current page first. A strong local match is answered directly from that record without waiting for the model.
+5. The server checks the approved record for the current page first. A strong local match narrows the model to that record instead of emitting a fixed sentence.
 6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 144 substantive records are addressable by public title; one Wix template-only Partners route is excluded from factual retrieval. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
-7. Only uncertain multi-page requests reach GLM-5.2. The model sees the resolved question and bounded candidate records, not raw conversation history, and may return one allowed page ID or `ASK`. The server rejects malformed, unsupported, or weakly grounded picks, then either shows compact clarification buttons or builds the visible answer from the selected website record. Model-written factual prose is never shown.
+7. Answerable requests reach GLM-5.2 with the resolved question, the preceding guide answer when relevant, and bounded approved page excerpts—not raw participant history. The model returns one allowed page ID plus a concise answer, or `ASK`. The server rejects unknown IDs, invented numbers, links, unsupported selections, and answers without source overlap. Valid prose is shown so the same grounded material can be answered naturally rather than through a prepackaged sentence.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
-The latest completed user question includes **Edit**. The original question and answer stay visible while the visitor edits. **Update** branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. The Wix element follows the same latest-question behavior.
+The latest completed user question includes **Edit**. The original question and answer stay visible while the visitor edits. **Update** branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. **Start over** clears the tab's local conversation, continuation token, and saved session state without deleting any transcript already retained by an authorized evaluation deployment. The Wix element follows the same behavior.
 
 Archive, navigation, and excluded routes still receive a tailored guide. Their page text cannot become factual answer authority. The guide moves the visitor to a current operational page.
 
@@ -50,9 +50,9 @@ Internal Drive notes and meeting transcripts may shape navigation, ambiguity, tr
 
 ## Evaluation workspace
 
-Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Each reviewer receives an independent bucket set with **Success**, **Needs work**, and **Handoff**, plus the virtual **Unsorted** area and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event.
+Railway serves a separate `/evaluation` workspace for approved synthetic transcripts. The database seeds one admin slot and three editor slots with no email, password, or invitation token. Every authenticated evaluator sees and updates the same shared workspace: **Success**, **Needs work**, **Handoff**, the virtual **Unsorted** area, and custom buckets. Moves use optimistic versions, persist in PostgreSQL, and append a transcript-free audit event attributed to the evaluator who made the change.
 
-The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. Reviewers can keep a private conversation note and annotate individual transcript messages as helpful, unclear, incorrect, a safety concern, or other. Annotation records reference message IDs and never copy transcript text into evaluation or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
+The workspace only lists complete, privacy-clear, unexpired conversations whose client surface is `synthetic`. Shared conversation notes and message annotations can mark content as helpful, unclear, incorrect, a safety concern, or other; audit records retain the acting evaluator. Annotation records reference message IDs and never copy transcript text into evaluation or audit tables. Invitation tokens are generated only when an operator deliberately assigns a slot. See [the evaluation deployment contract](deployment/EVALUATION-WORKSPACE.md).
 
 Run the content-free aggregate release gate with `DATABASE_URL` supplied through the environment:
 

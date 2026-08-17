@@ -1,4 +1,4 @@
-"""Authenticated, reviewer-specific evaluation data for synthetic guide transcripts."""
+"""Authenticated, shared evaluation data for synthetic guide transcripts."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from typing import Any
 EVALUATION_SCHEMA_VERSION = "006_transcript_annotations"
 COOKIE_NAME = "__Host-fs_eval"
 SLOT_KEYS = ("admin", "editor-1", "editor-2", "editor-3")
+SHARED_BUCKET_OWNER = "admin"
 COLOR_KEYS = {"blue", "sky", "eggplant", "coral"}
 ANNOTATION_CATEGORIES = {"helpful", "unclear", "incorrect", "unsafe", "other"}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -670,10 +671,12 @@ class EvaluationStore:
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
     def _bucket_set_id(self, cursor, account_slot: str) -> str:
+        """Return the one shared workspace while retaining the actor separately."""
+
         cursor.execute(
             "SELECT id FROM evaluation_bucket_sets "
             "WHERE account_slot = %s AND archived_at IS NULL",
-            (account_slot,),
+            (SHARED_BUCKET_OWNER,),
         )
         row = cursor.fetchone()
         if not row:
@@ -692,7 +695,7 @@ class EvaluationStore:
                     WHERE s.account_slot = %s AND s.archived_at IS NULL
                     ORDER BY b.sort_position, b.id
                     """,
-                    (account_slot,),
+                    (SHARED_BUCKET_OWNER,),
                 )
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
@@ -785,7 +788,7 @@ class EvaluationStore:
         """
         with self._pool.connection() as connection:
             with connection.cursor(row_factory=self._dict_row) as cursor:
-                cursor.execute(query, (self.min_inactive_seconds, account_slot, limit))
+                cursor.execute(query, (self.min_inactive_seconds, SHARED_BUCKET_OWNER, limit))
                 return [_json_value(dict(row)) for row in cursor.fetchall()]
 
     def get_conversation(self, account_slot: str, conversation_value: Any) -> dict:
@@ -806,7 +809,7 @@ class EvaluationStore:
             with connection.cursor(row_factory=self._dict_row) as cursor:
                 cursor.execute(
                     query,
-                    (self.min_inactive_seconds, account_slot, conversation_id),
+                    (self.min_inactive_seconds, SHARED_BUCKET_OWNER, conversation_id),
                 )
                 conversation = cursor.fetchone()
                 if not conversation:
