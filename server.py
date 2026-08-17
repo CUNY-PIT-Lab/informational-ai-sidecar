@@ -3,9 +3,9 @@
 
 The browser receives no provider credential. A complete public-site index is
 searched locally for each question, and only the most relevant approved
-records are sent to Ollama Cloud. Model-selected source IDs are validated on
-the server. Every response also receives deterministic next links so a visitor
-never reaches a terminal FAQ card.
+records are sent to Ollama Cloud. Model-selected sources and grounded answers
+are validated on the server. Every response also receives deterministic next
+links so a visitor never reaches a terminal FAQ card.
 """
 
 import collections
@@ -70,7 +70,7 @@ MAX_MESSAGE_WORDS = 48
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
-PROMPT_POLICY_VERSION = "2026-08-17-v8"
+PROMPT_POLICY_VERSION = "2026-08-17-v9"
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -2847,7 +2847,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "think": False,
             "format": "json",
             "keep_alive": MODEL_KEEP_ALIVE,
-            "options": {"temperature": 0.35},
+            "options": {
+                "temperature": 0.5,
+                "seed": uuid.uuid4().int & 0x7FFFFFFF,
+            },
         })
         MODEL_WARMUP.mark_ready()
         return data.get("message", {}).get("content") or ""

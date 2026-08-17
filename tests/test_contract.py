@@ -971,6 +971,23 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             "keep_alive": server.MODEL_KEEP_ALIVE,
         }])
 
+    def test_answer_generation_uses_bounded_variation(self):
+        payloads = []
+        original_request = server.ollama_request
+        server.ollama_request = lambda payload: payloads.append(payload) or {
+            "message": {"content": "{}"}
+        }
+        try:
+            server.Handler.__new__(server.Handler)._ollama([
+                {"role": "user", "content": "public test question"}
+            ])
+        finally:
+            server.ollama_request = original_request
+        options = payloads[0]["options"]
+        self.assertEqual(options["temperature"], 0.5)
+        self.assertGreaterEqual(options["seed"], 0)
+        self.assertLessEqual(options["seed"], 0x7FFFFFFF)
+
     def test_warmup_endpoint_requires_an_allowed_origin(self):
         handler = server.Handler.__new__(server.Handler)
         handler.path = "/api/warmup"
