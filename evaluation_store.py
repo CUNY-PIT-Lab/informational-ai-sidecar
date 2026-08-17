@@ -817,7 +817,8 @@ class EvaluationStore:
                 set_id = str(conversation["bucket_set_id"])
                 cursor.execute(
                     """
-                    SELECT m.id, m.turn_id, m.ordinal, m.role, m.content
+                    SELECT m.id, m.turn_id, m.ordinal, m.role, m.content,
+                           m.created_at
                     FROM conversation_messages m
                     JOIN conversation_turns t ON t.id = m.turn_id
                     WHERE m.conversation_id = %s

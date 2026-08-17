@@ -210,6 +210,28 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn('"invitation_path"', (DEMO / "server.py").read_text(encoding="utf-8"))
         self.assertIn("Link ready · single use", javascript)
 
+    def test_shared_queue_and_transcripts_show_stored_time_newest_first(self):
+        store_source = (DEMO / "evaluation_store.py").read_text(encoding="utf-8")
+        javascript = (DEMO / "evaluation.js").read_text(encoding="utf-8")
+        html = (DEMO / "evaluation.html").read_text(encoding="utf-8")
+
+        self.assertIn("ORDER BY e.last_turn_at DESC, e.id", store_source)
+        self.assertIn("m.created_at", store_source)
+        self.assertIn("ORDER BY t.sequence, m.ordinal", store_source)
+        self.assertIn("function newestFirst(items)", javascript)
+        self.assertIn(
+            "timestampValue(right.last_turn_at) - timestampValue(left.last_turn_at)",
+            javascript,
+        )
+        self.assertIn("return newestFirst(matches)", javascript)
+        self.assertIn(
+            'timeHtml(conversation.last_turn_at, "conversation-time")',
+            javascript,
+        )
+        self.assertIn('timeHtml(message.created_at, "message-time")', javascript)
+        self.assertIn("readableTimestamp(detail.last_turn_at)", javascript)
+        self.assertIn("20260817-timestamps-1", html)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

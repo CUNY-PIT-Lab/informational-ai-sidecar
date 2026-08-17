@@ -95,6 +95,34 @@
     return `CV-${String(value || "").replace(/-/g, "").slice(0, 6).toUpperCase()}`;
   }
 
+  function timestampValue(value) {
+    const timestamp = Date.parse(String(value || ""));
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  function readableTimestamp(value) {
+    const timestamp = timestampValue(value);
+    if (!timestamp) return "Time unavailable";
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(timestamp));
+  }
+
+  function newestFirst(items) {
+    return [...items].sort((left, right) => {
+      const recency = timestampValue(right.last_turn_at) - timestampValue(left.last_turn_at);
+      return recency || String(left.id || "").localeCompare(String(right.id || ""));
+    });
+  }
+
+  function timeHtml(value, className) {
+    return `<time class="${className}" datetime="${escapeHtml(value || "")}">${escapeHtml(readableTimestamp(value))}</time>`;
+  }
+
   function setStatus(message, error = false) {
     accessStatus.textContent = message;
     accessStatus.classList.toggle("is-error", error);
@@ -185,10 +213,11 @@
 
   function filteredConversations() {
     const query = search.value.trim().toLowerCase();
-    return state.conversations.filter(item => {
+    const matches = state.conversations.filter(item => {
       if (!query) return true;
       return `${shortId(item.id)} ${item.page_title || ""}`.toLowerCase().includes(query);
     });
+    return newestFirst(matches);
   }
 
   function moveOptions(conversation) {
@@ -207,10 +236,11 @@
   function cardHtml(conversation) {
     const selected = state.selectedId === conversation.id;
     return `
-      <article class="conversation-card${selected ? " is-selected" : ""}" draggable="true" data-conversation-id="${escapeHtml(conversation.id)}" tabindex="0" aria-label="${shortId(conversation.id)}, ${escapeHtml(conversation.page_title || "Unknown page")}">
+      <article class="conversation-card${selected ? " is-selected" : ""}" draggable="true" data-conversation-id="${escapeHtml(conversation.id)}" tabindex="0" aria-label="${shortId(conversation.id)}, ${escapeHtml(conversation.page_title || "Unknown page")}, ${escapeHtml(readableTimestamp(conversation.last_turn_at))}">
         <span class="drag-handle" aria-hidden="true">⠿</span>
         <p class="conversation-id">${shortId(conversation.id)}</p>
         <p class="conversation-page">${escapeHtml(conversation.page_title || "Unknown page")}</p>
+        ${timeHtml(conversation.last_turn_at, "conversation-time")}
         ${selected ? `<div class="card-actions"><button class="open-transcript" type="button">Open transcript</button>${moveOptions(conversation)}</div>` : moveOptions(conversation)}
       </article>`;
   }
@@ -374,8 +404,8 @@
         note: conversation.note || null,
         annotations: conversation.annotations || [],
         messages: [
-          { id: `${conversation.id}-user`, role: "user", content: "Where can I find the current information on this page?" },
-          { id: `${conversation.id}-assistant`, role: "assistant", content: "I found the relevant public page and can point you to it." },
+          { id: `${conversation.id}-user`, role: "user", content: "Where can I find the current information on this page?", created_at: conversation.last_turn_at },
+          { id: `${conversation.id}-assistant`, role: "assistant", content: "I found the relevant public page and can point you to it.", created_at: conversation.last_turn_at },
         ],
       };
     } else {
@@ -383,7 +413,7 @@
     }
     state.openConversation = detail;
     transcriptTitle.textContent = shortId(detail.id);
-    transcriptMeta.textContent = detail.page_title || "Conversation";
+    transcriptMeta.textContent = `${detail.page_title || "Conversation"} · ${readableTimestamp(detail.last_turn_at)}`;
     reviewNote.value = detail.note || "";
     reviewNoteStatus.textContent = "";
     renderTranscriptMessages();
@@ -408,7 +438,10 @@
       : "Annotate";
     return `
       <article class="message ${message.role === "assistant" ? "assistant" : "user"}" data-message-id="${escapeHtml(message.id)}">
-        <p class="message-role">${message.role === "assistant" ? "Website Guide" : "Visitor"}</p>
+        <div class="message-heading">
+          <p class="message-role">${message.role === "assistant" ? "Website Guide" : "Visitor"}</p>
+          ${timeHtml(message.created_at, "message-time")}
+        </div>
         <p class="message-content">${escapeHtml(message.content)}</p>
         <button class="annotation-toggle" type="button" aria-expanded="false">${escapeHtml(buttonLabel)}</button>
         <form class="annotation-form" hidden>

@@ -13,6 +13,7 @@ const Core = require(join(DEMO, "guide-core.js"));
 const index = JSON.parse(readFileSync(join(DEMO, "site-index.json"), "utf8"));
 const pages = index.pages;
 const byPath = new Map(pages.map(page => [new URL(page.url).pathname, page]));
+const evaluationSource = readFileSync(join(DEMO, "evaluation.js"), "utf8");
 
 function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
   const messages = [];
@@ -57,6 +58,29 @@ function runEmbedBridge({ panelHidden = true, anchor = null } = {}) {
   }
   return messages;
 }
+
+function evaluationTimestampHelpers() {
+  const start = evaluationSource.indexOf("function timestampValue(value)");
+  const end = evaluationSource.indexOf("function setStatus(message", start);
+  assert.ok(start >= 0 && end > start, "evaluation timestamp helpers are present");
+  return evaluationSource.slice(start, end);
+}
+
+test("evaluation conversations are ordered newest first before pagination", () => {
+  const helpers = evaluationTimestampHelpers();
+  const conversations = [
+    { id: "older", last_turn_at: "2026-08-15T12:00:00Z" },
+    { id: "same-b", last_turn_at: "2026-08-17T12:00:00Z" },
+    { id: "invalid", last_turn_at: "" },
+    { id: "newest", last_turn_at: "2026-08-18T12:00:00Z" },
+    { id: "same-a", last_turn_at: "2026-08-17T12:00:00Z" },
+  ];
+  const orderedJson = runInNewContext(
+    `${helpers}; JSON.stringify(newestFirst(${JSON.stringify(conversations)}).map(item => item.id))`,
+    { Date, Intl, JSON, Number, String },
+  );
+  assert.deepEqual(JSON.parse(orderedJson), ["newest", "same-a", "same-b", "older", "invalid"]);
+});
 
 test("canonical URLs stay on the approved public host", () => {
   assert.equal(Core.canonicalUrl("https://fortunedigitalequity.org/devices/?x=1#top"), "https://www.fortunedigitalequity.org/devices");
