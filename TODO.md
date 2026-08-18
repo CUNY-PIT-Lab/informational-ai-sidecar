@@ -30,15 +30,20 @@
   sessions, buckets, invitations, and all Prompts proposals/history.
 - [x] Pass the complete local release suite: 297 Python, 28 browser-core, and 13
   snapshot tests.
-- [ ] Deploy the exact v21 commit to Railway staging and replay ordinary,
+- [x] Deploy the exact v21 commit to Railway staging and replay ordinary,
   frustrated, broad, specific, Spanish, and multi-turn requests with
-  `model_called: true` on every non-private turn.
-- [ ] Clear the existing staging transcript corpus in one guarded transaction,
+  `model_called: true` on every non-private turn. The final ten-turn retrieval
+  run completed 10/10, and Return produced a live model response in the browser.
+- [x] Clear the existing staging transcript corpus in one guarded transaction,
   preserve evaluator and Prompts state, and prove automated benchmark traffic
-  stays out of the reviewer queue.
-- [ ] Verify the staging browser, hidden benchmark capture, prompt provenance,
+  stays out of the reviewer queue. The reset removed 1,171 conversations,
+  1,999 turns, and 3,784 messages while preserving four evaluator accounts,
+  four bucket sets, 13 buckets, one active session, and the Prompts workspace.
+- [x] Verify the staging browser, hidden benchmark capture, prompt provenance,
   aggregate privacy/integrity gate, and terminal deployment stability before
-  promotion.
+  promotion. Staging deployment `ad436f9b-8df8-4d78-a71f-1515ea4d4b6c` is
+  terminal `SUCCESS`; the deployed runtime and prompt hashes match this tree;
+  Return, model provenance, and page-to-page conversation persistence passed.
 - [ ] Merge through GitHub, verify Pages, then deploy the exact merged tree to
   Railway production with capture `none`, no database, and evaluation disabled.
 
