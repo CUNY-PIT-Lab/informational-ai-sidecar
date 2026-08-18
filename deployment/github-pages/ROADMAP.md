@@ -19,7 +19,7 @@ GitHub Pages route
   -> Ollama Cloud with a server-side key
 ```
 
-The external service holds `OLLAMA_API_KEY` in its environment, enforces the page-first source and privacy rules, and limits browser origins to the Pages URL and approved local development origins. It checks the current page first, searches up to ten other approved pages only after a local miss, and skips the model when neither layer contains evidence. For uncertain multi-page requests, the model receives bounded candidate records and returns one allowed source ID or `ASK`; it does not write the participant answer. The server validates distinctive query terms before extracting visible text from that website record. The repository, Pages files, browser requests, and source maps contain no model credential.
+The external service holds `OLLAMA_API_KEY` in its environment, enforces the page-first source and privacy rules, and limits browser origins to the Pages URL and approved local development origins. It checks the current page first and searches up to ten other approved pages after a local miss. Every successful non-private new request calls the model. The model receives only bounded approved records and writes a concise grounded answer or one clarifying question; the server validates its selected source, claims, privacy, and response shape. With no lexical match, it receives a bounded navigation set rather than a fixed server-authored fallback. The repository, Pages files, browser requests, and source maps contain no model credential.
 
 The current public API base is `https://guide-api-production-a1a1.up.railway.app`. The Railway `guide-api` service uses the exact GitHub Pages origin, a 30-call hourly model limit per client, a 300-call shared daily model limit, a separate bounded chat-request budget, and `/health` as its deployment healthcheck. Public production capture remains off unless Fortune completes the approval gate in [`../CONVERSATION-CAPTURE.md`](../CONVERSATION-CAPTURE.md).
 
@@ -52,7 +52,7 @@ The local service runs at `http://127.0.0.1:8790`. Before publishing, deploy the
 Required backend routes are:
 
 - `GET /health` reports service availability, model state, index date, and source count without exposing secrets.
-- `POST /api/chat` accepts the shared message/history/page context plus client event and server-issued conversation continuation fields. It returns a bounded extractive answer, retrieval scope, validated sources, related pages, ambiguity choices, model-call status, staff handoff, stable UUIDs, and capture status.
+- `POST /api/chat` accepts the shared message/history/page context plus client event and server-issued conversation continuation fields. It returns a model-authored, source-validated answer or clarification, retrieval scope, validated sources, related pages, model-call status, stable UUIDs, and capture status.
 - `GET /api/search?q=` provides key-free retrieval over approved answer sources.
 - `GET /api/sources` provides the public source inventory used by the demonstration.
 
@@ -62,7 +62,7 @@ Required backend routes are:
 - The guide heading and suggested questions follow the route title and page type.
 - A clear answer offers at least one related page distinct from the current page.
 - Archive, navigation, and excluded pages route visitors to a current operational page without using their text as current service authority.
-- Known ambiguous questions receive one short clarification with two or three choices.
+- Known ambiguous questions still call the model and receive one short, validated clarification, with choices only when they help.
 - The question field always warns visitors not to enter a six-digit Fortune ID or other personal information.
 - A likely six-digit Fortune ID is removed in the browser before chat history or a request. The backend applies the same pre-model hold.
 - Failed or absent model service leaves the static page context, current Fortune source, related routes, and staff contact available.

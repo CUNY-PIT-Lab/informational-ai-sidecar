@@ -30,11 +30,11 @@
   ]);
   const SUGGESTION_LABELS = Object.freeze({
     "What is the main information here?": "Page summary",
-    "Where should I go next?": "Next step",
+    "What can I do from this page?": "Page options",
     "What does this class cover?": "Class details",
     "What should I take before or after it?": "Related classes",
     "Help me choose an option": "Choose an option",
-    "What should I do next?": "Next step",
+    "What is available here?": "Available options",
     "I need information about getting a device": "Get a device",
     "I need help using a device": "Device help",
     "What individual support is available?": "Available support",
@@ -115,7 +115,7 @@
       family,
       heading: `Ask about ${title}`,
       placeholder: "What would you like to know about this page?",
-      suggestions: ["What is the main information here?", "Where should I go next?"],
+      suggestions: ["What is the main information here?", "What can I do from this page?"],
     };
 
     if (family === "service") return {
@@ -126,7 +126,7 @@
     if (family === "directory") return {
       ...common,
       placeholder: `What are you looking for in ${title}?`,
-      suggestions: ["Help me choose an option", "What should I do next?"],
+      suggestions: ["Help me choose an option", "What is available here?"],
     };
     if (family === "support" && path === "/devices") return {
       ...common,

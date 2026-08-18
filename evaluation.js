@@ -115,8 +115,8 @@
     scope: "shared",
     shared: true,
     deployed: {
-      version: "2026-08-17-v14",
-      behavior_release: "meeting4-plain-participant-respect",
+      version: "2026-08-18-v17",
+      behavior_release: "model-authored-every-safe-turn",
       editable: false,
     },
     editable_modules: [

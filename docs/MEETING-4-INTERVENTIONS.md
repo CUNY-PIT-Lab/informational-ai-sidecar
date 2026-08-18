@@ -25,7 +25,7 @@ makes the division explicit:
 - Fixed: source allowlist, one-record grounding, no guessing, current-detail
   caution, privacy, abstention, JSON schema, retry allowlist, output validators,
   repetition checks, rate limits, and deployment promotion.
-- Team-tunable in Prompt Lab: concise tone, clarification phrasing, follow-up
+- Team-tunable in Prompts: concise tone, clarification phrasing, follow-up
   advancement, and page-reference behavior. Reliable language mirroring stays
   a separate, code-controlled presentation module.
 - Runtime data, never settings: the participant question, current page, prior
@@ -34,7 +34,7 @@ makes the division explicit:
 This keeps the model's job conversational and small. The server still decides
 what material it may see and rejects unsupported claims.
 
-## Bounded Prompt Lab contract
+## Bounded Prompts contract
 
 The dashboard supports shared *proposals*, not direct production editing. A
 proposal may target only style, clarification, follow-up, or page awareness and

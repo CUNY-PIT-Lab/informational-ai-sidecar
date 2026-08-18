@@ -110,6 +110,7 @@
       choices,
       sources: safeRows(data?.sources),
       related: safeRows(data?.related),
+      model_called: data?.model_called === true,
     };
   }
 
@@ -117,7 +118,9 @@
     const question = cleanText(value?.question).slice(0, 600);
     const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
     if (!question || !answer || personalInformationDetected(question)) return null;
-    return { question, answer, payload: storedPayload(value?.payload, answer) };
+    const payload = storedPayload(value?.payload, answer);
+    if (!payload.model_called) return null;
+    return { question, answer, payload };
   }
 
   function clearPersistedConversation() {
@@ -198,6 +201,9 @@
     const body = document.createElement("p");
     body.className = "chat-copy";
     body.textContent = redactSixDigitValues(cleanText(message));
+    if (role === "assistant" && typeof options.modelCalled === "boolean") {
+      article.dataset.modelCalled = String(options.modelCalled);
+    }
     meta.append(label);
 
     if (role === "user" && options.editable) {
@@ -275,6 +281,7 @@
       choices: payload.choices,
       destination,
       scope: payload.retrieval_scope,
+      modelCalled: payload.model_called,
     });
     return { question: turn.question, answer: turn.answer, userArticle, assistantArticle };
   }
@@ -467,6 +474,15 @@
       error.payload = data;
       throw error;
     }
+    if (data.kind !== "privacy" && (
+      !["answer", "clarify", "handoff"].includes(data.kind)
+      || data.model_called !== true
+      || !cleanText(data.message)
+    )) {
+      const error = new Error("The guide returned an invalid response.");
+      error.payload = data;
+      throw error;
+    }
     return data;
   }
 
@@ -484,7 +500,7 @@
       modelStatus.classList.add("model-ready");
       return data;
     } catch {
-      modelStatus.textContent = modelReady ? "Ready" : "Source only";
+      modelStatus.textContent = modelReady ? "Ready" : "Unavailable";
       return null;
     }
   }
@@ -494,24 +510,17 @@
     const destination = Array.isArray(data?.choices) && data.choices.length
       ? null
       : distinctDestination(data);
-    return appendMessage("assistant", data.message || "I couldn’t confirm that on Fortune’s public pages.", {
+    return appendMessage("assistant", data.message, {
       choices: data.choices,
       destination,
       scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
+      modelCalled: data.model_called === true,
       revealStart: true,
     });
   }
 
   function showUnavailable(message = "Guide unavailable. Try again.") {
-    showAnswer({
-      kind: "handoff",
-      message,
-      reason: "",
-      sources: [],
-      related: [{ title: "Contact", url: CONTACT_URL }],
-      retrieval_scope: "staff",
-      model_called: false,
-    });
+    setEditStatus(message);
   }
 
   async function ask(question, options = {}) {
@@ -572,11 +581,12 @@
       updateContextWindow();
       pendingClientEventId = "";
       pendingQuestion = "";
+      setEditStatus();
       persistConversation();
     } catch (error) {
       questionField.value = value;
       resizeQuestionField();
-      if (error?.payload?.idempotency_complete) {
+      if (error?.payload) {
         pendingClientEventId = "";
         pendingQuestion = "";
       }
@@ -614,14 +624,14 @@
         : captureMode === "metadata"
           ? "This review build stores IDs and response data. Chat stays in this tab across pages."
           : "Up to 3 exchanges stay in this tab across pages.";
-      modelStatus.textContent = modelReady ? "Starting…" : "Source only";
+      modelStatus.textContent = modelReady ? "Starting…" : "Unavailable";
       modelStatus.classList.toggle("model-ready", modelReady);
       if (modelReady) warmupPromise = warmModel();
     } catch {
       apiReady = false;
       modelReady = false;
       captureMode = "none";
-      modelStatus.textContent = "Source only";
+      modelStatus.textContent = "Unavailable";
       modelStatus.classList.remove("model-ready");
     }
   }

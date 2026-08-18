@@ -12,7 +12,7 @@
   const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v1";
   const STARTERS = Object.freeze([
     { label: "Page summary", prompt: "What is the main information here?" },
-    { label: "Next step", prompt: "Where should I go next?" }
+    { label: "Page options", prompt: "What can I do from this page?" }
   ]);
 
   if (customElements.get(TAG_NAME)) return;
@@ -546,7 +546,8 @@
           : "site",
         choices,
         sources: safeRows(payload?.sources),
-        related: safeRows(payload?.related)
+        related: safeRows(payload?.related),
+        model_called: payload?.model_called === true
       };
     }
 
@@ -554,10 +555,12 @@
       const question = cleanText(value?.question).slice(0, 600);
       const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
       if (!question || !answer || personalInformationDetected(question)) return null;
+      const payload = this.storedPayload(value?.payload, answer);
+      if (!payload.model_called) return null;
       return {
         question,
         answer,
-        payload: this.storedPayload(value?.payload, answer),
+        payload,
         editable: true
       };
     }
@@ -676,7 +679,7 @@
           } else {
             this.captureNotice.textContent = "Up to 3 exchanges stay in this tab across pages.";
           }
-          this.modelStatus.textContent = payload.model_enabled ? "Starting…" : "Source only";
+          this.modelStatus.textContent = payload.model_enabled ? "Starting…" : "Unavailable";
           this.capturePolicyReady = true;
           return payload;
         })
@@ -786,20 +789,28 @@
           })
         });
         const payload = await response.json();
+        this.pendingClientEventId = "";
+        this.pendingQuestion = "";
         if (!response.ok) {
           const error = new Error("Guide unavailable.");
           error.payload = payload;
           throw error;
         }
-
-        this.pendingClientEventId = "";
-        this.pendingQuestion = "";
         if (payload.kind === "privacy") {
           this.privacyHold(editing);
           return;
         }
+        if (
+          !["answer", "clarify", "handoff"].includes(payload.kind)
+          || payload.model_called !== true
+          || !cleanText(payload.message)
+        ) {
+          const error = new Error("The guide returned an invalid response.");
+          error.payload = payload;
+          throw error;
+        }
 
-        const answer = redactSixDigitValues(payload.message || "I couldn’t confirm that on Fortune’s public pages.");
+        const answer = redactSixDigitValues(payload.message);
         const turn = {
           question: safeQuestion,
           answer,
@@ -828,7 +839,7 @@
         this.persistConversation();
         this.revealResult();
       } catch (error) {
-        if (error?.payload?.idempotency_complete) {
+        if (error && Object.prototype.hasOwnProperty.call(error, "payload")) {
           this.pendingClientEventId = "";
           this.pendingQuestion = "";
         }
@@ -842,8 +853,9 @@
         } else {
           this.input.value = safeQuestion;
           this.resizeQuestionField();
-          this.renderError();
-          this.status.textContent = "";
+          this.status.textContent = error?.payload?.idempotency_complete
+            ? "Try again."
+            : "Guide unavailable. Try again.";
         }
       } finally {
         this.setBusy(false);
@@ -929,11 +941,11 @@
         .then(async (response) => {
           if (!response.ok) throw new Error("Model warm-up failed.");
           const payload = await response.json();
-          this.modelStatus.textContent = payload.status === "ready" ? "Ready" : "Source only";
+          this.modelStatus.textContent = payload.status === "ready" ? "Ready" : "Unavailable";
           return payload;
         })
         .catch(() => {
-          this.modelStatus.textContent = "Source only";
+          this.modelStatus.textContent = "Unavailable";
           return null;
         })
         .finally(() => {
@@ -958,7 +970,7 @@
       const payload = turn.payload || {};
       const copy = document.createElement("p");
       copy.className = "copy";
-      copy.textContent = redactSixDigitValues(turn.answer || "I couldn’t confirm that on Fortune’s public pages.");
+      copy.textContent = redactSixDigitValues(turn.answer);
       container.append(copy);
 
       if (payload.kind === "clarify") {
@@ -1033,6 +1045,7 @@
 
         const assistant = document.createElement("article");
         assistant.className = "message assistant";
+        assistant.dataset.modelCalled = String(turn.payload?.model_called === true);
         const meta = document.createElement("div");
         meta.className = "message-meta";
         const speaker = document.createElement("p");
@@ -1055,18 +1068,6 @@
       });
     }
 
-    renderError() {
-      this.turns = this.turns.filter((turn) => !turn.transient).concat({
-        question: "",
-        answer: "Guide unavailable. Try again.",
-        payload: {},
-        editable: false,
-        transient: true
-      }).slice(-3);
-      this.panel.classList.add("expanded");
-      this.renderConversation();
-      this.revealResult();
-    }
   }
 
   customElements.define(TAG_NAME, FortuneDigitalEquityGuide);

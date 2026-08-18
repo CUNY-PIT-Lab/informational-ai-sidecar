@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the synthetic conversation-capture contract against a deployed API."""
+"""Exercise conversation capture without adding a reviewer-visible transcript."""
 
 from __future__ import annotations
 
@@ -51,13 +51,13 @@ def main() -> int:
 
     event_id = str(uuid.uuid4())
     first_payload = {
-        "message": "device",
-        "client_surface": "synthetic",
+        "message": "What does the Digital Equity Program offer?",
+        "client_surface": "benchmark",
         "client_event_id": event_id,
         "page_context": {
-            "url": "https://www.fortunedigitalequity.org/devices",
-            "path": "/devices",
-            "title": "Synthetic Devices Test",
+            "url": "https://www.fortunedigitalequity.org/",
+            "path": "/",
+            "title": "Synthetic Program Test",
         },
     }
     first_status, first = post(args.base_url, first_payload)
@@ -70,7 +70,7 @@ def main() -> int:
     privacy_event_id = str(uuid.uuid4())
     privacy_status, privacy = post(args.base_url, {
         "message": "My synthetic Fortune ID is 654321",
-        "client_surface": "synthetic",
+        "client_surface": "benchmark",
         "client_event_id": privacy_event_id,
         "page_context": first_payload["page_context"],
     })
@@ -83,11 +83,15 @@ def main() -> int:
         require_uuid(value)
     if first["turn_id"] != replay["turn_id"] or first["message_ids"] != replay["message_ids"]:
         raise AssertionError("Idempotent replay changed persisted identifiers")
+    if first.get("kind") == "privacy" or first.get("model_called") is not True:
+        raise AssertionError("Ordinary safe capture prompt did not call the model")
+    if replay.get("model_called") is not True:
+        raise AssertionError("Idempotent replay did not preserve model-call metadata")
     if first.get("capture") != {"mode": "transcript", "stored": True}:
         raise AssertionError("Transcript capture is not active")
     expected_context = {
         "chat_stage": "opening",
-        "request_kind": "clarification",
+        "request_kind": "retrieval",
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": prompt_policy_version,
@@ -96,6 +100,8 @@ def main() -> int:
         raise AssertionError("Interaction context was not logged consistently")
     if privacy.get("kind") != "privacy":
         raise AssertionError("Synthetic personal-information sentinel was not held")
+    if privacy.get("model_called") is not False:
+        raise AssertionError("Privacy hold unexpectedly called the model")
 
     print(json.dumps({
         "clear": {

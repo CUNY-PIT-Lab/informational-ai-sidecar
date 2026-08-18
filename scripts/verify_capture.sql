@@ -25,7 +25,12 @@ SELECT json_build_object(
         WHERE id = :'clear_turn'::uuid
           AND client_event_id = :'clear_event'::uuid
           AND status = 'complete'
-          AND review_state = 'ready'
+          AND review_state = 'pending'
+          AND EXISTS (
+              SELECT 1 FROM conversations c
+              WHERE c.id = conversation_turns.conversation_id
+                AND c.client_surface = 'benchmark'
+          )
           AND chat_stage = 'opening'
           AND request_kind = 'clarification'
           AND request_language = 'en'
