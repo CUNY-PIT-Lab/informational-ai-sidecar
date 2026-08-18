@@ -1899,7 +1899,7 @@ class ResponseContractTests(unittest.TestCase):
     def test_model_clarification_is_one_safe_model_authored_question(self):
         accepted = (
             "What would you like help finding?",
-            "Which do you need: classes, devices, or individual support?",
+            "Do you need classes, devices, or individual support?",
             "¿Necesitas ayuda con clases, dispositivos o apoyo individual?",
         )
         for question in accepted:
@@ -1914,11 +1914,90 @@ class ResponseContractTests(unittest.TestCase):
             "What is your full name?",
             "¿Cuál es tu nombre?",
             "Share your email address?",
+            "What Fortune offers is free laptops, which one do you need?",
+            "What do you need\nFortune offers free laptops?",
+            "What do you need Fortune offers free laptops?",
         )
         for question in rejected:
             with self.subTest(question=question):
                 with self.assertRaises(server.ModelResponseRejected):
                     server.model_clarification_response("Help me", question)
+
+    def test_only_current_model_authored_or_privacy_turns_can_replay(self):
+        current = {
+            "kind": "clarify",
+            "message": "What would you like help finding?",
+            "model_called": True,
+            "prompt_policy_version": server.PROMPT_POLICY_VERSION,
+        }
+        privacy = {
+            "kind": "privacy",
+            "message": "Remove personal information and try again.",
+            "model_called": False,
+            "prompt_policy_version": "legacy",
+        }
+        legacy_canned = {
+            "kind": "clarify",
+            "message": "What do you want to start with?",
+            "model_called": False,
+            "prompt_policy_version": "2026-08-17-v16",
+        }
+        stale_model = {
+            **current,
+            "prompt_policy_version": "2026-08-17-v16",
+        }
+        self.assertTrue(server.replay_response_is_current(current))
+        self.assertTrue(server.replay_response_is_current(privacy))
+        self.assertFalse(server.replay_response_is_current(legacy_canned))
+        self.assertFalse(server.replay_response_is_current(stale_model))
+
+    def test_legacy_nonmodel_turn_cannot_replay_as_http_success(self):
+        legacy = {
+            "kind": "clarify",
+            "message": "What do you want to start with?",
+            "model_called": False,
+            "prompt_policy_version": "2026-08-17-v16",
+        }
+        turn = type("DuplicateTurn", (), {
+            "duplicate_response": legacy,
+            "conversation_id": str(uuid.uuid4()),
+            "turn_id": str(uuid.uuid4()),
+            "client_event_id": str(uuid.uuid4()),
+            "in_progress": False,
+        })()
+
+        class DuplicateRecorder:
+            def begin_turn(self, **_kwargs):
+                return turn
+
+            @staticmethod
+            def conversation_token(_conversation_id):
+                return "test-token"
+
+        body = json.dumps({
+            "message": "Help me",
+            "client_event_id": turn.client_event_id,
+            "page_context": {"url": server.ROOT_URL},
+        }).encode()
+        handler = server.Handler.__new__(server.Handler)
+        handler.path = "/api/chat"
+        handler.headers = {"Content-Length": str(len(body))}
+        handler.rfile = io.BytesIO(body)
+        captured = {}
+        handler._json = lambda status, value, **_kwargs: captured.update(
+            status=status,
+            payload=value,
+        )
+        original_recorder = server.CONVERSATION_RECORDER
+        server.CONVERSATION_RECORDER = DuplicateRecorder()
+        try:
+            handler.do_POST()
+        finally:
+            server.CONVERSATION_RECORDER = original_recorder
+
+        self.assertEqual(captured["status"], 409)
+        self.assertTrue(captured["payload"]["idempotency_complete"])
+        self.assertNotIn("message", captured["payload"])
 
     def test_follow_up_duplicate_guard_rejects_a_reused_sentence_inside_a_longer_prior_answer(self):
         prior = (

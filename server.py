@@ -2297,18 +2297,47 @@ def model_clarification_response(
 ):
     """Return only a model-authored clarification; never synthesize stock copy."""
 
-    message = clip_words(model_question, MAX_MESSAGE_WORDS).strip()
+    raw_message = str(model_question or "").strip()
+    message = clip_words(raw_message, MAX_MESSAGE_WORDS).strip()
     folded = fold_text(message).lstrip("¿").strip()
-    interrogative = re.compile(
-        r"^(?:what|which|where|when|how|who|do|does|did|are|is|would|could|can|will|"
-        r"que|cual|cuales|como|donde|cuando|quien|necesitas|quieres|buscas|prefieres|"
-        r"puedo|puedes|podrias|te gustaria)\b"
+    english_interrogative = re.compile(
+        r"^(?:(?:what|which|where|when|how|who)"
+        r"(?: [a-z0-9'’-]+){0,5}"
+        r" (?:do|does|did|are|is|would|could|can|will|should|have|has)"
+        r" (?:you|your)\b|"
+        r"(?:do|does|did|are|is|would|could|can|will|should|have|has) you\b|"
+        r"(?:what|which|where|when|how|who)(?: [a-z0-9'’-]+){0,5}"
+        r" (?:can|could|would|should) i\b.*\byou\b)"
     )
+    spanish_interrogative = re.compile(
+        r"^(?:(?:que|cual|cuales|como|donde|cuando|quien)\b.*\b"
+        r"(?:necesitas|quieres|buscas|prefieres|puedes|podrias|te|tu|usted)\b|"
+        r"(?:necesitas|quieres|buscas|prefieres|puedes|podrias)\b|te gustaria\b)"
+    )
+    question_body = folded[:-1].strip() if folded.endswith("?") else folded
     if (
         not message.endswith("?")
         or message.count("?") != 1
-        or re.search(r"[.!;]", message[:-1])
-        or not interrogative.match(folded)
+        or "\n" in raw_message
+        or "\r" in raw_message
+        or re.search(r"[.!;:—]", message[:-1])
+        or not (
+            english_interrogative.match(question_body)
+            or spanish_interrogative.match(question_body)
+        )
+        or len(
+            re.findall(
+                r"\b(?:what|which|where|when|how|who|que|cual|cuales|como|donde|cuando|quien)\b",
+                question_body,
+            )
+        ) > 1
+        or re.search(
+            r"\b(?:fortune|the (?:page|site|website|class|program|service)|"
+            r"this (?:page|site|website|class|program|service)|we|it|they) "
+            r"(?:offers?|provides?|includes?|lists?|states?|says?|gives?|"
+            r"guarantees?|promises?|has|have|is|are)\b",
+            question_body,
+        )
         or re.search(r"https?://|www\.", message, flags=re.I)
         or re.search(
             r"\b(?:system|developer|hidden) (?:prompt|message|instruction)|"
@@ -2330,6 +2359,21 @@ def model_clarification_response(
     )
     response["related"] = []
     return response
+
+
+def replay_response_is_current(response):
+    """Allow only privacy holds or current model-authored turns to replay."""
+
+    if not isinstance(response, dict) or not str(response.get("message") or "").strip():
+        return False
+    kind = response.get("kind")
+    if kind == "privacy":
+        return response.get("model_called") is False
+    return (
+        kind in {"answer", "clarify", "handoff"}
+        and response.get("model_called") is True
+        and response.get("prompt_policy_version") == PROMPT_POLICY_VERSION
+    )
 
 
 def model_requests_personal_details(text):
@@ -3221,7 +3265,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             )
             if turn.duplicate_response:
                 token = CONVERSATION_RECORDER.conversation_token(turn.conversation_id)
-                if turn.duplicate_response.get("message"):
+                if replay_response_is_current(turn.duplicate_response):
                     duplicate = dict(turn.duplicate_response)
                     duplicate["conversation_token"] = token
                     self._json(200, duplicate)
