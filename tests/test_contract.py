@@ -1639,6 +1639,27 @@ class ResponseContractTests(unittest.TestCase):
             )
         )
 
+    def test_clock_times_are_not_misread_as_session_counts(self):
+        source = server.SOURCE_BY_ID["calendar"]
+        question = "What current schedule is shown on this page?"
+        answers = (
+            "The page shows August training sessions in Long Island City on "
+            "Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with "
+            "Bronx (SRP) available by request only.",
+            "Digital Equity classes in Long Island City run Tuesday, Wednesday, "
+            "and Thursday from 2:00 PM to 3:30 PM. Bronx (SRP) sessions are by "
+            "request only.",
+        )
+        for answer in answers:
+            with self.subTest(answer=answer):
+                self.assertTrue(
+                    server.model_answer_is_grounded(answer, source, question)
+                )
+        self.assertNotIn(
+            ("30", "session"),
+            server._claim_number_unit_pairs(answers[1]),
+        )
+
     def test_grounded_model_output_changes_when_the_approved_record_changes(self):
         question = "What would I learn in the email class?"
         original = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]

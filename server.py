@@ -2723,7 +2723,16 @@ def _claim_numbers(value):
 
 
 def _claim_number_unit_pairs(value):
-    words = tokens(value, keep_stopwords=True)
+    # Clock times are separately checked by _claim_numbers. Removing the whole
+    # time here prevents the minute value in "3:30 PM ... sessions" from being
+    # misread as a claim about 30 sessions.
+    value_without_times = re.sub(
+        r"\b\d{1,2}:\d{2}(?:\s*[ap]\.?m\.?)?\b",
+        " ",
+        fold_text(value),
+        flags=re.I,
+    )
+    words = tokens(value_without_times, keep_stopwords=True)
     pairs = set()
     barriers = {"and", "by", "for", "in", "of", "or", "through", "to", "with"}
     for index, word in enumerate(words):
@@ -2779,7 +2788,8 @@ def _source_qualifier_polarities(value, group):
         return polarities
     if re.search(
         r"\b(?:office hours?|support hours?|walk-?in|by appointment|"
-        r"schedule an appointment|currently offered|is offered|are offered|"
+        r"by request(?: only)?|schedule an appointment|currently offered|"
+        r"is offered|are offered|"
         r"offers?|provides?|provided)\b",
         folded,
     ):
