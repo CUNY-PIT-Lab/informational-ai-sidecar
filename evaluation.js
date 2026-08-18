@@ -115,8 +115,8 @@
     scope: "shared",
     shared: true,
     deployed: {
-      version: "2026-08-17-v14",
-      behavior_release: "meeting4-plain-participant-respect",
+      version: "2026-08-17-v16",
+      behavior_release: "meeting4-status-faithful-grounding",
       editable: false,
     },
     editable_modules: [

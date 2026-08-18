@@ -71,6 +71,17 @@ class EvaluationSchemaTests(unittest.TestCase):
 
 
 class EvaluationStoreBoundaryTests(unittest.TestCase):
+    def test_reviewer_queue_accepts_only_manual_synthetic_conversations(self):
+        eligible_source = inspect.getsource(
+            evaluation_store.EvaluationStore._eligible_cte
+        )
+        detail_source = inspect.getsource(
+            evaluation_store.EvaluationStore._current_transcript_version
+        )
+        self.assertIn("c.client_surface = 'synthetic'", eligible_source)
+        self.assertIn("c.client_surface = 'synthetic'", detail_source)
+        self.assertNotIn("benchmark", eligible_source + detail_source)
+
     def test_all_evaluators_use_one_shared_review_workspace(self):
         self.assertEqual(evaluation_store.SHARED_BUCKET_OWNER, "admin")
         for method_name in ("_bucket_set_id", "list_buckets", "list_conversations", "get_conversation"):
@@ -376,7 +387,7 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         )
         self.assertIn('timeHtml(message.created_at, "message-time")', javascript)
         self.assertIn("readableTimestamp(detail.last_turn_at)", javascript)
-        self.assertIn("20260817-taxonomy-v2", html)
+        self.assertIn("20260818-prompts-v1", html)
 
     def test_prompt_lab_is_compact_shared_and_has_no_activation_control(self):
         html = (DEMO / "evaluation.html").read_text(encoding="utf-8")
@@ -386,7 +397,14 @@ class EvaluationFrontendContractTests(unittest.TestCase):
 
         self.assertIn('id="prompt-lab-tab"', html)
         self.assertIn('id="prompt-lab-panel"', html)
+        self.assertIn('tabindex="-1">Prompts</button>', html)
+        self.assertIn("<h2>Prompts</h2>", html)
+        self.assertNotIn(">Prompt Lab<", html)
         self.assertIn("Current compiled prompt", html)
+        self.assertIn('version: "2026-08-17-v16"', javascript)
+        self.assertIn(
+            'behavior_release: "meeting4-status-faithful-grounding"', javascript
+        )
         self.assertIn("Production changes still require code review", html)
         self.assertIn("module-diff-columns", css)
         self.assertIn("Current ·", javascript)

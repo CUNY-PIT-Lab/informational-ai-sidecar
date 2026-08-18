@@ -63,7 +63,8 @@ def valid_uuid(value: Any) -> str | None:
 
 def sanitized_surface(value: Any) -> str:
     surface = str(value or "unknown").strip().lower()
-    return surface if surface in {"replica", "wix", "api", "synthetic"} else "unknown"
+    allowed = {"replica", "wix", "api", "synthetic", "benchmark"}
+    return surface if surface in allowed else "unknown"
 
 
 def fingerprint_request(

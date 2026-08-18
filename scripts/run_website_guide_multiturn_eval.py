@@ -376,7 +376,7 @@ def run(args: argparse.Namespace) -> int:
                 "page_context": page_context,
                 "history": list(history),
                 "client_event_id": event_id,
-                "client_surface": "synthetic",
+                "client_surface": "benchmark",
             }
             if conversation_id:
                 payload["conversation_id"] = conversation_id
@@ -502,6 +502,7 @@ def run(args: argparse.Namespace) -> int:
             "retry_transient": bool(args.retry_transient),
             "history_messages": MAX_HISTORY_MESSAGES,
             "capture_allowed": args.allow_capture,
+            "client_surface": "benchmark",
         },
         "aggregate": aggregate_result,
         "episodes": episode_results,
@@ -541,7 +542,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--allow-capture",
         action="store_true",
-        help="allow synthetic evaluation turns in an explicitly approved capture environment",
+        help="allow benchmark turns in an explicitly approved capture environment",
     )
     value.add_argument("--validate-only", action="store_true")
     return value

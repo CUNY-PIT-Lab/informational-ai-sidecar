@@ -59,13 +59,19 @@ Only a conversation satisfying every condition enters the shared review queue:
 
 Mixed or privacy-held conversations are withheld in full. Every authenticated evaluator receives the same placements, buckets, conversation notes, and message annotations. Annotation rows reference canonical message IDs and never copy transcript text. Mutations retain evaluator attribution in the append-only audit log. All evaluation records cascade away when the conversation expires.
 
+Automated suites and capture verification use `client_surface='benchmark'`.
+Those rows remain available to aggregate audits but never satisfy the shared
+review-queue gate. Use `scripts/exclude_evaluation_runs.py` to reclassify only
+artifact-backed historical runs; it is dry-run by default, skips records with
+review history, and does not delete transcripts.
+
 The shared review taxonomy includes **Success**, **Needs work**, the virtual **Not yet reviewed** area, and custom buckets. Migration `008_remove_handoff_bucket.sql` returns old Handoff placements to Not yet reviewed and archives the old bucket rows without deleting their history.
 
-## Prompt Lab boundary
+## Prompts boundary
 
-All authenticated evaluators share one Prompt Lab. Editors and the administrator can create or revise draft suggestions and add comments for four presentation modules only: style, clarification, page awareness, and follow-up behavior. The administrator can mark a proposal ready for code review or archive it.
+All authenticated evaluators share one Prompts workspace. Editors and the administrator can create or revise draft suggestions and add comments for four presentation modules only: style, clarification, page awareness, and follow-up behavior. The administrator can mark a proposal ready for code review or archive it.
 
-Prompt Lab never edits the compiled system prompt and has no activation or publishing route. Grounding, approved source access, privacy, safety, response validation, language handling, and deployment remain code-controlled. A ready proposal becomes live only after a developer converts it into an allowlisted prompt version, reviews it through Git, and deploys that code.
+Prompts never edits the compiled system prompt and has no activation or publishing route. Grounding, approved source access, privacy, safety, response validation, language handling, and deployment remain code-controlled. A ready proposal becomes live only after a developer converts it into an allowlisted prompt version, reviews it through Git, and deploys that code.
 
 ## HTTP boundary
 

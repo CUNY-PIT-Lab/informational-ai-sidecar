@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the synthetic conversation-capture contract against a deployed API."""
+"""Exercise conversation capture without adding a reviewer-visible transcript."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def main() -> int:
     event_id = str(uuid.uuid4())
     first_payload = {
         "message": "device",
-        "client_surface": "synthetic",
+        "client_surface": "benchmark",
         "client_event_id": event_id,
         "page_context": {
             "url": "https://www.fortunedigitalequity.org/devices",
@@ -70,7 +70,7 @@ def main() -> int:
     privacy_event_id = str(uuid.uuid4())
     privacy_status, privacy = post(args.base_url, {
         "message": "My synthetic Fortune ID is 654321",
-        "client_surface": "synthetic",
+        "client_surface": "benchmark",
         "client_event_id": privacy_event_id,
         "page_context": first_payload["page_context"],
     })

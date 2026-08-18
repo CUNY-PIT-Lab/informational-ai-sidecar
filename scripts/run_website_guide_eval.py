@@ -876,7 +876,7 @@ def run(args: argparse.Namespace) -> int:
             "page_context": case.get("page_context", default_page),
             "history": case.get("history", []),
             "client_event_id": str(uuid.uuid4()),
-            "client_surface": "synthetic",
+            "client_surface": "benchmark",
         }
         status, response, latency_ms, transport_error = json_request(
             base_url + "/api/chat",
@@ -948,6 +948,7 @@ def run(args: argparse.Namespace) -> int:
             "delay_seconds": args.delay,
             "retry_transient": args.retry_transient,
             "capture_allowed": args.allow_capture,
+            "client_surface": "benchmark",
         },
         "aggregate": aggregate_result,
         "results": results,

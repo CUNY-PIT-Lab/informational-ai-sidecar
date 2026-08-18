@@ -90,6 +90,11 @@ def recording_recorder(mode):
 
 
 class ConversationStoreTests(unittest.TestCase):
+    def test_benchmark_surface_is_distinct_from_reviewer_synthetic(self):
+        self.assertEqual(conversation_store.sanitized_surface("benchmark"), "benchmark")
+        self.assertEqual(conversation_store.sanitized_surface("synthetic"), "synthetic")
+        self.assertEqual(conversation_store.sanitized_surface("not-allowed"), "unknown")
+
     def test_capture_is_disabled_by_default_and_needs_no_database(self):
         recorder = conversation_store.ConversationRecorder(
             database_url="",
@@ -210,6 +215,7 @@ class ConversationStoreTests(unittest.TestCase):
     def test_only_clear_synthetic_turns_are_review_ready(self):
         cases = (
             ("synthetic", "clear", "ready"),
+            ("benchmark", "clear", "pending"),
             ("replica", "clear", "pending"),
             ("synthetic", "blocked", "excluded"),
         )
