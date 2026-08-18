@@ -2290,28 +2290,6 @@ def clean_source_title(source):
     ).strip()
 
 
-def model_clarification_is_short_questions(value):
-    """Keep only a small shape check; the model writes the clarification."""
-
-    raw = str(value or "").strip()
-    if not raw or "\n" in raw or "\r" in raw:
-        return False
-    greeting = re.match(
-        r"^(?:hey|hi|hello|okay|ok|sure|of course|hola|claro)[!.]\s+",
-        raw,
-        flags=re.I,
-    )
-    if greeting:
-        raw = raw[greeting.end():].strip()
-    parts = [part.strip() for part in re.findall(r"[^?]+(?:\?|$)", raw) if part.strip()]
-    if not 1 <= len(parts) <= 2:
-        return False
-    for part in parts:
-        if not part.endswith("?") or re.search(r"[.;:]", part[:-1]):
-            return False
-    return True
-
-
 def model_clarification_response(
     question,
     model_question,
@@ -2320,10 +2298,12 @@ def model_clarification_response(
     """Return only a model-authored clarification; never synthesize stock copy."""
 
     raw_message = str(model_question or "").strip()
-    message = clip_words(raw_message, MAX_MESSAGE_WORDS).strip()
+    message_text = re.sub(r"\s+", " ", raw_message).strip()
+    message = message_text
     folded = fold_text(message).lstrip("¿").strip()
     if (
-        not model_clarification_is_short_questions(message)
+        not message
+        or len(message.split()) > MAX_MESSAGE_WORDS
         or "\n" in raw_message
         or "\r" in raw_message
         or re.search(r"https?://|www\.", message, flags=re.I)
@@ -2951,6 +2931,12 @@ def model_selection_retry_reason(
     if parsed["pick"] == SELECTOR_ASK:
         if require_answer:
             return "resolved source can answer"
+        try:
+            model_clarification_response(question, parsed["answer"])
+        except ModelResponseRejected:
+            if model_requests_personal_details(parsed["answer"]):
+                return "personal detail request"
+            return "invalid response"
         return ""
     selected = allowed[parsed["pick"]]
     if parsed["answer"].endswith("?") or model_requests_personal_details(parsed["answer"]):

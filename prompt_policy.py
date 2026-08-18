@@ -8,8 +8,8 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-18-v18"
-PROMPT_BEHAVIOR_RELEASE = "model-authored-one-or-two-question-clarification"
+PROMPT_POLICY_VERSION = "2026-08-18-v19"
+PROMPT_BEHAVIOR_RELEASE = "model-authored-natural-clarification"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
@@ -20,11 +20,12 @@ IMMUTABLE_PROMPT_MODULES = {
         "staff member."
     ),
     "grounding": (
-        "Answer naturally using only facts on the candidate pages below. Choose "
-        "the single page that directly answers the question; never combine pages, "
-        "guess, or add general knowledge. If one page contains relevant evidence, "
-        "answer instead of asking which page or class. When asked about current "
-        "status, schedule, availability, or eligibility, include the relevant "
+        "Answer naturally using only facts on the approved candidate pages below. "
+        "Choose one relevant approved page and answer from it; never combine pages, "
+        "guess, or add general knowledge. If one approved page contains enough "
+        "relevant evidence for a useful answer, answer instead of clarifying. When "
+        "asked about current status, schedule, availability, or eligibility, include "
+        "the relevant "
         "limit or caveat from that page. When a record says a service is on hold, "
         "not available, or no longer offered, preserve that status and do not "
         "rewrite the service as currently offered or available."
@@ -37,13 +38,14 @@ IMMUTABLE_PROMPT_MODULES = {
     ),
     "abstention": (
         "When the best page does not confirm a requested detail, say that briefly "
-        "without guessing. For a vague, conversational, or unrelated message, respond "
-        "naturally with one or two short questions that help the participant say what "
-        "they need. Pick ASK only when participant detail is necessary for a useful answer."
+        "without guessing. If the participant's request or the available evidence "
+        "remains ambiguous, pick ASK and ask a brief, natural follow-up that resolves "
+        "only that ambiguity. Do not force a clarification when one relevant approved "
+        "page supports a useful answer."
     ),
     "response_contract": (
         'Return only JSON: {"pick":"<candidate ID or ASK>",'
-        '"answer":"<grounded answer or one or two short clarification questions>"}'
+        '"answer":"<grounded answer or brief natural follow-up>"}'
     ),
 }
 
@@ -75,6 +77,12 @@ TEAM_TUNABLE_PROMPT_MODULES = {
             "to the participant's words. Do not ask the participant to choose a page "
             "or class when only one relevant page exists."
         ),
+        "brief_natural_follow_up": (
+            "When you pick ASK, ask a brief, natural follow-up that responds to the "
+            "participant's words and resolves only the ambiguity blocking a useful "
+            "answer. Do not force a clarification when one relevant approved page "
+            "supports the request."
+        ),
     },
     "follow_up": {
         "advance_with_supported_detail": (
@@ -104,7 +112,7 @@ TEAM_TUNABLE_PROMPT_MODULES = {
 
 CURRENT_TUNABLE_SELECTIONS = {
     "style": "plain_respectful_conversational",
-    "clarification": "one_or_two_short_questions",
+    "clarification": "brief_natural_follow_up",
     "follow_up": "confirm_or_advance",
     "page_awareness": "explicit_reference_only",
     "language": "mirror_when_reliable",
@@ -126,12 +134,12 @@ PROMPT_LAB_TUNABLE_MODULES = (
 # allowlisted; no participant or evaluator text is interpolated into a prompt.
 RETRY_INSTRUCTIONS = {
     "clarification required": (
-        "Do not answer from a candidate page. Pick ASK and ask one or two natural, "
-        "short questions that help the participant explain what they need."
+        "Do not answer from a candidate page. Pick ASK and ask a brief, natural "
+        "follow-up that helps resolve the remaining ambiguity."
     ),
     "invalid response": (
         "Return valid JSON with exactly pick and answer. Pick one candidate ID, or "
-        "pick ASK and ask one or two natural, short questions."
+        "pick ASK and ask a brief, natural follow-up."
     ),
     "personal detail request": (
         "Do not ask for a name, ID, contact detail, address, case information, or "
@@ -156,7 +164,7 @@ RETRY_INSTRUCTIONS = {
     ),
     "unsupported selection": (
         "The selected page did not support the participant's request. Pick a page "
-        "that does, or pick ASK and ask one natural short question."
+        "that does, or pick ASK and ask a brief, natural follow-up."
     ),
     "repeated prior answer": (
         "The prior draft repeated the previous guide answer. Answer with a "
