@@ -114,10 +114,15 @@ def continuity_failures(
     return failures
 
 
-def advancement_failures(*, response: dict, history: list[dict]) -> list[str]:
+def advancement_failures(
+    *,
+    response: dict,
+    history: list[dict],
+    required: bool = True,
+) -> list[str]:
     """Reject a factual follow-up that merely reuses an earlier evidence sentence."""
 
-    if response.get("kind") != "answer" or not history:
+    if not required or response.get("kind") != "answer" or not history:
         return []
     current = str(response.get("message") or "")
     if current in {
@@ -235,6 +240,11 @@ def run(args: argparse.Namespace) -> int:
     spec_path = pathlib.Path(args.spec).resolve()
     suite = core.load_json(cases_path)
     spec = core.load_json(spec_path)
+    try:
+        suite = core.apply_grader_overrides(suite, spec, unit_kind="turns")
+    except ValueError as error:
+        print(f"error: {error}")
+        return 2
     errors = validate_suite(suite)
     if errors:
         for error in errors:
@@ -322,7 +332,13 @@ def run(args: argparse.Namespace) -> int:
                 )
                 if turn_index:
                     failures.extend(
-                        advancement_failures(response=response, history=history)
+                        advancement_failures(
+                            response=response,
+                            history=history,
+                            required=turn.get("expect", {}).get(
+                                "advancement_required", True
+                            ),
+                        )
                     )
             row = {
                 "id": turn["id"],
@@ -337,7 +353,7 @@ def run(args: argparse.Namespace) -> int:
                 "transport_error": transport_error,
                 "passed": not failures,
                 "failures": failures,
-                "response": response,
+                "response": core.artifact_response(response),
             }
             turn_results.append(row)
             marker = "PASS" if row["passed"] else "FAIL"

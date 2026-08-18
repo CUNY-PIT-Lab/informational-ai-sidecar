@@ -1,12 +1,15 @@
 import pathlib
+import sys
 import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 import server
 from scripts import run_website_guide_eval
 from scripts import run_website_guide_multiturn_eval
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOME = {"url": "https://www.fortunedigitalequity.org/"}
 
 
@@ -72,6 +75,63 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         _, sources = server.retrieval_plan(routed, HOME)
         self.assertEqual(sources[0]["id"], server.EXCEL_FORMULAS_ID)
 
+    def test_natural_generic_follow_ups_keep_the_latest_support_and_calendar_topics(self):
+        support_history = [
+            {"role": "user", "content": "What one-on-one technology help is available?"},
+            {"role": "assistant", "content": "Fortune lists tutoring and technical support."},
+        ]
+        support_routed = server.contextual_routing_question(
+            "What kinds of help are offered?",
+            support_history,
+        )
+        self.assertIn("one-to-one", support_routed)
+        self.assertIsNone(server.ambiguity_response(support_routed))
+        _, support_sources = server.retrieval_plan(support_routed, HOME)
+        self.assertEqual(support_sources[0]["id"], "individual")
+
+        calendar_history = [
+            {"role": "user", "content": "What current schedule is shown on this page?"},
+            {"role": "assistant", "content": "The calendar lists current sessions."},
+        ]
+        calendar_routed = server.contextual_routing_question(
+            "What are the regular class hours?",
+            calendar_history,
+        )
+        self.assertIn("current schedule", calendar_routed)
+        self.assertIsNone(
+            server.ambiguity_response(
+                calendar_routed,
+                page_context={"url": server.CALENDAR_URL},
+            )
+        )
+        scope, calendar_sources = server.retrieval_plan(
+            calendar_routed,
+            {"url": server.CALENDAR_URL},
+        )
+        self.assertEqual(scope, "page")
+        self.assertEqual(calendar_sources[0]["id"], "calendar")
+
+    def test_explicit_catalog_and_schedule_topic_shifts_do_not_inherit_a_device_topic(self):
+        history = [
+            {"role": "user", "content": "Can I get a free laptop?"},
+            {"role": "assistant", "content": "Laptop supply is limited."},
+        ]
+
+        catalog_question = "What kinds of classes are offered?"
+        catalog_routed = server.contextual_routing_question(catalog_question, history)
+        self.assertEqual(catalog_routed, server.semantic_question(catalog_question))
+        catalog_clarification = server.ambiguity_response(catalog_routed)
+        self.assertIsNotNone(catalog_clarification)
+        self.assertNotIn("device", catalog_clarification["message"].lower())
+
+        schedule_question = "What are the regular class hours?"
+        schedule_routed = server.contextual_routing_question(schedule_question, history)
+        self.assertEqual(schedule_routed, server.semantic_question(schedule_question))
+        self.assertIsNone(server.ambiguity_response(schedule_routed))
+        scope, schedule_sources = server.retrieval_plan(schedule_routed, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual(schedule_sources[0]["id"], "calendar")
+
     def test_conversational_it_does_not_mean_the_host_page(self):
         self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
         self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))
@@ -95,7 +155,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "I want to learn email from the beginning. What class fits?": server.INTRO_EMAIL_ID,
             "Does Fortune have a beginner Canva class?": server.INTRO_CANVA_ID,
             "Is there a class for learning a new smartphone?": server.INTRO_SMARTPHONE_ID,
-            "Is there a class about writing resumes with AI?": server.RESUME_AI_ID,
             "Now I want to learn Excel formulas.": server.EXCEL_FORMULAS_ID,
             "Is there also a class on job searching online?": server.JOB_SEARCH_ID,
             "Busco una clase básica de computación.": server.SPANISH_BASIC_ID,
@@ -104,6 +163,13 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             with self.subTest(question=question):
                 _, sources = server.retrieval_plan(question, HOME)
                 self.assertEqual(sources[0]["id"], source_id)
+
+    def test_removed_resume_class_uses_current_discovery_sources_without_guessing(self):
+        question = "Is there a class about writing resumes with AI?"
+        scope, sources = server.retrieval_plan(question, HOME)
+        self.assertEqual(scope, "site")
+        self.assertEqual([source["id"] for source in sources], ["trainings", "contact"])
+        self.assertEqual(server.deterministic_answer_sources(question, sources, scope), [])
 
     def test_word_certification_follow_up_prefers_word_certification_page(self):
         history = [
@@ -190,7 +256,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             chat_stage="follow_up",
             routing_question="Intro to Smartphones. Follow-up: When is it offered?",
         )
-        self.assertIn("live calendar", message.lower())
+        self.assertIn("available classes", message.lower())
 
     def test_advancement_grader_rejects_a_reused_source_sentence(self):
         history = [
@@ -217,6 +283,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "QRCode for Pre-Computer Safety Survey",
             "Your content has been submitted",
             "Ended Ended Main Office (LIC)",
+            "Computer Lab Clip Art",
             "IMG_0210_edited.jpg",
         ]
         for fragment in fragments:
@@ -247,8 +314,8 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             chat_stage="follow_up",
             routing_question="Can I get a free laptop? How do I confirm whether I qualify?",
         )
-        self.assertIn("referral", message)
-        self.assertIn("case manager", message)
+        self.assertIn("at least 5", message)
+        self.assertIn("workshops", message)
         self.assertNotIn("currently on hold", message)
 
     def test_continuity_grader_accepts_stable_follow_up(self):

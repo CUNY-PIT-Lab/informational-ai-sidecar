@@ -23,6 +23,7 @@ class _FakeEvaluationStore:
     def __init__(self):
         self.claimed = False
         self.invited_email = None
+        self.prompt_proposals = {}
 
     def public_status(self):
         return {
@@ -59,6 +60,12 @@ class _FakeEvaluationStore:
                 "role": "editor",
                 "display_name": "Tester One",
             }
+        if token == "editor-2-session":
+            return {
+                "slot_key": "editor-2",
+                "role": "editor",
+                "display_name": "Editor 2",
+            }
         if token != "session-token":
             return None
         return {
@@ -72,6 +79,8 @@ class _FakeEvaluationStore:
             return "admin-csrf"
         if token == "claimed-session" and self.claimed:
             return "claimed-csrf"
+        if token == "editor-2-session":
+            return "editor-2-csrf"
         return "csrf-token" if token == "session-token" else ""
 
     def csrf_matches(self, token, supplied):
@@ -143,6 +152,110 @@ class _FakeEvaluationStore:
             "operation_id": operation_id,
         }
 
+    def get_prompt_lab(self, slot, deployed_version, behavior_release):
+        return {
+            "scope": "shared",
+            "shared": True,
+            "deployed": {
+                "version": deployed_version,
+                "behavior_release": behavior_release,
+                "editable": False,
+            },
+            "editable_modules": [
+                {"key": "style", "label": "Tone and concision", "current_value": "Current style", "current_variant": "concise_conversational", "maximum_length": 500},
+            ],
+            "code_controlled": ["Grounding and no-guessing rules"],
+            "activation": "code_review_and_deploy_only",
+            "can_mark_status": slot == "admin",
+            "proposals": list(self.prompt_proposals.values()),
+        }
+
+    def create_prompt_proposal(
+        self, slot, title, module_values, base_version, proposal_id, operation_id
+    ):
+        created_at = "2026-08-17T20:00:00Z"
+        proposal = {
+            "id": proposal_id,
+            "title": title,
+            "module_values": module_values,
+            "base_prompt_version": base_version,
+            "status": "draft",
+            "version": 1,
+            "created_by": slot,
+            "updated_by": slot,
+            "created_at": created_at,
+            "updated_at": created_at,
+            "comments": [],
+            "revisions": [{
+                "proposal_version": 1,
+                "base_prompt_version": base_version,
+                "title": title,
+                "module_values": module_values,
+                "status": "draft",
+                "actor_slot": slot,
+                "action": "proposal.create",
+                "recorded_at": created_at,
+            }],
+        }
+        self.prompt_proposals[proposal_id] = proposal
+        return proposal
+
+    def update_prompt_proposal(
+        self, slot, proposal_id, title, module_values, expected_version, operation_id
+    ):
+        proposal = self.prompt_proposals[proposal_id]
+        proposal.update(
+            title=title,
+            module_values=module_values,
+            version=int(expected_version) + 1,
+            updated_by=slot,
+        )
+        proposal["revisions"].insert(0, {
+            "proposal_version": proposal["version"],
+            "base_prompt_version": proposal["base_prompt_version"],
+            "title": title,
+            "module_values": module_values,
+            "status": proposal["status"],
+            "actor_slot": slot,
+            "action": "proposal.update",
+            "recorded_at": "2026-08-17T20:03:00Z",
+        })
+        return proposal
+
+    def add_prompt_proposal_comment(self, slot, proposal_id, comment, operation_id):
+        stored = {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "body": comment,
+            "actor_slot": slot,
+            "proposal_version": self.prompt_proposals[proposal_id]["version"],
+            "created_at": "2026-08-17T20:05:00Z",
+        }
+        self.prompt_proposals[proposal_id]["comments"].append(stored)
+        return stored
+
+    def set_prompt_proposal_status(
+        self, slot, proposal_id, status, expected_version, operation_id
+    ):
+        if slot != "admin":
+            raise server.EvaluationForbidden("Only the administrator can change proposal status.")
+        proposal = self.prompt_proposals[proposal_id]
+        proposal.update(
+            status=status,
+            version=int(expected_version) + 1,
+            updated_by=slot,
+        )
+        proposal["revisions"].insert(0, {
+            "proposal_version": proposal["version"],
+            "base_prompt_version": proposal["base_prompt_version"],
+            "title": proposal["title"],
+            "module_values": proposal["module_values"],
+            "status": status,
+            "actor_slot": slot,
+            "action": f"proposal.{status}",
+            "recorded_at": "2026-08-17T20:06:00Z",
+        })
+        return proposal
+
     def list_accounts(self):
         raise AssertionError("An editor must not reach the account list")
 
@@ -201,6 +314,8 @@ class EvaluationApiTests(unittest.TestCase):
             "/railway.json",
             "/requirements.txt",
             "/migrations/003_evaluator_identity.sql",
+            "/migrations/007_prompt_proposals.sql",
+            "/migrations/008_remove_handoff_bucket.sql",
             "/scripts/issue_evaluator_invite.py",
             "/tests/test_evaluation_api.py",
             "/replica-snapshots/page-home-e6c04f0f.html.gz",
@@ -376,6 +491,128 @@ class EvaluationApiTests(unittest.TestCase):
         annotation = json.loads(body)["annotation"]
         self.assertEqual(annotation["category"], "helpful")
         self.assertEqual(annotation["message_id"], message_id)
+
+    def test_prompt_lab_is_shared_but_status_is_admin_only_and_never_activates(self):
+        store = server.EVALUATION_STORE
+        store.prompt_proposals = {}
+        proposal_id = "11111111-1111-4111-8111-111111111111"
+        editor_headers = {
+            **self.same_origin_headers(),
+            "Cookie": "__Host-fs_eval=session-token",
+            "X-CSRF-Token": "csrf-token",
+        }
+        status, _, body = self.request(
+            "POST",
+            "/api/evaluation/prompt-proposals",
+            {
+                "proposal_id": proposal_id,
+                "title": "Shorter answers",
+                "module_values": {"style": "Use shorter sentences."},
+                "operation_id": "22222222-2222-4222-8222-222222222222",
+            },
+            editor_headers,
+        )
+        self.assertEqual(status, 201)
+        created = json.loads(body)["proposal"]
+        self.assertEqual(created["created_by"], "editor-1")
+        self.assertEqual(created["status"], "draft")
+        self.assertEqual(created["revisions"][0]["proposal_version"], 1)
+
+        status, _, body = self.request(
+            "GET",
+            "/api/evaluation/prompt-lab",
+            headers={"Cookie": "__Host-fs_eval=editor-2-session"},
+        )
+        self.assertEqual(status, 200)
+        shared = json.loads(body)["prompt_lab"]
+        self.assertTrue(shared["shared"])
+        self.assertEqual(shared["proposals"][0]["id"], proposal_id)
+        self.assertEqual(shared["activation"], "code_review_and_deploy_only")
+
+        editor_two_headers = {
+            **self.same_origin_headers(),
+            "Cookie": "__Host-fs_eval=editor-2-session",
+            "X-CSRF-Token": "editor-2-csrf",
+        }
+        status, _, body = self.request(
+            "PUT",
+            f"/api/evaluation/prompt-proposals/{proposal_id}",
+            {
+                "title": "Shorter, clearer answers",
+                "module_values": {"style": "Use one or two short sentences."},
+                "expected_version": 1,
+                "operation_id": "66666666-6666-4666-8666-666666666666",
+            },
+            editor_two_headers,
+        )
+        self.assertEqual(status, 200)
+        updated = json.loads(body)["proposal"]
+        self.assertEqual(updated["updated_by"], "editor-2")
+        self.assertEqual(
+            [revision["proposal_version"] for revision in updated["revisions"]],
+            [2, 1],
+        )
+
+        status, _, body = self.request(
+            "POST",
+            f"/api/evaluation/prompt-proposals/{proposal_id}/comments",
+            {
+                "comment": "This is easier to scan.",
+                "operation_id": "77777777-7777-4777-8777-777777777777",
+            },
+            editor_two_headers,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(json.loads(body)["comment"]["actor_slot"], "editor-2")
+
+        status, _, _ = self.request(
+            "PUT",
+            f"/api/evaluation/prompt-proposals/{proposal_id}/status",
+            {
+                "status": "ready",
+                "expected_version": 2,
+                "operation_id": "33333333-3333-4333-8333-333333333333",
+            },
+            editor_headers,
+        )
+        self.assertEqual(status, 403)
+
+        status, _, body = self.request(
+            "PUT",
+            f"/api/evaluation/prompt-proposals/{proposal_id}/status",
+            {
+                "status": "ready",
+                "expected_version": 2,
+                "operation_id": "33333333-3333-4333-8333-333333333333",
+            },
+            {
+                **self.same_origin_headers(),
+                "Cookie": "__Host-fs_eval=admin-session",
+                "X-CSRF-Token": "admin-csrf",
+            },
+        )
+        self.assertEqual(status, 200)
+        ready = json.loads(body)["proposal"]
+        self.assertEqual(ready["status"], "ready")
+        self.assertEqual(
+            [revision["proposal_version"] for revision in ready["revisions"]],
+            [3, 2, 1],
+        )
+
+        status, _, _ = self.request(
+            "PUT",
+            f"/api/evaluation/prompt-proposals/{proposal_id}/activate",
+            {
+                "expected_version": 2,
+                "operation_id": "55555555-5555-4555-8555-555555555555",
+            },
+            {
+                **self.same_origin_headers(),
+                "Cookie": "__Host-fs_eval=admin-session",
+                "X-CSRF-Token": "admin-csrf",
+            },
+        )
+        self.assertEqual(status, 404)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

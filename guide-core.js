@@ -7,14 +7,20 @@
   "use strict";
 
   const SITE_ORIGIN = "https://www.fortunedigitalequity.org";
+  const LEGACY_PATH_ALIASES = Object.freeze({
+    "/about/partners": "/about",
+    "/individual": "/support",
+    "/reserve": "/calendar",
+    "/trainings": "/workshops",
+  });
   const ROUTE_GROUPS = {
     directory: new Set([
-      "/trainings", "/certifications", "/grow", "/practice", "/projects",
-      "/opportunities", "/other", "/staff",
+      "/workshops", "/certifications", "/practice", "/projects",
+      "/opportunities", "/other",
     ]),
-    action: new Set(["/calendar", "/reserve", "/contact", "/assessments", "/deiqa", "/media"]),
-    program: new Set(["/", "/about", "/about/impact", "/about/partners"]),
-    support: new Set(["/devices", "/individual"]),
+    action: new Set(["/calendar", "/contact", "/deiqa"]),
+    program: new Set(["/", "/about", "/about/impact"]),
+    support: new Set(["/devices", "/support"]),
   };
   const STOPWORDS = new Set([
     "a", "about", "am", "an", "and", "are", "at", "be", "can", "do", "does",
@@ -57,7 +63,8 @@
     try {
       const url = new URL(String(value || ""), SITE_ORIGIN);
       if (!/^(?:www\.)?fortunedigitalequity\.org$/i.test(url.hostname)) return "";
-      const path = url.pathname.replace(/\/+$/, "") || "/";
+      const originalPath = url.pathname.replace(/\/+$/, "") || "/";
+      const path = LEGACY_PATH_ALIASES[originalPath] || originalPath;
       return `${SITE_ORIGIN}${path}`;
     } catch {
       return "";
@@ -135,11 +142,6 @@
       ...common,
       placeholder: "What current class information are you trying to find?",
       suggestions: ["Where and when are current classes?", "Which class should I look for?"],
-    };
-    if (family === "action" && path === "/reserve") return {
-      ...common,
-      placeholder: "What would you like to know about registration?",
-      suggestions: ["How does registration work?", "Where can I confirm current sessions?"],
     };
     if (family === "action" && path === "/contact") return {
       ...common,

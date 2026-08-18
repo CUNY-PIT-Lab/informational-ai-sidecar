@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "name": "Fortune Website Guide refreshed-corpus multi-turn evaluation",
+    "version": "2026-08-17.2",
+    "mode": "gym-grader-overlay",
+    "owner": "Fortune Website Guide maintainers"
+  },
+  "charter": {
+    "decision": "Regrade the frozen August 17 multi-turn responses after correcting only demonstrated grader artifacts.",
+    "unitUnderTest": "The same 12 episodes, 50 turns, and raw responses used by version 2026-08-17.1.",
+    "hardConstraints": [
+      "Do not change a turn, episode level, slice, continuity rule, grounding rule, topic-shift rule, source allowlist, or no-guessing gate.",
+      "Clarification authority is graded from offered choice labels and prompts because response.sources is intentionally empty for kind=clarify.",
+      "Advancement remains required except for the one declared confirmation turn whose only supported fact was already stated by the preceding answer."
+    ],
+    "nonGoals": [
+      "Change runtime routing, retrieval, prompts, source records, or production behavior.",
+      "Waive repetition for any other turn.",
+      "Convert substantive context loss, generic clarification, incomplete retrieval, or stale-status failures into passes.",
+      "Overwrite the version 1 spec, cases, or raw run."
+    ]
+  },
+  "lineage": {
+    "parent_spec": "multiturn-spec-2026-08-17.json",
+    "parent_spec_sha256": "3b5dd032b22765b28d4cb7c3e4ff6fcd7cf5b2bbc4e36f2b00a3a9a53d7e805f",
+    "frozen_cases": "multiturn-cases-2026-08-17.json",
+    "frozen_cases_sha256": "8db87973a168d3562ac6e5259b14128de5f16220cb7ce69e40c57c6e29570a15",
+    "initial_raw_result": "results/2026-08-17-staging-multiturn.json",
+    "initial_raw_result_sha256": "c694edbb715a9dd8d262d5f87eb0fae8cadf4ebbcd87571decad4e6607ac16cc"
+  },
+  "grader_contract": {
+    "clarification_authority": "For kind=clarify, source_match_any and source_excludes inspect choice labels and prompts in addition to response.sources.",
+    "advancement_exception": "A turn may set advancement_required=false only through this bounded spec overlay and only when the source contains no additional answer beyond the fact already supplied."
+  },
+  "grader_overrides": {
+    "clarification_authority": "sources_or_choice_targets",
+    "turn_expectations": {
+      "current_faq_conversation/full-attendance-exception": {
+        "source_match_any": [
+          "home",
+          "contact",
+          "trainings"
+        ],
+        "advancement_required": false
+      }
+    }
+  },
+  "adjudication": {
+    "expected_delta_on_initial_raw_result": "Turn passes move from 35/50 to 37/50, contextual passes from 18/28 to 20/28, and complete episodes from 3/12 to 4/12. The impossible FAQ advancement failure and clarification-choice source artifact become passes; all other repetition and context failures remain failures and the decision remains BLOCK.",
+    "immutable_raw_evidence": true
+  }
+}

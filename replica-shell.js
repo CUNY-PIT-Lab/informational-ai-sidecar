@@ -10,6 +10,12 @@
     "fortunedigitalequity.org",
     "www.fortunedigitalequity.org",
   ]);
+  const legacyPathAliases = new Map([
+    ["/about/partners", "/about"],
+    ["/individual", "/support"],
+    ["/reserve", "/calendar"],
+    ["/trainings", "/workshops"],
+  ]);
   const liveOnlyPaths = new Set([
     "/file-share",
     "/groups",
@@ -24,7 +30,8 @@
       if (url.protocol !== "https:" || !allowedHosts.has(url.hostname.toLowerCase())) {
         return "";
       }
-      const path = url.pathname.replace(/\/+$/, "") || "/";
+      const originalPath = url.pathname.replace(/\/+$/, "") || "/";
+      const path = legacyPathAliases.get(originalPath) || originalPath;
       return `https://www.fortunedigitalequity.org${path}`;
     } catch (_error) {
       return "";
@@ -119,7 +126,7 @@
   );
 
   const frameUrl = new URL("sidecar.html", assetRoot);
-  frameUrl.searchParams.set("v", "20260817-grounded-generation-1");
+  frameUrl.searchParams.set("v", "20260817-route-refresh-1");
   frameUrl.searchParams.set("embed", "1");
   frameUrl.searchParams.set("page", canonicalUrl(sourceUrl) || sourceUrl);
   const pageSearch = new URLSearchParams(window.location.search);

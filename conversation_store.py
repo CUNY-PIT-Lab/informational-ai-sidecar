@@ -19,6 +19,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from prompt_policy import PROMPT_POLICY_VERSION
+
 
 CAPTURE_MODES = {"none", "metadata", "transcript"}
 SCHEMA_VERSION = "005_interaction_context"
@@ -230,9 +232,7 @@ class ConversationRecorder:
             or os.environ.get("FORTUNE_APP_VERSION")
             or "local"
         )[:120]
-        self.prompt_version = str(
-            prompt_version or os.environ.get("FORTUNE_PROMPT_VERSION") or "2026-08-08-v2"
-        )[:80]
+        self.prompt_version = str(prompt_version or PROMPT_POLICY_VERSION)[:80]
         self.token_secret = str(
             token_secret
             if token_secret is not None

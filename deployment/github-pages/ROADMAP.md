@@ -1,6 +1,6 @@
 # GitHub Pages demonstration roadmap
 
-GitHub Pages hosts an inert replica for each of the 200 public HTML routes in `site-index.json`, so a reviewer can open a class, device, support, calendar, event, news, or archive path directly. Each snapshot preserves its rendered Wix page and adds the informational sidecar with the canonical Fortune source ID.
+GitHub Pages hosts an inert replica for each of the 138 public HTML routes in `site-index.json`, so a reviewer can open a class, device, support, calendar, event, news, or archive path directly. Each snapshot preserves its rendered Wix page and adds the informational sidecar with the canonical Fortune source ID.
 
 GitHub Pages serves static files and cannot protect a runtime model credential. The public site therefore has two operating states.
 
@@ -36,7 +36,7 @@ python3 scripts/build_pages.py
 python3 -m http.server 8791 --directory _site
 ```
 
-The builder creates `_site/index.html` and one nested `index.html` for every non-root canonical path. The complete output contains 200 route snapshots plus the shared replica, sidecar, configuration, and source-index files.
+The builder creates `_site/index.html` and one nested `index.html` for every non-root canonical path. The complete output contains 138 route snapshots plus the shared replica, sidecar, configuration, and source-index files.
 
 Each route shell sets public route context with `path`, `sourceUrl`, and `pageId`. Internal mock links remain inside the Pages site when the destination is indexed. Unindexed booking actions, PDFs, and other live-only destinations open the canonical Fortune URL.
 
@@ -89,7 +89,7 @@ python3 scripts/build_pages.py --check-index
 
 ## Publication sequence
 
-1. Review the 200-route static build locally, including excluded and archived routes.
+1. Review the 138-route static build locally, including excluded and archived routes.
 2. Run the key-free tests, index check, keyboard checks, desktop and mobile browser checks, and a broken-link pass.
 3. Publish the source-backed static build through [`../../.github/workflows/pages.yml`](../../.github/workflows/pages.yml).
 4. Verify every generated route at the repository Pages base path.

@@ -3,6 +3,11 @@
 
   const accessView = document.querySelector("#access-view");
   const workspace = document.querySelector("#workspace");
+  const workspaceTitle = document.querySelector("#workspace-title");
+  const conversationsTab = document.querySelector("#conversations-tab");
+  const promptLabTab = document.querySelector("#prompt-lab-tab");
+  const conversationsPanel = document.querySelector("#conversations-panel");
+  const promptLabPanel = document.querySelector("#prompt-lab-panel");
   const loginForm = document.querySelector("#login-form");
   const claimForm = document.querySelector("#claim-form");
   const claimCancel = document.querySelector("#claim-cancel");
@@ -32,10 +37,24 @@
   const reviewNote = document.querySelector("#review-note");
   const reviewNoteStatus = document.querySelector("#review-note-status");
   const moveStatus = document.querySelector("#move-status");
+  const deployedPromptVersion = document.querySelector("#deployed-prompt-version");
+  const currentPromptModules = document.querySelector("#current-prompt-modules");
+  const codeControlledNote = document.querySelector("#code-controlled-note");
+  const proposalCount = document.querySelector("#proposal-count");
+  const promptProposalList = document.querySelector("#prompt-proposal-list");
+  const promptProposalEmpty = document.querySelector("#prompt-proposal-empty");
+  const newProposalButton = document.querySelector("#new-proposal-button");
+  const promptProposalDialog = document.querySelector("#prompt-proposal-dialog");
+  const promptProposalForm = document.querySelector("#prompt-proposal-form");
+  const promptProposalDialogTitle = document.querySelector("#prompt-proposal-title");
+  const promptProposalClose = document.querySelector("#prompt-proposal-close");
+  const promptProposalName = document.querySelector("#prompt-proposal-name");
+  const promptModuleFields = document.querySelector("#prompt-module-fields");
+  const promptProposalStatus = document.querySelector("#prompt-proposal-status");
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
-  const previewKey = "fortune-evaluation-preview-v4";
+  const previewKey = "fortune-evaluation-preview-v5";
   const viewKeyPrefix = "fortune-evaluation-view-v2";
   const defaultView = { visibility: "all", sort: "default", layout: "compact" };
   const UNREVIEWED_PAGE_SIZE = 8;
@@ -46,6 +65,8 @@
     conversations: [],
     selectedId: "",
     openConversation: null,
+    promptLab: null,
+    editingProposalId: "",
     unreviewedPage: 1,
     view: { ...defaultView },
   };
@@ -61,15 +82,14 @@
   const previewBuckets = [
     { id: "success", label: "Success", color_key: "sky", standard_key: "success" },
     { id: "needs", label: "Needs work", color_key: "coral", standard_key: "needs" },
-    { id: "handoff", label: "Handoff", color_key: "blue", standard_key: "handoff" },
   ];
   const previewConversations = [
     ["7b8d3e", "Digital Literacy Workshops", 6, null],
     ["4c6e8f", "Internet Access Support", 7, null],
     ["9f2a1c", "Device Distribution", 8, "success"],
     ["6e7f9g", "Legal Help Referrals", 6, "needs"],
-    ["3h6j8k", "Benefits Assistance", 5, "handoff"],
-    ["5k9l0m", "Theory of Change", 4, "handoff"],
+    ["3h6j8k", "Benefits Assistance", 5, null],
+    ["5k9l0m", "Theory of Change", 4, null],
     ["1a2b3c", "Computer Basics", 5, null],
     ["2b3c4d", "Intro to Email", 4, null],
     ["3c4d5e", "Microsoft Excel", 7, null],
@@ -90,6 +110,43 @@
     id, page_title, turn_count, bucket_id, transcript_version: turn_count,
     last_turn_at: "2026-08-08T14:30:00Z",
   }));
+
+  const previewPromptLab = {
+    scope: "shared",
+    shared: true,
+    deployed: {
+      version: "2026-08-17-v14",
+      behavior_release: "meeting4-plain-participant-respect",
+      editable: false,
+    },
+    editable_modules: [
+      { key: "style", label: "Tone and concision", current_variant: "plain_respectful_conversational", current_value: "Use plain, respectful, nonjudgmental language. Start with the useful action or answer, and avoid unexplained jargon, blame, or assumptions about the participant.", maximum_length: 500 },
+      { key: "clarification", label: "Clarification style", current_variant: "one_short_question", current_value: "When clarification is needed, ask one short question without unsupported facts.", maximum_length: 500 },
+      { key: "follow_up", label: "Follow-up advancement", current_variant: "advance_with_supported_detail", current_value: "Answer follow-ups with a different supported detail instead of repeating the prior answer.", maximum_length: 500 },
+      { key: "page_awareness", label: "Page awareness and flow", current_variant: "explicit_reference_only", current_value: "Treat the current page as a hint only when the visitor explicitly refers to it.", maximum_length: 500 },
+    ],
+    code_controlled: [
+      "Grounding and no-guessing rules",
+      "Approved source access",
+      "Privacy and safety rules",
+      "Response validation and release activation",
+    ],
+    activation: "code_review_and_deploy_only",
+    can_mark_status: false,
+    proposals: [{
+      id: "11111111-1111-4111-8111-111111111111",
+      base_prompt_version: "2026-08-17-v11",
+      title: "Shorter clarification turns",
+      module_values: { clarification: "Ask one plain-language question that gives the visitor two relevant directions to choose from." },
+      status: "draft",
+      version: 1,
+      created_by: "editor-1",
+      updated_by: "editor-1",
+      created_at: "2026-08-17T20:20:00Z",
+      updated_at: "2026-08-17T20:20:00Z",
+      comments: [],
+    }],
+  };
 
   function shortId(value) {
     return `CV-${String(value || "").replace(/-/g, "").slice(0, 6).toUpperCase()}`;
@@ -158,29 +215,42 @@
 
   function previewLoad() {
     const saved = JSON.parse(localStorage.getItem(previewKey) || "null");
-    state.session = { slot_key: "editor-1", role: "editor", display_name: "Editor 1" };
+    const previewAdmin = new URLSearchParams(location.search).get("role") === "admin";
+    state.session = previewAdmin
+      ? { slot_key: "admin", role: "admin", display_name: "Administrator" }
+      : { slot_key: "editor-1", role: "editor", display_name: "Editor 1" };
     state.buckets = saved?.buckets || previewBuckets;
     state.conversations = saved?.conversations || previewConversations;
+    state.promptLab = saved?.promptLab || structuredClone(previewPromptLab);
+    state.promptLab.can_mark_status = previewAdmin;
     loadViewPreferences();
     showWorkspace();
     renderBoard();
+    renderPromptLab();
   }
 
   function previewSave() {
-    localStorage.setItem(previewKey, JSON.stringify({ buckets: state.buckets, conversations: state.conversations }));
+    localStorage.setItem(previewKey, JSON.stringify({
+      buckets: state.buckets,
+      conversations: state.conversations,
+      promptLab: state.promptLab,
+    }));
   }
 
   async function loadWorkspace() {
     if (localPreview) return previewLoad();
-    const [bucketPayload, conversationPayload] = await Promise.all([
+    const [bucketPayload, conversationPayload, promptPayload] = await Promise.all([
       api("/api/evaluation/buckets"),
       api("/api/evaluation/conversations?limit=500"),
+      api("/api/evaluation/prompt-lab"),
     ]);
     state.buckets = bucketPayload.buckets || [];
     state.conversations = conversationPayload.conversations || [];
+    state.promptLab = promptPayload.prompt_lab || null;
     loadViewPreferences();
     showWorkspace();
     renderBoard();
+    renderPromptLab();
   }
 
   function bucketColumns() {
@@ -310,6 +380,297 @@
         </section>`;
     }).join("");
     bindBoardEvents();
+  }
+
+  function setWorkspaceView(view) {
+    const promptView = view === "prompt";
+    conversationsPanel.hidden = promptView;
+    promptLabPanel.hidden = !promptView;
+    conversationsTab.setAttribute("aria-selected", String(!promptView));
+    promptLabTab.setAttribute("aria-selected", String(promptView));
+    conversationsTab.tabIndex = promptView ? -1 : 0;
+    promptLabTab.tabIndex = promptView ? 0 : -1;
+    workspaceTitle.textContent = promptView ? "Review prompt proposals" : "Review conversations";
+    if (promptView && !localPreview) refreshPromptLab(true);
+  }
+
+  function promptModule(key) {
+    return (state.promptLab?.editable_modules || []).find(module => module.key === key) || null;
+  }
+
+  function proposalById(proposalId) {
+    return (state.promptLab?.proposals || []).find(proposal => proposal.id === proposalId) || null;
+  }
+
+  function proposalStatusLabel(value) {
+    return { draft: "Draft", ready: "Ready for code review", archived: "Archived" }[value] || value;
+  }
+
+  function proposalModuleHtml(key, value) {
+    const module = promptModule(key);
+    if (!module) return "";
+    return `
+      <div class="module-diff">
+        <h4>${escapeHtml(module.label)}</h4>
+        <div class="module-diff-columns">
+          <div>
+            <p class="diff-label">Current · ${escapeHtml(module.current_variant)}</p>
+            <p>${escapeHtml(module.current_value)}</p>
+          </div>
+          <div>
+            <p class="diff-label">Proposed</p>
+            <p>${escapeHtml(value)}</p>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function proposalHtml(proposal) {
+    const moduleDiffs = Object.entries(proposal.module_values || {})
+      .map(([key, value]) => proposalModuleHtml(key, value))
+      .join("");
+    const comments = (proposal.comments || []).map(comment => `
+      <li>
+        <p>${escapeHtml(comment.body)}</p>
+        <span>${escapeHtml(comment.actor_slot)} · ${escapeHtml(readableTimestamp(comment.created_at))}</span>
+      </li>`).join("");
+    const editable = proposal.status === "draft";
+    const revisions = (proposal.revisions || []).map(revision => {
+      const revisionModules = Object.entries(revision.module_values || {}).map(([key, value]) => {
+        const module = promptModule(key);
+        return `<li><strong>${escapeHtml(module?.label || key)}</strong>: ${escapeHtml(value)}</li>`;
+      }).join("");
+      return `
+        <li>
+          <p><strong>v${Number(revision.proposal_version)}</strong> · ${escapeHtml(proposalStatusLabel(revision.status))} · ${escapeHtml(revision.actor_slot)} ${escapeHtml(readableTimestamp(revision.recorded_at))}</p>
+          <p>${escapeHtml(revision.title)}</p>
+          <ul>${revisionModules}</ul>
+        </li>`;
+    }).join("");
+    const adminControls = state.promptLab?.can_mark_status ? `
+      ${proposal.status === "draft" ? '<button class="secondary-button mark-proposal-ready" type="button">Mark ready</button>' : ""}
+      ${proposal.status !== "archived" ? '<button class="text-button archive-proposal" type="button">Archive</button>' : ""}` : "";
+    return `
+      <article class="prompt-proposal" data-proposal-id="${escapeHtml(proposal.id)}">
+        <header>
+          <div>
+            <p class="proposal-status" data-status="${escapeHtml(proposal.status)}">${escapeHtml(proposalStatusLabel(proposal.status))}</p>
+            <h3>${escapeHtml(proposal.title)}</h3>
+            <p class="proposal-meta">Based on ${escapeHtml(proposal.base_prompt_version)} · v${Number(proposal.version || 1)} · updated by ${escapeHtml(proposal.updated_by)} ${escapeHtml(readableTimestamp(proposal.updated_at))}</p>
+          </div>
+          <div class="proposal-actions">
+            ${editable ? '<button class="secondary-button edit-proposal" type="button">Edit</button>' : ""}
+            ${adminControls}
+          </div>
+        </header>
+        <div class="module-diffs">${moduleDiffs}</div>
+        ${revisions ? `
+          <details class="proposal-history">
+            <summary>Version history (${proposal.revisions.length})</summary>
+            <ol>${revisions}</ol>
+          </details>` : ""}
+        <section class="proposal-comments" aria-label="Proposal comments">
+          <h4>Comments</h4>
+          ${comments ? `<ul>${comments}</ul>` : '<p class="no-comments">No comments yet.</p>'}
+          <form class="proposal-comment-form">
+            <label class="sr-only">Add a comment</label>
+            <div>
+              <input name="comment" maxlength="1000" placeholder="Add a comment" aria-label="Add a comment" required>
+              <button class="secondary-button" type="submit">Comment</button>
+            </div>
+            <span class="save-status proposal-action-status" role="status"></span>
+          </form>
+        </section>
+      </article>`;
+  }
+
+  function renderPromptLab() {
+    const lab = state.promptLab;
+    if (!lab) {
+      promptProposalList.innerHTML = "";
+      promptProposalEmpty.hidden = false;
+      return;
+    }
+    deployedPromptVersion.textContent = `${lab.deployed.version} · ${lab.deployed.behavior_release}`;
+    currentPromptModules.innerHTML = (lab.editable_modules || []).map(module => `
+      <article>
+        <h4>${escapeHtml(module.label)}</h4>
+        <p>${escapeHtml(module.current_value)}</p>
+        <span>${escapeHtml(module.current_variant)}</span>
+      </article>`).join("");
+    codeControlledNote.textContent = `Code-controlled: ${(lab.code_controlled || []).join(", ")}.`;
+    const proposals = [...(lab.proposals || [])].sort((left, right) =>
+      timestampValue(right.updated_at) - timestampValue(left.updated_at)
+      || String(left.id).localeCompare(String(right.id))
+    );
+    proposalCount.textContent = `${proposals.length} shared ${proposals.length === 1 ? "proposal" : "proposals"}`;
+    promptProposalList.innerHTML = proposals.map(proposalHtml).join("");
+    promptProposalEmpty.hidden = proposals.length > 0;
+  }
+
+  function upsertProposal(proposal) {
+    if (!state.promptLab) return;
+    const index = state.promptLab.proposals.findIndex(item => item.id === proposal.id);
+    if (index >= 0) state.promptLab.proposals[index] = proposal;
+    else state.promptLab.proposals.unshift(proposal);
+  }
+
+  async function refreshPromptLab(silent = false) {
+    if (localPreview) return;
+    try {
+      state.promptLab = (await api("/api/evaluation/prompt-lab")).prompt_lab;
+      renderPromptLab();
+    } catch (error) {
+      if (!silent) moveStatus.textContent = `Prompt proposals could not be refreshed. ${error.message}`;
+    }
+  }
+
+  function openPromptProposalDialog(proposalId = "") {
+    const proposal = proposalId ? proposalById(proposalId) : null;
+    state.editingProposalId = proposal?.id || "";
+    promptProposalDialogTitle.textContent = proposal ? "Edit prompt proposal" : "New prompt proposal";
+    promptProposalName.value = proposal?.title || "";
+    promptModuleFields.innerHTML = (state.promptLab?.editable_modules || []).map(module => `
+      <div class="field prompt-module-field">
+        <label for="prompt-module-${escapeHtml(module.key)}">${escapeHtml(module.label)}</label>
+        <p>Current: ${escapeHtml(module.current_value)}</p>
+        <textarea id="prompt-module-${escapeHtml(module.key)}" name="${escapeHtml(module.key)}" maxlength="${Number(module.maximum_length || 500)}" rows="3" placeholder="No change proposed">${escapeHtml(proposal?.module_values?.[module.key] || "")}</textarea>
+      </div>`).join("");
+    promptProposalStatus.textContent = "";
+    promptProposalDialog.showModal();
+  }
+
+  async function savePromptProposal() {
+    const modules = {};
+    (state.promptLab?.editable_modules || []).forEach(module => {
+      const value = promptProposalForm.elements[module.key]?.value.trim();
+      if (value) modules[module.key] = value;
+    });
+    if (!Object.keys(modules).length) {
+      promptProposalStatus.textContent = "Suggest a change to at least one module.";
+      return;
+    }
+    const existing = state.editingProposalId ? proposalById(state.editingProposalId) : null;
+    promptProposalStatus.textContent = "Saving…";
+    try {
+      let proposal;
+      if (localPreview) {
+        const now = new Date().toISOString();
+        proposal = existing ? {
+          ...existing,
+          title: promptProposalName.value.trim(),
+          module_values: modules,
+          version: Number(existing.version || 1) + 1,
+          updated_by: state.session.slot_key,
+          updated_at: now,
+        } : {
+          id: crypto.randomUUID(),
+          base_prompt_version: state.promptLab.deployed.version,
+          title: promptProposalName.value.trim(),
+          module_values: modules,
+          status: "draft",
+          version: 1,
+          created_by: state.session.slot_key,
+          updated_by: state.session.slot_key,
+          created_at: now,
+          updated_at: now,
+          comments: [],
+        };
+      } else if (existing) {
+        proposal = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(existing.id)}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            title: promptProposalName.value,
+            module_values: modules,
+            expected_version: Number(existing.version),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      } else {
+        proposal = (await api("/api/evaluation/prompt-proposals", {
+          method: "POST",
+          body: JSON.stringify({
+            proposal_id: crypto.randomUUID(),
+            title: promptProposalName.value,
+            module_values: modules,
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      }
+      upsertProposal(proposal);
+      if (localPreview) previewSave();
+      renderPromptLab();
+      promptProposalDialog.close();
+      state.editingProposalId = "";
+    } catch (error) {
+      if (error.status === 409) await refreshPromptLab(true);
+      promptProposalStatus.textContent = `Not saved. ${error.message}`;
+    }
+  }
+
+  async function addProposalComment(proposalId, form) {
+    const proposal = proposalById(proposalId);
+    if (!proposal) return;
+    const status = form.querySelector(".proposal-action-status");
+    const input = form.elements.comment;
+    status.textContent = "Saving…";
+    try {
+      let comment;
+      if (localPreview) {
+        comment = {
+          id: crypto.randomUUID(),
+          body: input.value.trim(),
+          actor_slot: state.session.slot_key,
+          proposal_version: proposal.version,
+          created_at: new Date().toISOString(),
+        };
+      } else {
+        comment = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(proposalId)}/comments`, {
+          method: "POST",
+          body: JSON.stringify({ comment: input.value, operation_id: crypto.randomUUID() }),
+        })).comment;
+      }
+      proposal.comments = [...(proposal.comments || []), comment];
+      if (localPreview) previewSave();
+      renderPromptLab();
+    } catch (error) {
+      status.textContent = `Not saved. ${error.message}`;
+    }
+  }
+
+  async function changeProposalStatus(proposalId, statusValue) {
+    const proposal = proposalById(proposalId);
+    if (!proposal) return;
+    try {
+      let updated;
+      if (localPreview) {
+        const now = new Date().toISOString();
+        updated = {
+          ...proposal,
+          status: statusValue,
+          version: Number(proposal.version) + 1,
+          updated_by: state.session.slot_key,
+          updated_at: now,
+          ready_at: statusValue === "ready" ? now : proposal.ready_at,
+          archived_at: statusValue === "archived" ? now : proposal.archived_at,
+        };
+      } else {
+        updated = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(proposalId)}/status`, {
+          method: "PUT",
+          body: JSON.stringify({
+            status: statusValue,
+            expected_version: Number(proposal.version),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      }
+      upsertProposal(updated);
+      if (localPreview) previewSave();
+      renderPromptLab();
+    } catch (error) {
+      if (error.status === 409) await refreshPromptLab(true);
+      moveStatus.textContent = `Proposal status was not changed. ${error.message}`;
+    }
   }
 
   function bindBoardEvents() {
@@ -564,6 +925,49 @@
       reviewNoteStatus.textContent = `Annotation not saved. ${error.message}`;
     }
   }
+
+  conversationsTab.addEventListener("click", () => setWorkspaceView("conversations"));
+  promptLabTab.addEventListener("click", () => setWorkspaceView("prompt"));
+  [conversationsTab, promptLabTab].forEach((tab, index, tabs) => {
+    tab.addEventListener("keydown", event => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabs.length - 1;
+      if (nextIndex === null) return;
+      event.preventDefault();
+      const nextTab = tabs[nextIndex];
+      setWorkspaceView(nextTab === promptLabTab ? "prompt" : "conversations");
+      nextTab.focus();
+    });
+  });
+  newProposalButton.addEventListener("click", () => openPromptProposalDialog());
+  promptProposalClose.addEventListener("click", () => {
+    promptProposalDialog.close();
+    state.editingProposalId = "";
+  });
+  promptProposalForm.addEventListener("submit", event => {
+    event.preventDefault();
+    savePromptProposal();
+  });
+  promptProposalList.addEventListener("click", event => {
+    const proposal = event.target.closest(".prompt-proposal");
+    if (!proposal) return;
+    if (event.target.closest(".edit-proposal")) {
+      openPromptProposalDialog(proposal.dataset.proposalId);
+    } else if (event.target.closest(".mark-proposal-ready")) {
+      changeProposalStatus(proposal.dataset.proposalId, "ready");
+    } else if (event.target.closest(".archive-proposal")) {
+      changeProposalStatus(proposal.dataset.proposalId, "archived");
+    }
+  });
+  promptProposalList.addEventListener("submit", event => {
+    const form = event.target.closest(".proposal-comment-form");
+    if (!form) return;
+    event.preventDefault();
+    addProposalComment(form.closest(".prompt-proposal").dataset.proposalId, form);
+  });
 
   loginForm.addEventListener("submit", async event => {
     event.preventDefault();

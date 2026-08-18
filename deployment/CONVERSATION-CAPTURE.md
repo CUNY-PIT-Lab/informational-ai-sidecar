@@ -44,8 +44,12 @@ FORTUNE_TURN_LEASE_SECONDS=180
 FORTUNE_MAX_TURNS_PER_CONVERSATION=50
 FORTUNE_CHAT_REQUESTS_PER_HOUR=120
 FORTUNE_CHAT_REQUESTS_PER_DAY=2000
-FORTUNE_PROMPT_VERSION=2026-08-08-v2
 ```
+
+The prompt-policy version is code-owned in `prompt_policy.py` and is passed to
+the recorder by the server. Do not set a separate Railway prompt-version
+variable; that previously allowed transcript metadata to drift from the prompt
+that actually generated the response.
 
 `railway.json` runs `python3 scripts/migrate.py` as a pre-deploy command and starts `python3 server.py`. Do not enable production capture merely by copying staging variables.
 

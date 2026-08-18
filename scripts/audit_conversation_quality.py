@@ -69,14 +69,14 @@ def run_audit(database_url: str) -> dict:
                     WHERE t.created_at > NOW() + INTERVAL '5 minutes'
                 )::INTEGER AS future_turns,
                 COUNT(*) FILTER (
-                    WHERE t.prompt_policy_version = '2026-08-08-v2'
+                    WHERE t.prompt_policy_version <> 'legacy'
                       AND (
                         t.chat_stage = 'unknown'
                         OR t.request_kind = 'unknown'
                         OR t.request_language = 'und'
                         OR t.response_language = 'und'
                       )
-                )::INTEGER AS v2_missing_interaction_context
+                )::INTEGER AS versioned_turns_missing_interaction_context
             FROM conversation_turns AS t
             LEFT JOIN conversations AS c ON c.id = t.conversation_id
         """,
