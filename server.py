@@ -2914,6 +2914,14 @@ def answers_near_duplicate(answer, prior_answer):
 def question_requests_prior_detail(question, prior_answer):
     """Allow a grounded confirmation when the user asks about an earlier detail."""
 
+    value = fold_text(semantic_question(question))
+    if prior_answer and re.search(
+        r"\b(?:what|which) (?:does|do|did|will|would) "
+        r"(?:(?:that|this|the) (?:class|course|workshop|program|service|page|option)|it|they) "
+        r"(?:cover|include|teach|offer|mean|say)\b",
+        value,
+    ):
+        return True
     question_terms = expanded_query_terms(question).difference({
         "answer", "detail", "details", "kind", "page", "tell",
     })

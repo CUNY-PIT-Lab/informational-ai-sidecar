@@ -120,7 +120,7 @@ def advancement_failures(
     history: list[dict],
     required: bool = True,
 ) -> list[str]:
-    """Reject a factual follow-up that merely reuses an earlier evidence sentence."""
+    """Reject a factual follow-up only when all substantive evidence is reused."""
 
     if not required or response.get("kind") != "answer" or not history:
         return []
@@ -130,17 +130,34 @@ def advancement_failures(
         "No pude confirmarlo en las páginas públicas de Fortune.",
     }:
         return []
-    prior = " ".join(
-        str(item.get("content") or "")
-        for item in history
-        if item.get("role") == "assistant"
+    def sentence_terms(value: str) -> list[set[str]]:
+        return [
+            set(terms)
+            for sentence in re.split(r"(?<=[.!?])\s+", value)
+            if len(terms := re.findall(r"[a-z0-9]+", sentence.casefold())) >= 6
+        ]
+
+    prior_sentences = sentence_terms(
+        " ".join(
+            str(item.get("content") or "")
+            for item in history
+            if item.get("role") == "assistant"
+        )
     )
-    normalize = lambda value: " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
-    prior_normalized = normalize(prior)
-    for sentence in re.split(r"(?<=[.!?])\s+", current):
-        normalized = normalize(sentence)
-        if len(normalized.split()) >= 6 and normalized in prior_normalized:
-            return ["continuity: answer repeats prior evidence instead of advancing"]
+    current_sentences = sentence_terms(current)
+    if not current_sentences or not prior_sentences:
+        return []
+
+    def repeats_prior(current_terms: set[str]) -> bool:
+        return any(
+            len(current_terms.intersection(prior_terms))
+            / min(len(current_terms), len(prior_terms))
+            >= 0.85
+            for prior_terms in prior_sentences
+        )
+
+    if all(repeats_prior(sentence) for sentence in current_sentences):
+        return ["continuity: answer repeats prior evidence instead of advancing"]
     return []
 
 

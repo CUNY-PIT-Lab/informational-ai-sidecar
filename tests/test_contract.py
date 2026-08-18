@@ -758,6 +758,68 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(result["kind"], "answer")
         self.assertEqual(result["message"], answer)
 
+    def test_explicit_class_coverage_follow_up_can_restate_the_grounded_prior_detail(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Intro to Email covers creating an account, navigating the inbox, and "
+            "practicing reading, composing, sending, and managing emails. It's offered "
+            "at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
+        )
+        answer = (
+            "It covers creating or accessing an email account, navigating the inbox, "
+            "and practicing reading, composing, sending, replying to, forwarding "
+            "emails, and handling attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What does that class cover?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "I want to learn email from the beginning."},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answer=answer,
+        )
+        self.assertTrue(
+            server.question_requests_prior_detail(
+                "What does that class cover?", prior
+            )
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], source_id)
+        self.assertEqual(len(model_calls), 1)
+
+    def test_request_for_additional_class_coverage_still_has_to_advance(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Intro to Email covers creating an account, navigating the inbox, and "
+            "practicing reading, composing, sending, and managing emails. It's offered "
+            "at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
+        )
+        repeated = (
+            "It covers creating or accessing an email account, navigating the inbox, "
+            "and practicing reading, composing, sending, replying to, forwarding "
+            "emails, and handling attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What else does that class cover?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "I want to learn email from the beginning."},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[repeated, repeated],
+        )
+        self.assertFalse(
+            server.question_requests_prior_detail(
+                "What else does that class cover?", prior
+            )
+        )
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(len(model_calls), 2)
+
     def test_single_resolved_source_ask_retries_then_answers(self):
         grounded = (
             "To qualify, participants must be active attendees or previous attendees "

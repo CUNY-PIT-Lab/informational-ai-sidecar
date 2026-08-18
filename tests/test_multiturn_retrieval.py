@@ -278,6 +278,53 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             ["continuity: answer repeats prior evidence instead of advancing"],
         )
 
+    def test_advancement_grader_accepts_a_repeated_caveat_with_new_evidence(self):
+        caveat = "This service is currently not available, so contact for more information."
+        history = [
+            {"role": "user", "content": "What does the introductory class cover?"},
+            {
+                "role": "assistant",
+                "content": (
+                    f"{caveat} The introductory class covers entering, editing, "
+                    "selecting, moving, and copying information."
+                ),
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": (
+                f"{caveat} The formatting class covers titles, numbers, dates, "
+                "currency, borders, and cell styles."
+            ),
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            [],
+        )
+
+    def test_advancement_grader_rejects_a_paraphrase_without_new_evidence(self):
+        history = [
+            {"role": "user", "content": "Can I get support?"},
+            {
+                "role": "assistant",
+                "content": "One-to-one tutoring is available online or in person by appointment.",
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": "Tutoring is available by appointment, either online or in person.",
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            ["continuity: answer repeats prior evidence instead of advancing"],
+        )
+
     def test_evidence_cleanup_removes_form_and_image_scaffolding(self):
         fragments = [
             "QRCode for Pre-Computer Safety Survey",
