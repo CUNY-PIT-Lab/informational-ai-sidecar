@@ -76,6 +76,7 @@ MAX_MESSAGE_WORDS = 35
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
+MODEL_SEED = 42
 MODEL_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -4054,6 +4055,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "keep_alive": MODEL_KEEP_ALIVE,
             "options": {
                 "temperature": 0,
+                "seed": MODEL_SEED,
             },
         })
         MODEL_WARMUP.mark_ready()

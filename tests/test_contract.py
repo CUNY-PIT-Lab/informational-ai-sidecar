@@ -2026,7 +2026,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         finally:
             server.ollama_request = original_request
         options = payloads[0]["options"]
-        self.assertEqual(options, {"temperature": 0})
+        self.assertEqual(options, {"temperature": 0, "seed": server.MODEL_SEED})
         self.assertEqual(payloads[0]["format"], server.MODEL_OUTPUT_SCHEMA)
         self.assertFalse(payloads[0]["format"]["additionalProperties"])
         self.assertEqual(
