@@ -556,16 +556,33 @@ class StagedRetrievalTests(unittest.TestCase):
             "https://www.fortunedigitalequity.org/",
             model_source_id="devices",
             model_answer=(
-                "However, distribution is currently on hold, due to the loss of federal "
-                "funding for devices through the Affordable Connectivity Program."
+                "No, the Affordable Connectivity Program has lost federal funding, "
+                "so that discount is no longer available. Fortune's device distribution "
+                "is currently on hold as a result."
             ),
         )
         self.assertEqual(captured["payload"]["kind"], "answer")
         self.assertEqual(captured["payload"]["retrieval_scope"], "site")
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
         self.assertIn("currently on hold", captured["payload"]["message"])
+        self.assertIn("no longer available", captured["payload"]["message"])
         self.assertNotIn("$30", captured["payload"]["message"])
         self.assertEqual(len(model_calls), 1)
+
+    def test_leading_no_does_not_erase_a_local_negative_qualifier(self):
+        available = next(
+            group for group in server._RISKY_QUALIFIER_GROUPS if "available" in group
+        )
+        self.assertEqual(
+            server._qualifier_polarities("No, laptops are available.", available),
+            {"positive"},
+        )
+        self.assertEqual(
+            server._qualifier_polarities(
+                "No, that discount is no longer available.", available
+            ),
+            {"negative"},
+        )
 
     def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
         captured, _ = self.dispatch_chat(

@@ -2750,10 +2750,15 @@ def _qualifier_polarities(value, group):
     for index, word in enumerate(words):
         if word not in group:
             continue
-        prior = set(words[max(0, index - 3):index])
+        prior_start = max(0, index - 3)
+        negative_positions = {
+            position
+            for position in range(prior_start, index)
+            if words[position] in negatives
+        }
         if leading_response_no:
-            prior.discard("no")
-        polarities.add("negative" if prior.intersection(negatives) else "positive")
+            negative_positions.discard(0)
+        polarities.add("negative" if negative_positions else "positive")
     return polarities
 
 
