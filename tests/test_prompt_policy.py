@@ -46,6 +46,7 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("not a Fortune staff member", source_selector.SYSTEM_PROMPT)
         self.assertIn("plain, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
         self.assertIn("avoid unexplained jargon, blame, or assumptions", source_selector.SYSTEM_PROMPT)
+        self.assertIn("asks to confirm, restate, or explain", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("conversation logs are recorded", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("988", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("laptop", source_selector.SYSTEM_PROMPT.lower())

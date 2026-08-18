@@ -801,6 +801,127 @@ class StagedRetrievalTests(unittest.TestCase):
             model_calls[1][0]["content"],
         )
 
+    def test_resolved_follow_up_is_grounded_against_its_contextual_route(self):
+        prior = (
+            "Free refurbished laptops are available through our partnership with "
+            "Computers 4 People. You must be an active or previous attendee of at "
+            "least 5 Digital Equity Program workshops to qualify."
+        )
+        routing_question = (
+            "What about a refurbished laptop instead. Follow-up: "
+            "How would I qualify for that"
+        )
+        devices = [server.SOURCE_BY_ID["devices"]]
+        raw = json.dumps({"pick": "devices", "answer": prior})
+        interaction = {"chat_stage": "follow_up", "request_language": "en"}
+
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                devices,
+                interaction,
+                prior,
+                "How would I qualify for that?",
+                routing_question,
+            ),
+            "",
+        )
+        result = server.parse_model_selection(
+            raw,
+            "How would I qualify for that?",
+            devices,
+            "site",
+            interaction,
+            routing_question=routing_question,
+            prior_answer=prior,
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], "devices")
+
+    def test_one_source_unsupported_draft_retries_without_ask(self):
+        canva = [server.SOURCE_BY_ID["service-service-page-canva-design-tools-61911b2b"]]
+        raw = json.dumps({
+            "pick": canva[0]["id"],
+            "answer": "This class is guaranteed to be available tomorrow.",
+        })
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                canva,
+                {"chat_stage": "initial", "request_language": "en"},
+                "",
+                "Is Intro to Canva still a current class?",
+            ),
+            "resolved source can answer",
+        )
+
+    def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
+        canva_id = "service-service-page-canva-design-tools-61911b2b"
+        captured, model_calls = self.dispatch_chat(
+            "Is Intro to Canva still a current class?",
+            server.ROOT_URL,
+            model_source_id=canva_id,
+            model_raws=[
+                json.dumps({
+                    "pick": canva_id,
+                    "answer": "This class is guaranteed to be available tomorrow.",
+                }),
+                json.dumps({
+                    "pick": canva_id,
+                    "answer": (
+                        "The Canva Design Tools class is currently listed as not "
+                        "available. Contact Fortune for more information."
+                    ),
+                }),
+            ],
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], canva_id)
+        self.assertIn("not available", captured["payload"]["message"])
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["resolved source can answer"],
+            model_calls[1][0]["content"],
+        )
+
+    def test_elliptical_laptop_qualification_uses_resolved_history_context(self):
+        prior = (
+            "Free refurbished laptops are available through our partnership with "
+            "Computers 4 People. You must be an active or previous attendee of at "
+            "least 5 Digital Equity Program workshops to qualify."
+        )
+        history = [
+            {"role": "user", "content": "Why is phone distribution on hold?"},
+            {"role": "assistant", "content": "Federal device funding was lost."},
+            {"role": "user", "content": "What about a refurbished laptop instead?"},
+            {"role": "assistant", "content": prior},
+        ]
+        captured, model_calls = self.dispatch_chat(
+            "How would I qualify for that?",
+            server.ROOT_URL,
+            history=history,
+            model_raws=[json.dumps({"pick": "devices", "answer": prior})],
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
+        self.assertIn("at least 5", captured["payload"]["message"])
+        self.assertEqual(len(model_calls), 1)
+        self.assertIn("refurbished laptop", model_calls[0][0]["content"])
+
+    def test_canonical_fortune_name_is_allowed_when_contact_is_source_backed(self):
+        canva = server.SOURCE_BY_ID["service-service-page-canva-design-tools-61911b2b"]
+        answer = (
+            "The Canva Design Tools class is currently listed as not available. "
+            "Contact Fortune for more information."
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(
+                answer,
+                canva,
+                "Is Intro to Canva still a current class?",
+            )
+        )
+
     def test_single_resolved_source_ask_retry_exhaustion_clarifies_without_a_choice_card(self):
         captured, model_calls = self.dispatch_chat(
             "What are the current requirements for a free refurbished laptop?",

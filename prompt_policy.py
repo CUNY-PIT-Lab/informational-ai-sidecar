@@ -8,8 +8,8 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-17-v14"
-PROMPT_BEHAVIOR_RELEASE = "meeting4-plain-participant-respect"
+PROMPT_POLICY_VERSION = "2026-08-17-v15"
+PROMPT_BEHAVIOR_RELEASE = "meeting4-contextual-follow-ups"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
@@ -75,6 +75,11 @@ TEAM_TUNABLE_PROMPT_MODULES = {
             "For a follow-up, answer only the new part and do not repeat the previous "
             "guide answer."
         ),
+        "confirm_or_advance": (
+            "For a follow-up, answer only the new part and do not repeat the previous "
+            "guide answer unless the participant asks to confirm, restate, or explain "
+            "a detail already mentioned. Then answer that detail directly."
+        ),
     },
     "page_awareness": {
         "explicit_reference_only": (
@@ -94,7 +99,7 @@ TEAM_TUNABLE_PROMPT_MODULES = {
 CURRENT_TUNABLE_SELECTIONS = {
     "style": "plain_respectful_conversational",
     "clarification": "one_short_question",
-    "follow_up": "advance_with_supported_detail",
+    "follow_up": "confirm_or_advance",
     "page_awareness": "explicit_reference_only",
     "language": "mirror_when_reliable",
 }

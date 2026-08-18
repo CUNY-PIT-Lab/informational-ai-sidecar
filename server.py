@@ -2835,7 +2835,13 @@ def model_answer_is_grounded(answer, source, question=""):
         return False
     route_identity = urllib.parse.urlsplit(source.get("url", "")).path.replace("-", " ")
     route_identity = re.sub(r"\btechfair\b", "tech fair", route_identity, flags=re.I)
-    entity_context = f"{source_text} {route_identity}"
+    # The guide may name the site owner even when a service-page excerpt uses
+    # only the shorter "FS Digital Equity" label. This does not authorize any
+    # program claim; every other answer term still has to come from the record.
+    entity_context = (
+        f"{source_text} {route_identity} Fortune The Fortune Society "
+        "Fortune Society Digital Equity"
+    )
     if question and answer_expresses_evidence_limit(answer):
         entity_context += " " + str(question)
     if not _named_entities_are_supported(answer, entity_context):
@@ -2911,7 +2917,8 @@ def parse_model_selection(
             routing_question,
         )
     message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
-    if not model_answer_is_grounded(message, selected, question):
+    grounding_question = routing_question or question
+    if not model_answer_is_grounded(message, selected, grounding_question):
         return selector_clarification_response(
             question,
             retrieved,
@@ -2954,6 +2961,7 @@ def model_selection_retry_reason(
     interaction=None,
     prior_answer="",
     question="",
+    routing_question="",
 ):
     """Return the one recoverable validation failure that merits a model retry."""
 
@@ -2966,8 +2974,13 @@ def model_selection_retry_reason(
         return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
     message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
-    if not model_answer_is_grounded(message, selected, question):
-        return "unsupported factual wording"
+    grounding_question = routing_question or question
+    if not model_answer_is_grounded(message, selected, grounding_question):
+        return (
+            "resolved source can answer"
+            if len(retrieved) == 1
+            else "unsupported factual wording"
+        )
     if (
         interaction.get("chat_stage") == "follow_up"
         and prior_answer
@@ -3390,6 +3403,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 interaction,
                 prior_answer,
                 question,
+                routing_question,
             )
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
                 retry_messages = [
