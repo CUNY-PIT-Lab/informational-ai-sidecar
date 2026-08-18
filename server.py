@@ -2290,6 +2290,83 @@ def clean_source_title(source):
     ).strip()
 
 
+_EN_CLARIFICATION_AUX = r"(?:are|can|could|did|do|does|has|have|is|should|will|would)"
+_EN_CLARIFICATION_ACTION = (
+    r"(?:ask|asking|choose|clarify|find|get|interested|know|learn|like|look|looking|"
+    r"mean|need|prefer|seek|seeking|start|trying|use|want)"
+)
+_EN_CLARIFICATION_DESCRIPTOR = (
+    r"(?:class|detail|device|digital|eligibility|fortune's|help|information|kind|of|"
+    r"option|page|part|particular|program|question|service|specific|support|technology|"
+    r"topic|type|website)"
+)
+_EN_CLARIFICATION_NOUN = (
+    r"(?:area|class|classes|computer|computers|detail|details|device|devices|digital skills|"
+    r"eligibility|email|fortune's website|individual support|information|internet|laptop|"
+    r"laptops|option|options|page|phone|phones|program|programs|question|registration|"
+    r"schedule|service|services|something else|support|technology|topic|training|website|"
+    r"workshop|workshops)"
+)
+_EN_CLARIFICATION_NOUN_PHRASE = (
+    rf"(?:(?:a|an|more|particular|specific|the|this|those) )?{_EN_CLARIFICATION_NOUN}"
+)
+_EN_CLARIFICATION_LIST_CONNECTOR = r"(?:and|or|listsep(?: (?:and|or))?)"
+_EN_CLARIFICATION_NOUN_LIST = (
+    rf"{_EN_CLARIFICATION_NOUN_PHRASE}"
+    rf"(?: {_EN_CLARIFICATION_LIST_CONNECTOR} {_EN_CLARIFICATION_NOUN_PHRASE})*"
+)
+_EN_CLARIFICATION_COMPLEMENT = (
+    rf"(?:{_EN_CLARIFICATION_NOUN_LIST}|"
+    rf"help(?: with(?: {_EN_CLARIFICATION_NOUN_LIST})?|"
+    rf" finding(?: (?:from|in|on) {_EN_CLARIFICATION_NOUN_LIST}|"
+    rf" {_EN_CLARIFICATION_NOUN_LIST})?|"
+    rf" (?:choosing|using) {_EN_CLARIFICATION_NOUN_LIST})?|"
+    rf"(?:about|for|from|on|with)(?: {_EN_CLARIFICATION_NOUN_LIST})?|"
+    rf"in|today|"
+    rf"to (?:start|(?:choose|find|learn about|use) {_EN_CLARIFICATION_NOUN_LIST}|"
+    rf"know(?: more)? about(?: {_EN_CLARIFICATION_NOUN_LIST})?))"
+)
+_EN_CLARIFICATION_PATTERN = re.compile(
+    rf"^(?:"
+    rf"(?:what|which)(?: {_EN_CLARIFICATION_DESCRIPTOR}){{0,6}} {_EN_CLARIFICATION_AUX}"
+    rf" you {_EN_CLARIFICATION_ACTION}(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
+    rf"{_EN_CLARIFICATION_AUX} you {_EN_CLARIFICATION_ACTION}"
+    rf"(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
+    rf"(?:what|which|how)(?: {_EN_CLARIFICATION_DESCRIPTOR}){{0,6}}"
+    rf" (?:can|could|should|would) i (?:help|show|tell) you"
+    rf"(?:(?: {_EN_CLARIFICATION_ACTION})(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
+    rf" {_EN_CLARIFICATION_COMPLEMENT})?|"
+    rf"(?:where|when) (?:could|do|would) you (?:like|need|prefer|want)"
+    rf" {_EN_CLARIFICATION_COMPLEMENT}|"
+    rf"(?:can|could|would) you (?:show|tell) me(?: (?:a little )?more)? about what you are"
+    rf" (?:asking|looking|searching) for"
+    rf")$"
+)
+
+_ES_CLARIFICATION_ACTION = r"(?:buscas|necesitas|podrias|prefieres|puedes|quieres)"
+_ES_CLARIFICATION_DESCRIPTOR = (
+    r"(?:ayuda|clase|de|detalle|dispositivo|especifica|especifico|informacion|opcion|"
+    r"pagina|programa|servicio|tema|tipo)"
+)
+_ES_CLARIFICATION_OBJECT = (
+    r"(?:al|apoyo|ayuda|capacitacion|clase|clases|computadora|computadoras|con|correo|"
+    r"de|del|detalle|detalles|digital|dispositivo|dispositivos|en|habilidades|individual|"
+    r"informacion|internet|listsep|mas|o|opcion|opciones|pagina|para|programa|programas|registro|"
+    r"servicio|servicios|sitio|sobre|taller|talleres|tecnologia|tema|tipo|web|y)"
+)
+_ES_CLARIFICATION_PATTERN = re.compile(
+    rf"^(?:"
+    rf"(?:que|cual|cuales)(?: {_ES_CLARIFICATION_DESCRIPTOR}){{0,6}}"
+    rf" {_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
+    rf"{_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
+    rf"como puedo ayudarte(?: a)?(?: encontrar|elegir|empezar)?"
+    rf"(?: {_ES_CLARIFICATION_OBJECT}){{0,12}}|"
+    rf"en que puedo ayudarte|como te puedo ayudar|que estas buscando|"
+    rf"donde (?:prefieres|quieres) empezar"
+    rf")$"
+)
+
+
 def model_clarification_response(
     question,
     model_question,
@@ -2300,56 +2377,21 @@ def model_clarification_response(
     raw_message = str(model_question or "").strip()
     message = clip_words(raw_message, MAX_MESSAGE_WORDS).strip()
     folded = fold_text(message).lstrip("¿").strip()
-    english_interrogative = re.compile(
-        r"^(?:(?:what|which|where|when|how|who)"
-        r"(?: [a-z0-9'’-]+){0,5}"
-        r" (?:do|does|did|are|is|would|could|can|will|should|have|has)"
-        r" (?:you|your)\b|"
-        r"(?:do|does|did|are|is|would|could|can|will|should|have|has) you\b|"
-        r"(?:what|which|where|when|how|who)(?: [a-z0-9'’-]+){0,5}"
-        r" (?:can|could|would|should) i\b.*\byou\b)"
-    )
-    spanish_interrogative = re.compile(
-        r"^(?:(?:que|cual|cuales|como|donde|cuando|quien)\b.*\b"
-        r"(?:necesitas|quieres|buscas|prefieres|puedes|podrias|te|tu|usted)\b|"
-        r"(?:necesitas|quieres|buscas|prefieres|puedes|podrias)\b|te gustaria\b)"
-    )
     question_body = folded[:-1].strip() if folded.endswith("?") else folded
-    english_match = english_interrogative.match(question_body)
-    spanish_match = spanish_interrogative.match(question_body)
-    addressed_tail = question_body[
-        (english_match or spanish_match).end():
-    ] if (english_match or spanish_match) else ""
-    claim_tail = re.sub(
-        r"^[\s,]*(?:need|want|prefer|mean|like|provide|share|find|choose|know|"
-        r"use|learn|ask|tell|show|describe|clarify|explain|look|looking|trying|"
-        r"necesitar|querer|preferir|buscar|compartir|explicar|aclarar)\b",
-        "",
-        addressed_tail,
-        count=1,
-    )
+    grammar_text = re.sub(r"\byou're\b", "you are", question_body)
+    grammar_text = re.sub(r",", " listsep ", grammar_text)
+    grammar_text = re.sub(r"[()]", " ", grammar_text)
+    grammar_text = re.sub(r"\s+", " ", grammar_text).strip()
     if (
         not message.endswith("?")
         or message.count("?") != 1
         or "\n" in raw_message
         or "\r" in raw_message
         or re.search(r"[.!;:—]", message[:-1])
-        or not (english_match or spanish_match)
-        or re.search(
-            r"\b(?:am|is|are|was|were|be|been|being|do|does|did|have|has|had|"
-            r"can|could|will|would|should|may|might|must|offers?|provides?|"
-            r"includes?|lists?|states?|says?|gives?|guarantees?|promises?|"
-            r"costs?|covers?|teaches?|requires?|allows?|contains?|serves?|"
-            r"runs?|meets?|starts?|ends?|happens?|"
-            r"es|son|esta|estan|ofrece|incluye|lista|dice|garantiza|promete)\b",
-            claim_tail,
+        or not (
+            _EN_CLARIFICATION_PATTERN.fullmatch(grammar_text)
+            or _ES_CLARIFICATION_PATTERN.fullmatch(grammar_text)
         )
-        or len(
-            re.findall(
-                r"\b(?:what|which|where|when|how|who|que|cual|cuales|como|donde|cuando|quien)\b",
-                question_body,
-            )
-        ) > 1
         or re.search(r"https?://|www\.", message, flags=re.I)
         or re.search(
             r"\b(?:system|developer|hidden) (?:prompt|message|instruction)|"
@@ -2397,21 +2439,27 @@ def model_requests_personal_details(text):
         r"cual es|comparte|proporciona|ingresa|envia|dime|escribe|dame)"
     )
     detail = (
-        r"(?:full name|name|phone number|telephone number|email address|e-mail address|"
-        r"street address|home address|date of birth|birthday|fortune id|case number|"
-        r"member id|social security number|ssn|nombre completo|nombre|numero de telefono|"
-        r"correo electronico|direccion|fecha de nacimiento|id de fortune|numero de caso|"
-        r"seguro social)"
+        r"(?:full name|name|phone number|phone|telephone number|email address|e-mail address|"
+        r"email|street address|home address|address|date of birth|birthday|age|zip code|"
+        r"postal code|fortune id|case number|member id|parole status|probation status|"
+        r"social security number|ssn|nombre completo|nombre|numero de telefono|telefono|"
+        r"correo electronico|correo|direccion|fecha de nacimiento|edad|codigo postal|"
+        r"id de fortune|numero de caso|libertad condicional|seguro social)"
     )
     possessive_detail = (
-        r"\b(?:your|tu|su) (?:full name|name|phone number|email address|e-mail address|"
-        r"street address|home address|date of birth|birthday|fortune id|case number|"
-        r"member id|ssn|nombre completo|nombre|numero de telefono|correo electronico|"
-        r"direccion|fecha de nacimiento|id de fortune|numero de caso|seguro social)\b"
+        r"\b(?:your|tu|su) (?:full name|name|phone number|phone|email address|e-mail address|"
+        r"email|street address|home address|address|date of birth|birthday|age|zip code|"
+        r"postal code|fortune id|case number|member id|parole status|probation status|ssn|"
+        r"nombre completo|nombre|numero de telefono|telefono|correo electronico|correo|"
+        r"direccion|fecha de nacimiento|edad|codigo postal|id de fortune|numero de caso|"
+        r"libertad condicional|seguro social)\b"
     )
     return bool(
         re.search(rf"\b{request}\b.{{0,48}}\b{detail}\b", value)
         or re.search(possessive_detail, value)
+        or re.search(r"\bwhere (?:do|did) you live\b", value)
+        or re.search(r"\bhow old are you\b", value)
+        or re.search(r"\bare you (?:on )?(?:parole|probation)\b", value)
     )
 
 

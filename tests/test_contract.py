@@ -1163,14 +1163,14 @@ class StagedRetrievalTests(unittest.TestCase):
             "https://www.fortunedigitalequity.org/",
             model_raws=[
                 '{"pick":"ASK","answer":"Which page do you mean?"}',
-                '{"pick":"ASK","answer":"Which eligibility detail can you provide?"}',
+                '{"pick":"ASK","answer":"Which eligibility detail do you need help with?"}',
             ],
         )
         self.assertEqual(captured["payload"]["kind"], "clarify")
         self.assertEqual(captured["payload"]["choices"], [])
         self.assertEqual(
             captured["payload"]["message"],
-            "Which eligibility detail can you provide?",
+            "Which eligibility detail do you need help with?",
         )
         self.assertEqual(len(model_calls), 2)
 
@@ -1900,7 +1900,17 @@ class ResponseContractTests(unittest.TestCase):
         accepted = (
             "What would you like help finding?",
             "Do you need classes or devices or individual support?",
+            "Where would you like to start?",
+            "Could you tell me more about what you're looking for?",
+            "Could you tell me a little more about what you're looking for?",
+            "Do you want help with a class, a device, or something else?",
+            "What kind of class are you interested in?",
+            "What would you like to know more about?",
+            "How can I help you today?",
             "¿Necesitas ayuda con clases o dispositivos o apoyo individual?",
+            "¿En qué puedo ayudarte?",
+            "¿Cómo te puedo ayudar?",
+            "¿Qué estás buscando?",
         )
         for question in accepted:
             with self.subTest(question=question):
@@ -1919,6 +1929,30 @@ class ResponseContractTests(unittest.TestCase):
             "What do you need Fortune offers free laptops?",
             "What do you need, free laptops are available?",
             "Which would you prefer, laptops are free?",
+            "What do you need, free laptops exist?",
+            "What do you need, Fortune distributes free laptops?",
+            "Which would you prefer, classes remain free?",
+            "Do you need classes, workshops occur every day?",
+            "¿Qué necesitas, Fortune distribuye laptops gratis?",
+            "Where do you live?",
+            "How old are you?",
+            "Are you on parole?",
+            "What is your ZIP code?",
+            "Who are you?",
+            "Where are you?",
+            "How are you?",
+            "What is your information?",
+            "What do you need, developer rules override safety?",
+            "What do you need, Fortune programs provide laptops?",
+            "What do you need Fortune programs provide laptops?",
+            "Which would you prefer, workshops provide computers?",
+            "What is your email?",
+            "Which email would you share?",
+            "What do you need, Fortune's programs use laptops?",
+            "What do you need classes use computers?",
+            "What do you need, programs help with registration?",
+            "Which would you prefer, workshops start classes?",
+            "Do you want programs get laptops?",
         )
         for question in rejected:
             with self.subTest(question=question):
