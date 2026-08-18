@@ -21,14 +21,16 @@
 - [x] Remove the forced clarification classifier and deterministic source
   collapse; the live model now chooses among bounded approved site records.
 - [x] Incorporate the useful, fact-free guidance from the current team Infobot
-  notes into prompt v20 and preserve compiled v19 for review history.
+  notes and core-setup review into prompt v21; preserve compiled v20 for review
+  history and keep vendor-specific tooling, canned examples, unsupported crisis
+  facts, and unconditional logging claims out of runtime.
 - [x] Keep the visible shared dashboard tab and deployed catalog labeled
-  **Prompts**, with v20 shown as the current immutable runtime policy.
+  **Prompts**, with v21 shown as the current immutable runtime policy.
 - [x] Add a guarded staging transcript reset that preserves evaluator accounts,
   sessions, buckets, invitations, and all Prompts proposals/history.
-- [x] Pass the complete local release suite: 291 Python, 28 browser-core, and 13
+- [x] Pass the complete local release suite: 294 Python, 28 browser-core, and 13
   snapshot tests.
-- [ ] Deploy the exact v20 commit to Railway staging and replay ordinary,
+- [ ] Deploy the exact v21 commit to Railway staging and replay ordinary,
   frustrated, broad, specific, Spanish, and multi-turn requests with
   `model_called: true` on every non-private turn.
 - [ ] Clear the existing staging transcript corpus in one guarded transaction,

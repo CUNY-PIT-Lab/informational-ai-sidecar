@@ -2670,6 +2670,22 @@ def model_answer_is_grounded(answer, source, question=""):
     return True
 
 
+def grounded_candidate_for_answer(answer, selected, candidates, question=""):
+    """Return the one supplied page that supports the model's answer."""
+
+    ordered = [selected] + [
+        source for source in candidates if source.get("id") != selected.get("id")
+    ]
+    matches = [
+        source
+        for source in ordered
+        if model_answer_is_grounded(answer, source, question)
+    ]
+    if matches and matches[0].get("id") == selected.get("id"):
+        return selected
+    return matches[0] if len(matches) == 1 else None
+
+
 def parse_model_selection(
     raw,
     question,
@@ -2698,6 +2714,17 @@ def parse_model_selection(
         )
     selected = allowed[selected_id]
     grounding_question = routing_question or question
+    answer_text = parsed["answer"]
+    if model_requests_personal_details(answer_text):
+        raise ModelResponseRejected("The model asked for participant information")
+    grounded_source = grounded_candidate_for_answer(
+        answer_text,
+        selected,
+        retrieved,
+        grounding_question,
+    )
+    if grounded_source:
+        selected = grounded_source
     source_claim_text = (
         source_excerpt(
             selected,
@@ -2706,10 +2733,9 @@ def parse_model_selection(
         )
         or searchable_text(selected)
     )
-    answer_text = parsed["answer"]
-    if model_requests_personal_details(answer_text):
-        raise ModelResponseRejected("The model asked for participant information")
-    if _answer_conflicts_with_negative_status(answer_text, source_claim_text):
+    if not grounded_source and _answer_conflicts_with_negative_status(
+        answer_text, source_claim_text
+    ):
         grounded_status = next(
             (
                 sentence.strip()
@@ -2733,7 +2759,9 @@ def parse_model_selection(
         _negative_status_sentence_first(answer_text, source_claim_text),
         MAX_MESSAGE_WORDS,
     )
-    if not model_answer_is_grounded(message, selected, grounding_question):
+    if not grounded_source and not model_answer_is_grounded(
+        message, selected, grounding_question
+    ):
         raise ModelResponseRejected("The answer was not grounded in the selected source")
     if (
         interaction.get("chat_stage") == "follow_up"
@@ -2788,6 +2816,14 @@ def model_selection_retry_reason(
     if model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
     grounding_question = routing_question or question
+    grounded_source = grounded_candidate_for_answer(
+        parsed["answer"],
+        selected,
+        retrieved,
+        grounding_question,
+    )
+    if grounded_source:
+        selected = grounded_source
     source_claim_text = (
         source_excerpt(
             selected,
@@ -2796,13 +2832,17 @@ def model_selection_retry_reason(
         )
         or searchable_text(selected)
     )
-    if _answer_conflicts_with_negative_status(parsed["answer"], source_claim_text):
+    if not grounded_source and _answer_conflicts_with_negative_status(
+        parsed["answer"], source_claim_text
+    ):
         return "status contradiction"
     message = clip_words(
         _negative_status_sentence_first(parsed["answer"], source_claim_text),
         MAX_MESSAGE_WORDS,
     )
-    if not model_answer_is_grounded(message, selected, grounding_question):
+    if not grounded_source and not model_answer_is_grounded(
+        message, selected, grounding_question
+    ):
         return (
             "resolved source can answer"
             if len(retrieved) == 1

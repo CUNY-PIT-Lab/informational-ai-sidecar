@@ -928,6 +928,43 @@ class StagedRetrievalTests(unittest.TestCase):
             "resolved source can answer",
         )
 
+    def test_grounded_answer_can_recover_the_matching_supplied_candidate(self):
+        question = "Do I need an email address before the class?"
+        answer = "You do not need an email address before Intro to Email."
+        intro_email = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+        devices = server.SOURCE_BY_ID["devices"]
+        candidates = [intro_email, devices]
+        raw = json.dumps({"pick": "devices", "answer": answer})
+
+        self.assertFalse(
+            server.model_answer_is_grounded(answer, devices, question)
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(answer, intro_email, question)
+        )
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                candidates,
+                {"chat_stage": "follow_up", "request_language": "en"},
+                "Intro to Email is a beginner class.",
+                question,
+                question,
+            ),
+            "",
+        )
+        result = server.parse_model_selection(
+            raw,
+            question,
+            candidates,
+            "site",
+            {"chat_stage": "follow_up", "request_language": "en"},
+            routing_question=question,
+            prior_answer="Intro to Email is a beginner class.",
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], server.INTRO_EMAIL_ID)
+
     def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
         canva_id = "service-service-page-canva-design-tools-61911b2b"
         captured, model_calls = self.dispatch_chat(

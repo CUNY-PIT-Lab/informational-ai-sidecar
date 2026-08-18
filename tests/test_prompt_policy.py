@@ -23,10 +23,10 @@ import source_selector
 
 class PromptPolicyTests(unittest.TestCase):
     def test_runtime_and_capture_use_one_policy_id(self):
-        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v20")
+        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v21")
         self.assertEqual(
             prompt_policy.PROMPT_BEHAVIOR_RELEASE,
-            "infobot-model-first-grounded-guide",
+            "infobot-priority-grounded-guide",
         )
         self.assertEqual(server.PROMPT_POLICY_VERSION, prompt_policy.PROMPT_POLICY_VERSION)
         self.assertEqual(
@@ -46,8 +46,14 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("one relevant approved page", source_selector.SYSTEM_PROMPT)
         self.assertIn("never combine pages", source_selector.SYSTEM_PROMPT)
         self.assertIn("brief, natural follow-up", source_selector.SYSTEM_PROMPT)
-        self.assertIn("Do not force a clarification", source_selector.SYSTEM_PROMPT)
-        self.assertNotIn("one or two", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Pick ASK only when ambiguity actually prevents", source_selector.SYSTEM_PROMPT)
+        self.assertIn("do not append a fake invitation question", source_selector.SYSTEM_PROMPT)
+        self.assertIn("protect privacy and source fidelity", source_selector.SYSTEM_PROMPT)
+        self.assertIn("answer the participant's latest request directly", source_selector.SYSTEM_PROMPT)
+        self.assertIn("current page is a useful hint, not a boundary", source_selector.SYSTEM_PROMPT)
+        self.assertIn("candidate pages from across the approved site", source_selector.SYSTEM_PROMPT)
+        self.assertIn("never imply fresher knowledge", source_selector.SYSTEM_PROMPT)
+        self.assertIn("continue without groveling", source_selector.SYSTEM_PROMPT)
         self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
         self.assertIn("Fortune Society Digital Equity Infobot", source_selector.SYSTEM_PROMPT)
         self.assertIn("You are an AI", source_selector.SYSTEM_PROMPT)
@@ -55,7 +61,7 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("plain, warm, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
         self.assertIn("written for a phone screen", source_selector.SYSTEM_PROMPT)
         self.assertIn("short practical steps", source_selector.SYSTEM_PROMPT)
-        self.assertIn("avoid unexplained jargon, blame, or assumptions", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Avoid jargon, blame, assumptions, and scripted filler", source_selector.SYSTEM_PROMPT)
         self.assertIn("asks to confirm, restate, or explain", source_selector.SYSTEM_PROMPT)
         self.assertIn("preserve that status", source_selector.SYSTEM_PROMPT)
         self.assertIn("do not rewrite the service as currently offered or available", source_selector.SYSTEM_PROMPT)
@@ -88,15 +94,15 @@ class PromptPolicyTests(unittest.TestCase):
         clarification = catalog["clarification"]
         self.assertEqual(
             clarification["current_variant"],
-            "brief_natural_follow_up",
+            "blocking_ambiguity_only",
         )
         self.assertEqual(
             clarification["current_value"],
             prompt_policy.TEAM_TUNABLE_PROMPT_MODULES["clarification"]
-            ["brief_natural_follow_up"],
+            ["blocking_ambiguity_only"],
         )
-        self.assertIn("brief, natural follow-up", clarification["current_value"])
-        self.assertNotIn("one or two", clarification["current_value"])
+        self.assertIn("ambiguity actually prevents", clarification["current_value"])
+        self.assertIn("fake invitation question", clarification["current_value"])
 
     def test_visible_prompts_preview_matches_current_policy_registry(self):
         javascript = (ROOT / "evaluation.js").read_text(encoding="utf-8")
@@ -208,6 +214,20 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertEqual(
             v19["compiled_prompt_artifact_sha256"],
             "5e60987ba9d5857ffd7a981f29fc73f965d8dae3414ca880765c2f4f95273d00",
+        )
+
+    def test_v20_artifacts_remain_byte_exact_after_v21(self):
+        manifest = json.loads(
+            (ROOT / "prompts" / "manifest.json").read_text(encoding="utf-8")
+        )
+        v20 = next(
+            entry
+            for entry in manifest["versions"]
+            if entry["policy_id"] == "2026-08-18-v20"
+        )
+        self.assertEqual(
+            v20["compiled_prompt_artifact"],
+            "versions/2026-08-18-v20-compiled.md",
         )
 
 
