@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "hash_kind": "sha256-of-artifact-bytes",
-  "current_policy_id": "2026-08-18-v19",
+  "current_policy_id": "2026-08-18-v20",
   "current_policy_source": "../prompt_policy.py",
-  "current_policy_source_sha256": "68aa84bfcd0e1ac399c3a6df88f77dbb2e6172986429a9d3d72c4d2d50f1f3de",
-  "current_compiled_prompt_sha256": "0f497e1feef6df1327ba368e2b52f860d432969b106b397fdf069579109e1d55",
+  "current_policy_source_sha256": "4f6a4822b56df31365f2b8ee0492c0b78c0e927c7f5e0ce848070741e57ab83d",
+  "current_compiled_prompt_sha256": "83d13959f25bb18a5e3c64633fe7c4e9a231062139d6f95ee39901476040905b",
   "versions": [
     {
       "policy_id": "2026-07-24-v1-reconstructed",
@@ -195,8 +195,20 @@
       "behavior_release": "model-authored-natural-clarification",
       "artifact": "versions/2026-08-18-v19.md",
       "artifact_sha256": "d58689682d891478808befd781fb9fae7fe22dea423b49fd878936b38845445a",
-      "compiled_prompt_artifact": "current.md",
+      "compiled_prompt_artifact": "versions/2026-08-18-v19-compiled.md",
       "compiled_prompt_artifact_sha256": "5e60987ba9d5857ffd7a981f29fc73f965d8dae3414ca880765c2f4f95273d00"
+    },
+    {
+      "policy_id": "2026-08-18-v20",
+      "label": "Infobot model-first grounded guide",
+      "reconstructed": false,
+      "source_state": "authored from the team Infobot notes and model-first production requirement",
+      "source_date": "2026-08-18",
+      "behavior_release": "infobot-model-first-grounded-guide",
+      "artifact": "versions/2026-08-18-v20.md",
+      "artifact_sha256": "114cb7074b232cf293d6fea48101d89e39233d9c3cee3e92e852473cced563ea",
+      "compiled_prompt_artifact": "current.md",
+      "compiled_prompt_artifact_sha256": "e3470713f21c706fb52158bbd1293e95b2ddc5725e8df780a3d49fa5f5bfd2bc"
     }
   ]
 }

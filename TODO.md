@@ -1,6 +1,6 @@
 # Website Guide — next steps
 
-## Model-authored response contract — 2026-08-18
+## Infobot model-first release — 2026-08-18
 
 - [x] Remove the fixed conversational fallbacks that answered vague, frustrated,
   unsupported, or staff-routed requests without calling the model.
@@ -18,13 +18,22 @@
 - [x] Move automated runs to the evaluator-hidden `benchmark` surface and make
   both release runners fail when any successful non-private turn skips the
   model.
-- [x] Register the dedicated v17 prompt and preserve the compiled v16 artifact
-  for review history.
-- [x] Pass the complete local release suite: 279 Python, 23 browser-core, and 13
+- [x] Remove the forced clarification classifier and deterministic source
+  collapse; the live model now chooses among bounded approved site records.
+- [x] Incorporate the useful, fact-free guidance from the current team Infobot
+  notes into prompt v20 and preserve compiled v19 for review history.
+- [x] Keep the visible shared dashboard tab and deployed catalog labeled
+  **Prompts**, with v20 shown as the current immutable runtime policy.
+- [x] Add a guarded staging transcript reset that preserves evaluator accounts,
+  sessions, buckets, invitations, and all Prompts proposals/history.
+- [x] Pass the complete local release suite: 291 Python, 28 browser-core, and 13
   snapshot tests.
-- [ ] Deploy the exact v17 commit to Railway staging and replay the reported
-  `What the hell` → `Help me` conversation with `model_called: true` on both
-  turns.
+- [ ] Deploy the exact v20 commit to Railway staging and replay ordinary,
+  frustrated, broad, specific, Spanish, and multi-turn requests with
+  `model_called: true` on every non-private turn.
+- [ ] Clear the existing staging transcript corpus in one guarded transaction,
+  preserve evaluator and Prompts state, and prove automated benchmark traffic
+  stays out of the reviewer queue.
 - [ ] Verify the staging browser, hidden benchmark capture, prompt provenance,
   aggregate privacy/integrity gate, and terminal deployment stability before
   promotion.

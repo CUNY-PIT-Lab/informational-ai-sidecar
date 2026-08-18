@@ -85,7 +85,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             support_history,
         )
         self.assertIn("one-to-one", support_routed)
-        self.assertFalse(server.question_needs_model_clarification(support_routed))
         _, support_sources = server.retrieval_plan(support_routed, HOME)
         self.assertEqual(support_sources[0]["id"], "individual")
 
@@ -98,12 +97,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             calendar_history,
         )
         self.assertIn("current schedule", calendar_routed)
-        self.assertFalse(
-            server.question_needs_model_clarification(
-                calendar_routed,
-                page_context={"url": server.CALENDAR_URL},
-            )
-        )
         scope, calendar_sources = server.retrieval_plan(
             calendar_routed,
             {"url": server.CALENDAR_URL},
@@ -120,12 +113,10 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         catalog_question = "What kinds of classes are offered?"
         catalog_routed = server.contextual_routing_question(catalog_question, history)
         self.assertEqual(catalog_routed, server.semantic_question(catalog_question))
-        self.assertTrue(server.question_needs_model_clarification(catalog_routed))
 
         schedule_question = "What are the regular class hours?"
         schedule_routed = server.contextual_routing_question(schedule_question, history)
         self.assertEqual(schedule_routed, server.semantic_question(schedule_question))
-        self.assertFalse(server.question_needs_model_clarification(schedule_routed))
         scope, schedule_sources = server.retrieval_plan(schedule_routed, HOME)
         self.assertEqual(scope, "site")
         self.assertEqual(schedule_sources[0]["id"], "calendar")
@@ -133,21 +124,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
     def test_conversational_it_does_not_mean_the_host_page(self):
         self.assertFalse(server.question_refers_to_current_page("What does it cover?"))
         self.assertTrue(server.question_refers_to_current_page("What does this page cover?"))
-
-    def test_specific_openings_do_not_trigger_generic_clarification(self):
-        questions = [
-            "Can I get one-on-one tech support?",
-            "Does Fortune help with Microsoft certifications?",
-            "What is Fortune's Digital Equity Program?",
-            "Are there class assessments too?",
-        ]
-        for question in questions:
-            with self.subTest(question=question):
-                self.assertFalse(
-                    server.question_needs_model_clarification(
-                        question, server.detect_language(question)
-                    )
-                )
 
     def test_specific_class_questions_prefer_specific_pages(self):
         expected = {
@@ -169,7 +145,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         scope, sources = server.retrieval_plan(question, HOME)
         self.assertEqual(scope, "site")
         self.assertEqual([source["id"] for source in sources], ["trainings", "contact"])
-        self.assertEqual(server.deterministic_answer_sources(question, sources, scope), [])
 
     def test_word_certification_follow_up_prefers_word_certification_page(self):
         history = [
@@ -191,7 +166,6 @@ class MultiTurnRetrievalTests(unittest.TestCase):
                 server.source_id_for_path("/service-page/excel-organizing-data"),
             },
         )
-        self.assertEqual(server.deterministic_answer_sources(question, sources, scope), [])
 
     def test_follow_up_evidence_uses_the_selected_source_title(self):
         source = server.SOURCE_BY_ID[server.INTRO_CANVA_ID]

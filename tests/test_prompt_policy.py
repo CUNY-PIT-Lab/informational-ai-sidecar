@@ -23,10 +23,10 @@ import source_selector
 
 class PromptPolicyTests(unittest.TestCase):
     def test_runtime_and_capture_use_one_policy_id(self):
-        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v19")
+        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v20")
         self.assertEqual(
             prompt_policy.PROMPT_BEHAVIOR_RELEASE,
-            "model-authored-natural-clarification",
+            "infobot-model-first-grounded-guide",
         )
         self.assertEqual(server.PROMPT_POLICY_VERSION, prompt_policy.PROMPT_POLICY_VERSION)
         self.assertEqual(
@@ -49,9 +49,12 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("Do not force a clarification", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("one or two", source_selector.SYSTEM_PROMPT)
         self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
-        self.assertIn("automated Fortune Society Website Guide", source_selector.SYSTEM_PROMPT)
-        self.assertIn("not a Fortune staff member", source_selector.SYSTEM_PROMPT)
-        self.assertIn("plain, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Fortune Society Digital Equity Infobot", source_selector.SYSTEM_PROMPT)
+        self.assertIn("You are an AI", source_selector.SYSTEM_PROMPT)
+        self.assertIn("not a Fortune counselor, case manager, or staff member", source_selector.SYSTEM_PROMPT)
+        self.assertIn("plain, warm, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
+        self.assertIn("written for a phone screen", source_selector.SYSTEM_PROMPT)
+        self.assertIn("short practical steps", source_selector.SYSTEM_PROMPT)
         self.assertIn("avoid unexplained jargon, blame, or assumptions", source_selector.SYSTEM_PROMPT)
         self.assertIn("asks to confirm, restate, or explain", source_selector.SYSTEM_PROMPT)
         self.assertIn("preserve that status", source_selector.SYSTEM_PROMPT)
@@ -187,6 +190,24 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertEqual(
             v18["compiled_prompt_artifact_sha256"],
             "56fdc98e5678c87863dbacfa68a524e92823970667ab0b251a02ad716c660d8f",
+        )
+
+    def test_v19_artifacts_remain_byte_exact_after_v20(self):
+        manifest = json.loads(
+            (ROOT / "prompts" / "manifest.json").read_text(encoding="utf-8")
+        )
+        v19 = next(
+            entry
+            for entry in manifest["versions"]
+            if entry["policy_id"] == "2026-08-18-v19"
+        )
+        self.assertEqual(
+            v19["compiled_prompt_artifact"],
+            "versions/2026-08-18-v19-compiled.md",
+        )
+        self.assertEqual(
+            v19["compiled_prompt_artifact_sha256"],
+            "5e60987ba9d5857ffd7a981f29fc73f965d8dae3414ca880765c2f4f95273d00",
         )
 
 
