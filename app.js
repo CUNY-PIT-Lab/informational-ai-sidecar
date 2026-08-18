@@ -23,7 +23,7 @@
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
   const MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2;
-  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:replica:v1";
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:replica:v20";
 
   let history = [];
   let turns = [];
@@ -165,6 +165,7 @@
     panel.setAttribute("aria-hidden", "false");
     toggle.setAttribute("aria-expanded", "true");
     toggle.hidden = true;
+    if (modelReady) warmModel();
     if (options.moveFocus !== false) closeButton.focus({ preventScroll: true });
   }
 
@@ -488,23 +489,29 @@
     return data;
   }
 
-  async function warmModel() {
-    try {
-      const response = await fetch(apiUrl("/api/warmup"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!response.ok) throw new Error("Model warm-up failed");
-      const data = await response.json();
-      if (data.status !== "ready") throw new Error("Model warm-up unavailable");
-      modelStatus.textContent = "Ready";
-      modelStatus.classList.add("model-ready");
-      return data;
-    } catch {
-      modelStatus.textContent = modelReady ? "Ready" : "Unavailable";
-      return null;
-    }
+  function warmModel() {
+    if (warmupPromise) return warmupPromise;
+    warmupPromise = (async () => {
+      try {
+        const response = await fetch(apiUrl("/api/warmup"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!response.ok) throw new Error("Model warm-up failed");
+        const data = await response.json();
+        if (data.status !== "ready") throw new Error("Model warm-up unavailable");
+        modelStatus.textContent = "Ready";
+        modelStatus.classList.add("model-ready");
+        return data;
+      } catch {
+        modelStatus.textContent = modelReady ? "Ready" : "Unavailable";
+        return null;
+      } finally {
+        warmupPromise = null;
+      }
+    })();
+    return warmupPromise;
   }
 
   function showAnswer(data) {
@@ -646,7 +653,7 @@
           : "Up to 3 exchanges stay in this tab across pages.";
       modelStatus.textContent = modelReady ? "Starting…" : "Unavailable";
       modelStatus.classList.toggle("model-ready", modelReady);
-      if (modelReady) warmupPromise = warmModel();
+      if (modelReady) warmModel();
     } catch {
       apiReady = false;
       modelReady = false;

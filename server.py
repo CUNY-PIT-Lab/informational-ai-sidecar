@@ -72,7 +72,7 @@ MAX_HISTORY = 6
 MAX_QUESTION_CHARS = 600
 MAX_RETRIEVED = 10
 MAX_MODEL_EXCERPT_CHARS = 700
-MAX_MESSAGE_WORDS = 35
+MAX_MESSAGE_WORDS = 40
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
@@ -699,14 +699,6 @@ def needs_human_handoff(text):
     return any(pattern.search(text or "") for pattern in _HUMAN_HANDOFF_PATTERNS)
 
 
-def needs_staff_confirmation(text):
-    value = fold_text(semantic_question(text))
-    return bool(re.search(
-        r"\b(?:who\s+(?:is|will be)\s+teach(?:ing)?|teacher|instructor|their phone number)\b",
-        value,
-    ))
-
-
 def detect_language(text):
     """Return a coarse, non-sensitive language hint for response routing."""
 
@@ -734,26 +726,10 @@ def participant_copy(key, language_code):
 
 def request_kind(question):
     question = semantic_question(question)
-    value = fold_text(question)
     if contains_personal_details(question):
         return "privacy"
     if needs_human_handoff(question):
         return "sensitive"
-    if question_needs_model_clarification(question, detect_language(question)):
-        return "clarification"
-    if re.search(r"\b(?:how do i|how can i|steps?|apply|register|sign up|what do i need|como|pasos?|solicitar|registrarme|inscribirme|que necesito)\b", value):
-        return "procedure"
-    words = set(tokens(value, keep_stopwords=True))
-    if (
-        words.intersection({"which", "cual"})
-        and words.intersection({
-            "class", "course", "program", "workshop",
-            "clase", "curso", "programa", "taller",
-        })
-    ):
-        return "navigation"
-    if re.search(r"\b(?:where|find|page|contact|go next|which class|which program|donde|encontrar|pagina|contacto|cual clase|cual programa)\b", value):
-        return "navigation"
     return "retrieval"
 
 
@@ -2059,29 +2035,6 @@ def conversational_candidate_sources(page_context=None):
     return candidates[:6]
 
 
-def deterministic_answer_sources(question, retrieved, retrieval_scope):
-    """Use the local source index when its top route is unambiguous."""
-
-    retrieved = list(retrieved or [])
-    if not retrieved:
-        return []
-    if retrieval_scope == "page" or guided_class_sources(question):
-        return retrieved[:1]
-    if retired_class_intent(question):
-        return []
-    preferred = likely_source_ids(question, fallback=False)
-    if preferred and retrieved[0]["id"] == preferred[0]:
-        return retrieved[:1]
-    scores = [source_evidence_score(question, source) for source in retrieved[:2]]
-    if (
-        scores[0] >= 12
-        and source_supports_query(retrieved[0], question)
-        and (len(scores) == 1 or scores[0] - scores[1] >= 6)
-    ):
-        return retrieved[:1]
-    return []
-
-
 def related_links(question, sources, limit=3):
     lowered = fold_text(question)
     candidates = []
@@ -2117,97 +2070,6 @@ def related_links(question, sources, limit=3):
     if not result:
         result = [link_record(CONTACT_URL, "Ask Digital Equity staff")]
     return [record for record in result if record]
-
-
-def question_needs_model_clarification(question, language_code=None, page_context=None):
-    """Classify vague requests for telemetry without authoring a reply.
-
-    Clarification wording belongs to the model. This predicate is deliberately
-    response-free so an allowed participant message can never be answered by a
-    server-side menu or stock sentence.
-    """
-
-    question = semantic_question(question)
-    lowered = fold_text(question).strip(" ?.!")
-    words = set(tokens(lowered, keep_stopwords=True))
-    current = approved_current_page_source(page_context)
-    if (
-        guided_class_sources(question)
-        or individual_support_intent(question)
-        or device_distribution_intent(question)
-        or (current and question_refers_to_current_page(question))
-    ):
-        return False
-    if language_code == "es":
-        if lowered in {"ayuda", "necesito ayuda", "apoyo", "que puedes hacer"}:
-            return True
-        elif words.intersection({"dispositivo", "computadora", "telefono"}) and len(words) <= 5:
-            return True
-        elif (
-            words.intersection({"clase", "clases", "curso", "taller"})
-            and len(words) <= 6
-            and not words.intersection({
-                "alfabetizacion", "assessment", "basica", "basico", "canva",
-                "computacion", "computadora", "correo", "email", "electronico",
-                "excel", "fecha", "cuando", "donde", "registro", "registrarme",
-                "inscribirme",
-            })
-        ):
-            return True
-        elif words.intersection({"internet", "wifi"}) and len(words) <= 6:
-            return True
-    specific_request_terms = {
-        "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
-        "training", "trainings", "course", "courses", "register", "registration", "calendar",
-        "schedule", "internet", "wifi", "email", "resume", "job", "tutor", "tutoring",
-        "individual", "technical", "contact", "staff", "appointment", "repair", "fix", "broken",
-        "eligibility", "eligible", "lifeline", "tech", "one-to-one", "certification",
-        "certifications", "microsoft", "assessment", "assessments", "practice", "canva",
-        "excel", "formula", "formulas", "chart", "charts", "smartphone", "smartphones",
-        "spreadsheet", "spreadsheets", "scam", "scams", "fraud", "phishing",
-        "attachment", "attachments",
-        "digital", "equity", "partners", "impact", "overview", "android", "apple", "phones",
-    }
-    generic_request_terms = {
-        "start", "started", "begin", "help", "support", "assistance", "program", "programs",
-        "service", "services", "option", "options", "available", "offered", "offer",
-    }
-    program_overview = bool(words.intersection({"program", "programs"})) and bool(
-        words.intersection({"describe", "does", "offer", "offers", "overview", "provide", "provides"})
-    )
-    broad_start_or_help = not program_overview and (
-        lowered in {
-            "help", "i need help", "i want help", "can i get help", "support", "i need support",
-            "how can you help me", "what can you help with", "how do i get started", "how can i get started",
-            "i want to get started", "i want to start", "where do i start", "where do i begin",
-            "where should i begin", "what can i do", "what can i do here", "what are the options",
-            "what is available", "what is offered", "what programs are available", "what services are available",
-            "what is the program", "what does the program do",
-        }
-        or bool(re.fullmatch(r"(?:i )?(?:need|want) (?:some )?(?:help|support|assistance)", lowered))
-        or bool(re.fullmatch(r"how (?:can|do) i (?:get )?(?:started|begin)", lowered))
-        or (
-            len(words) <= 13
-            and bool(words.intersection(generic_request_terms))
-            and not words.intersection(specific_request_terms)
-        )
-    )
-    if broad_start_or_help:
-        return True
-    elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "eligibility", "class", "learn", "fix", "broken", "keep", "repair", "buy", "program", "programs", "distribution", "list", "listed"}):
-        return True
-    elif (
-        lowered == "i want to find a digital skills class"
-        or (
-            words.intersection({"class", "classes", "workshop", "workshops", "training"})
-            and len(words) <= 6
-            and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where", "hours", "schedule", "calendar", "assessment", "assessments", "certification", "certifications", "practice", "chart", "charts"})
-        )
-    ):
-        return True
-    elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing", "scam", "scams", "fraud", "phishing"}):
-        return True
-    return False
 
 
 def response_contract(
@@ -2518,9 +2380,10 @@ def _expanded_grounding_terms(value):
 def _claim_numbers(value):
     folded = fold_text(value)
     found = set(re.findall(r"(?<![\w])\d+(?![\w])", folded))
-    for word in re.findall(r"[a-z]+", folded):
-        if word in _NUMBER_WORDS:
-            found.add(_NUMBER_WORDS[word])
+    # Spelled-out numbers count only when they actually quantify a guarded
+    # unit. This keeps pronouns such as "create one during the session" from
+    # becoming a false claim of exactly one session.
+    found.update(number for number, _unit in _claim_number_unit_pairs(value))
     return found
 
 
@@ -2540,7 +2403,10 @@ def _claim_number_unit_pairs(value):
     )
     words = tokens(value_without_times, keep_stopwords=True)
     pairs = set()
-    barriers = {"and", "by", "for", "in", "of", "or", "through", "to", "with"}
+    barriers = {
+        "after", "and", "before", "by", "during", "for", "in", "of", "or",
+        "through", "to", "with",
+    }
     for index, word in enumerate(words):
         number = word if word.isdigit() else _NUMBER_WORDS.get(word)
         if number is None:
@@ -2669,12 +2535,29 @@ def _negative_status_sentence_first(answer, source_claim_text):
 def _named_entities_are_supported(answer, source_text):
     source_terms = _expanded_grounding_terms(source_text)
     for match in _ENTITY_PATTERN.finditer(answer):
+        # "One-on-one" is a service format label, not a proper name.
+        if re.fullmatch(
+            r"(?:one|1)[- ]on[- ](?:one|1)",
+            fold_text(match.group(0)),
+        ):
+            continue
         entity_terms = _expanded_grounding_terms(match.group(0)).difference({
             "and", "de", "del", "of", "the", "to", "y",
         })
         prefix = answer[:match.start()].rstrip()
         at_sentence_start = not prefix or prefix[-1:] in ".!?"
         if len(entity_terms) == 1 and at_sentence_start:
+            continue
+        # A model may naturally expand a location acronym already printed by
+        # the source (for example, Long Island City for LIC). Accept only an
+        # exact multiword initialism present in that same source record.
+        entity_words = [
+            word
+            for word in tokens(match.group(0), keep_stopwords=True)
+            if word not in {"and", "de", "del", "of", "the", "to", "y"}
+        ]
+        initialism = "".join(word[0] for word in entity_words if word)
+        if len(initialism) >= 2 and initialism in source_terms:
             continue
         if any(term not in source_terms for term in entity_terms):
             return False
@@ -2802,6 +2685,22 @@ def model_answer_is_grounded(answer, source, question=""):
     return True
 
 
+def grounded_candidate_for_answer(answer, selected, candidates, question=""):
+    """Return the one supplied page that supports the model's answer."""
+
+    ordered = [selected] + [
+        source for source in candidates if source.get("id") != selected.get("id")
+    ]
+    matches = [
+        source
+        for source in ordered
+        if model_answer_is_grounded(answer, source, question)
+    ]
+    if matches and matches[0].get("id") == selected.get("id"):
+        return selected
+    return matches[0] if len(matches) == 1 else None
+
+
 def parse_model_selection(
     raw,
     question,
@@ -2810,7 +2709,6 @@ def parse_model_selection(
     interaction=None,
     routing_question=None,
     prior_answer=None,
-    require_clarification=False,
     require_answer=False,
 ):
     retrieved = list(retrieved or retrieve_sources(question))
@@ -2821,8 +2719,6 @@ def parse_model_selection(
     if not parsed:
         raise ModelResponseRejected("The model returned an invalid response")
     selected_id = parsed["pick"]
-    if require_clarification and selected_id != SELECTOR_ASK:
-        raise ModelResponseRejected("The model answered a turn that requires clarification")
     if selected_id == SELECTOR_ASK:
         if require_answer:
             raise ModelResponseRejected("The model asked instead of providing a safe handoff")
@@ -2833,6 +2729,17 @@ def parse_model_selection(
         )
     selected = allowed[selected_id]
     grounding_question = routing_question or question
+    answer_text = parsed["answer"]
+    if model_requests_personal_details(answer_text):
+        raise ModelResponseRejected("The model asked for participant information")
+    grounded_source = grounded_candidate_for_answer(
+        answer_text,
+        selected,
+        retrieved,
+        grounding_question,
+    )
+    if grounded_source:
+        selected = grounded_source
     source_claim_text = (
         source_excerpt(
             selected,
@@ -2841,10 +2748,9 @@ def parse_model_selection(
         )
         or searchable_text(selected)
     )
-    answer_text = parsed["answer"]
-    if model_requests_personal_details(answer_text):
-        raise ModelResponseRejected("The model asked for participant information")
-    if _answer_conflicts_with_negative_status(answer_text, source_claim_text):
+    if not grounded_source and _answer_conflicts_with_negative_status(
+        answer_text, source_claim_text
+    ):
         grounded_status = next(
             (
                 sentence.strip()
@@ -2864,11 +2770,15 @@ def parse_model_selection(
         if not grounded_status:
             raise ModelResponseRejected("The answer contradicted the source status")
         answer_text = grounded_status
+    if len(answer_text.split()) > MAX_MESSAGE_WORDS:
+        raise ModelResponseRejected("The model answer exceeded the response limit")
     message = clip_words(
         _negative_status_sentence_first(answer_text, source_claim_text),
         MAX_MESSAGE_WORDS,
     )
-    if not model_answer_is_grounded(message, selected, grounding_question):
+    if not grounded_source and not model_answer_is_grounded(
+        message, selected, grounding_question
+    ):
         raise ModelResponseRejected("The answer was not grounded in the selected source")
     if (
         interaction.get("chat_stage") == "follow_up"
@@ -2900,7 +2810,6 @@ def model_selection_retry_reason(
     prior_answer="",
     question="",
     routing_question="",
-    require_clarification=False,
     require_answer=False,
 ):
     """Return the one recoverable validation failure that merits a model retry."""
@@ -2910,14 +2819,6 @@ def model_selection_retry_reason(
     parsed = parse_selector_response(raw, allowed)
     if not parsed:
         return "invalid response"
-    if require_clarification:
-        if parsed["pick"] != SELECTOR_ASK:
-            return "clarification required"
-        try:
-            model_clarification_response(question, parsed["answer"])
-        except ModelResponseRejected:
-            return "personal detail request"
-        return ""
     if parsed["pick"] == SELECTOR_ASK:
         if require_answer:
             return "resolved source can answer"
@@ -2931,7 +2832,17 @@ def model_selection_retry_reason(
     selected = allowed[parsed["pick"]]
     if model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
+    if len(parsed["answer"].split()) > MAX_MESSAGE_WORDS:
+        return "response too long"
     grounding_question = routing_question or question
+    grounded_source = grounded_candidate_for_answer(
+        parsed["answer"],
+        selected,
+        retrieved,
+        grounding_question,
+    )
+    if grounded_source:
+        selected = grounded_source
     source_claim_text = (
         source_excerpt(
             selected,
@@ -2940,13 +2851,17 @@ def model_selection_retry_reason(
         )
         or searchable_text(selected)
     )
-    if _answer_conflicts_with_negative_status(parsed["answer"], source_claim_text):
+    if not grounded_source and _answer_conflicts_with_negative_status(
+        parsed["answer"], source_claim_text
+    ):
         return "status contradiction"
     message = clip_words(
         _negative_status_sentence_first(parsed["answer"], source_claim_text),
         MAX_MESSAGE_WORDS,
     )
-    if not model_answer_is_grounded(message, selected, grounding_question):
+    if not grounded_source and not model_answer_is_grounded(
+        message, selected, grounding_question
+    ):
         return (
             "resolved source can answer"
             if len(retrieved) == 1
@@ -3281,9 +3196,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 )
                 return
             sensitive_request = needs_human_handoff(question)
-            staff_confirmation = needs_staff_confirmation(question)
-            used_conversational_fallback = False
-            if sensitive_request or staff_confirmation:
+            if sensitive_request:
                 retrieval_scope = "staff"
                 retrieved = [SOURCE_BY_ID["contact"]]
             else:
@@ -3291,20 +3204,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if not retrieved:
                     retrieval_scope = "site"
                     retrieved = conversational_candidate_sources(page_context)
-                    used_conversational_fallback = True
-            deterministic = (
-                []
-                if used_conversational_fallback
-                else deterministic_answer_sources(
-                    routing_question, retrieved, retrieval_scope
-                )
-            )
-            require_model_answer = sensitive_request or staff_confirmation
+            require_model_answer = sensitive_request
             # The model sees the current page plus bounded approved site records.
             # It may answer from one supported record or pick ASK when the request
             # is genuinely ambiguous; the server no longer predetermines that
             # every broad or conversational message must become a clarification.
-            require_model_clarification = False
             prior_answer = next(
                 (
                     item.get("content", "")
@@ -3341,7 +3245,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     headers={"Retry-After": "60"},
                 )
                 return
-            model_sources = deterministic or retrieved
+            model_sources = retrieved
             messages = [{"role": "system", "content": retrieval_prompt(
                 routing_question,
                 model_sources,
@@ -3367,7 +3271,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 prior_answer,
                 question,
                 routing_question,
-                require_model_clarification,
                 require_model_answer,
             )
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
@@ -3389,7 +3292,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 prior_answer,
                 question,
                 routing_question,
-                require_model_clarification,
                 require_model_answer,
             )
             if (
@@ -3414,7 +3316,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     prior_answer,
                     question,
                     routing_question,
-                    require_model_clarification,
                     require_model_answer,
                 )
             response = parse_model_selection(
@@ -3425,10 +3326,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 interaction,
                 routing_question=routing_question,
                 prior_answer=prior_answer,
-                require_clarification=require_model_clarification,
                 require_answer=require_model_answer,
             )
-            if sensitive_request or staff_confirmation:
+            if sensitive_request:
                 response["kind"] = "handoff"
                 response["retrieval_scope"] = "staff"
             self._log_model_validation(

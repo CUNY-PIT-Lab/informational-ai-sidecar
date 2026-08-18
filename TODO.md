@@ -1,6 +1,6 @@
 # Website Guide — next steps
 
-## Model-authored response contract — 2026-08-18
+## Infobot model-first release — 2026-08-18
 
 - [x] Remove the fixed conversational fallbacks that answered vague, frustrated,
   unsupported, or staff-routed requests without calling the model.
@@ -18,16 +18,32 @@
 - [x] Move automated runs to the evaluator-hidden `benchmark` surface and make
   both release runners fail when any successful non-private turn skips the
   model.
-- [x] Register the dedicated v17 prompt and preserve the compiled v16 artifact
-  for review history.
-- [x] Pass the complete local release suite: 279 Python, 23 browser-core, and 13
+- [x] Remove the forced clarification classifier and deterministic source
+  collapse; the live model now chooses among bounded approved site records.
+- [x] Incorporate the useful, fact-free guidance from the current team Infobot
+  notes and core-setup review into prompt v21; preserve compiled v20 for review
+  history and keep vendor-specific tooling, canned examples, unsupported crisis
+  facts, and unconditional logging claims out of runtime.
+- [x] Keep the visible shared dashboard tab and deployed catalog labeled
+  **Prompts**, with v21 shown as the current immutable runtime policy.
+- [x] Add a guarded staging transcript reset that preserves evaluator accounts,
+  sessions, buckets, invitations, and all Prompts proposals/history.
+- [x] Pass the complete local release suite: 297 Python, 28 browser-core, and 13
   snapshot tests.
-- [ ] Deploy the exact v17 commit to Railway staging and replay the reported
-  `What the hell` → `Help me` conversation with `model_called: true` on both
-  turns.
-- [ ] Verify the staging browser, hidden benchmark capture, prompt provenance,
+- [x] Deploy the exact v21 commit to Railway staging and replay ordinary,
+  frustrated, broad, specific, Spanish, and multi-turn requests with
+  `model_called: true` on every non-private turn. The final ten-turn retrieval
+  run completed 10/10, and Return produced a live model response in the browser.
+- [x] Clear the existing staging transcript corpus in one guarded transaction,
+  preserve evaluator and Prompts state, and prove automated benchmark traffic
+  stays out of the reviewer queue. The reset removed 1,171 conversations,
+  1,999 turns, and 3,784 messages while preserving four evaluator accounts,
+  four bucket sets, 13 buckets, one active session, and the Prompts workspace.
+- [x] Verify the staging browser, hidden benchmark capture, prompt provenance,
   aggregate privacy/integrity gate, and terminal deployment stability before
-  promotion.
+  promotion. Staging deployment `ad436f9b-8df8-4d78-a71f-1515ea4d4b6c` is
+  terminal `SUCCESS`; the deployed runtime and prompt hashes match this tree;
+  Return, model provenance, and page-to-page conversation persistence passed.
 - [ ] Merge through GitHub, verify Pages, then deploy the exact merged tree to
   Railway production with capture `none`, no database, and evaluation disabled.
 

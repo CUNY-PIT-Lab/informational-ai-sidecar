@@ -9,7 +9,7 @@
   const TAG_NAME = "fortune-digital-equity-guide";
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
-  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v1";
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v20";
   const STARTERS = Object.freeze([
     { label: "Page summary", prompt: "What is the main information here?" },
     { label: "Page options", prompt: "What can I do from this page?" }

@@ -119,20 +119,12 @@ class RetrievalTests(unittest.TestCase):
                 scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
                 self.assertEqual(scope, "site")
                 self.assertEqual(sources[0]["id"], source_id)
-                self.assertEqual(
-                    [source["id"] for source in server.deterministic_answer_sources(question, sources, scope)],
-                    [source_id],
-                )
 
     def test_relative_schedule_questions_use_calendar_before_named_class_content(self):
         question = "Is there an Intro to Email class tomorrow?"
         scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
         self.assertEqual(scope, "site")
         self.assertEqual(sources[0]["id"], "calendar")
-        self.assertEqual(
-            [source["id"] for source in server.deterministic_answer_sources(question, sources, scope)],
-            ["calendar"],
-        )
 
     def test_class_duration_does_not_route_to_the_calendar(self):
         expected = {
@@ -144,10 +136,6 @@ class RetrievalTests(unittest.TestCase):
                 scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
                 self.assertEqual(scope, "site")
                 self.assertEqual(sources[0]["id"], source_id)
-                self.assertEqual(
-                    [source["id"] for source in server.deterministic_answer_sources(question, sources, scope)],
-                    [source_id],
-                )
 
     def test_relative_time_does_not_turn_a_device_availability_question_into_calendar_search(self):
         for question in ("Can I get a phone today?", "Are free smartphones still available?"):
@@ -210,10 +198,6 @@ class RetrievalTests(unittest.TestCase):
         scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
         self.assertEqual(scope, "site")
         self.assertEqual(sources[0]["id"], "devices")
-        self.assertEqual(
-            [source["id"] for source in server.deterministic_answer_sources(question, sources, scope)],
-            ["devices"],
-        )
 
     def test_removed_resume_and_pivot_classes_are_not_replaced_with_guesses(self):
         for question in (
@@ -224,10 +208,6 @@ class RetrievalTests(unittest.TestCase):
                 scope, sources = server.retrieval_plan(question, {"url": server.ROOT_URL})
                 self.assertEqual(scope, "site")
                 self.assertEqual([source["id"] for source in sources], ["trainings", "contact"])
-                self.assertEqual(
-                    server.deterministic_answer_sources(question, sources, scope),
-                    [],
-                )
                 self.assertFalse(any(
                     fragment in source["url"]
                     for source in sources
@@ -454,10 +434,9 @@ class StagedRetrievalTests(unittest.TestCase):
             model_answer="Classes are held in Long Island City and the Bronx (SRP).",
         )
         self.assertEqual(captured["status"], 200)
-        self.assertEqual(
-            [record["id"] for record in self.retrieval_records(model_calls)],
-            ["calendar"],
-        )
+        records = self.retrieval_records(model_calls)
+        self.assertEqual(records[0]["id"], "calendar")
+        self.assertGreater(len(records), 1)
         self.assertEqual(model_calls[0][1]["content"], "Where are they held")
 
     def test_help_using_a_device_routes_to_specific_support_not_distribution(self):
@@ -517,9 +496,8 @@ class StagedRetrievalTests(unittest.TestCase):
                 })
                 self.assertEqual(distribution_sources[0]["id"], "devices")
 
-    def test_specific_one_to_one_help_bypasses_broad_start_clarification(self):
+    def test_specific_one_to_one_help_reaches_the_live_model(self):
         question = "What kinds of one-on-one technology help does Fortune offer?"
-        self.assertFalse(server.question_needs_model_clarification(question))
 
         captured, model_calls = self.dispatch_chat(
             question,
@@ -532,14 +510,9 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
         self.assertEqual(len(model_calls), 1)
 
-    def test_support_page_reference_precedes_broad_help_clarification(self):
+    def test_support_page_reference_reaches_the_live_model(self):
         question = "Can I walk in for the help described here?"
         page_context = {"url": "https://www.fortunedigitalequity.org/support"}
-        self.assertFalse(
-            server.question_needs_model_clarification(
-                question, page_context=page_context
-            )
-        )
 
         captured, model_calls = self.dispatch_chat(
             question,
@@ -573,7 +546,6 @@ class StagedRetrievalTests(unittest.TestCase):
 
     def test_named_acp_enrollment_question_retrieves_current_device_status(self):
         question = "Can Fortune enroll me in the old $30 Affordable Connectivity Program discount today?"
-        self.assertFalse(server.question_needs_model_clarification(question))
 
         captured, model_calls = self.dispatch_chat(
             question,
@@ -636,7 +608,7 @@ class StagedRetrievalTests(unittest.TestCase):
         )
         payload = captured["payload"]
         self.assertEqual(payload["chat_stage"], "follow_up")
-        self.assertEqual(payload["request_kind"], "procedure")
+        self.assertEqual(payload["request_kind"], "retrieval")
         self.assertEqual(payload["request_language"], "en")
         self.assertEqual(payload["response_language"], "en")
         self.assertEqual(payload["prompt_policy_version"], server.PROMPT_POLICY_VERSION)
@@ -956,6 +928,81 @@ class StagedRetrievalTests(unittest.TestCase):
             "resolved source can answer",
         )
 
+    def test_grounded_answer_can_recover_the_matching_supplied_candidate(self):
+        question = "Do I need an email address before the class?"
+        answer = "You do not need an email address before Intro to Email."
+        intro_email = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+        devices = server.SOURCE_BY_ID["devices"]
+        candidates = [intro_email, devices]
+        raw = json.dumps({"pick": "devices", "answer": answer})
+
+        self.assertFalse(
+            server.model_answer_is_grounded(answer, devices, question)
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(answer, intro_email, question)
+        )
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                candidates,
+                {"chat_stage": "follow_up", "request_language": "en"},
+                "Intro to Email is a beginner class.",
+                question,
+                question,
+            ),
+            "",
+        )
+        result = server.parse_model_selection(
+            raw,
+            question,
+            candidates,
+            "site",
+            {"chat_stage": "follow_up", "request_language": "en"},
+            routing_question=question,
+            prior_answer="Intro to Email is a beginner class.",
+        )
+        self.assertEqual(result["kind"], "answer")
+        self.assertEqual(result["sources"][0]["id"], server.INTRO_EMAIL_ID)
+
+    def test_pronominal_one_is_not_misread_as_a_session_count(self):
+        question = "Do I need an email address before the class?"
+        answer = (
+            "No, you don't need an email address before class — you can create "
+            "one during the session."
+        )
+        source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+
+        self.assertEqual(server._claim_numbers(answer), set())
+        self.assertEqual(server._claim_number_unit_pairs(answer), set())
+        self.assertTrue(server.model_answer_is_grounded(answer, source, question))
+        self.assertEqual(
+            server._claim_number_unit_pairs("The course has two sessions."),
+            {("2", "session")},
+        )
+        self.assertEqual(
+            server._claim_number_unit_pairs("Attend at least five workshops."),
+            {("5", "workshop")},
+        )
+
+    def test_source_location_initialism_supports_its_natural_expansion(self):
+        question = "Where is Intro to Email offered?"
+        answer = (
+            "Intro to Email is offered at the Main Office in Long Island City, "
+            "SRP in the Bronx, and Fortune Academy in Harlem."
+        )
+        source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+
+        self.assertIn("Main Office (LIC)", server.searchable_text(source))
+        self.assertTrue(server.model_answer_is_grounded(answer, source, question))
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                answer.replace("Long Island City", "Lower East Side"),
+                source,
+                question,
+            )
+        )
+
     def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
         canva_id = "service-service-page-canva-design-tools-61911b2b"
         captured, model_calls = self.dispatch_chat(
@@ -981,7 +1028,33 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertIn("not available", captured["payload"]["message"])
         self.assertEqual(len(model_calls), 2)
         self.assertIn(
-            server.RETRY_INSTRUCTIONS["resolved source can answer"],
+            server.RETRY_INSTRUCTIONS["unsupported factual wording"],
+            model_calls[1][0]["content"],
+        )
+
+    def test_overlong_model_draft_retries_instead_of_being_cut_off(self):
+        source_id = "devices"
+        long_answer = " ".join([
+            "Free refurbished laptops are available through Computers 4 People,"
+        ] * 10)
+        complete_answer = (
+            "Free refurbished laptops are available through Computers 4 People. "
+            "Participants need at least 5 Digital Equity Program workshops, and "
+            "supply is limited."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "How can I qualify for a refurbished laptop?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            model_answers=[long_answer, complete_answer],
+        )
+
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["message"], complete_answer)
+        self.assertFalse(captured["payload"]["message"].endswith("…"))
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["response too long"],
             model_calls[1][0]["content"],
         )
 
@@ -1233,7 +1306,6 @@ class StagedRetrievalTests(unittest.TestCase):
 
     def test_program_overview_reaches_grounded_generation_instead_of_a_canned_branch(self):
         question = "What does the program offer?"
-        self.assertFalse(server.question_needs_model_clarification(question))
         captured, model_calls = self.dispatch_chat(
             question,
             "https://www.fortunedigitalequity.org/",
@@ -1421,45 +1493,26 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(model_calls, [])
 
 
-class AmbiguityAndPrivacyTests(unittest.TestCase):
-    def test_vague_request_classifier_never_authors_participant_copy(self):
-        for question in (
-            "help", "device", "class", "internet", "How can I get started?",
-            "Can I get help?", "Where do I begin?", "Can you help me get started?",
-        ):
-            self.assertTrue(
-                server.question_needs_model_clarification(question), question
-            )
-        source = inspect.getsource(server.question_needs_model_clarification)
-        for canned_text in (
-            "What do you want to start with?",
-            "Which page do you mean?",
-            "What do you need?",
-        ):
-            self.assertNotIn(canned_text, source)
+class ModelFirstAndPrivacyTests(unittest.TestCase):
+    def test_runtime_has_no_vague_request_or_deterministic_source_classifier(self):
+        module_source = inspect.getsource(server)
+        self.assertNotIn("def question_needs_model_clarification", module_source)
+        self.assertNotIn("def deterministic_answer_sources", module_source)
+        self.assertNotIn("require_model_clarification", module_source)
 
-    def test_class_clarification_choices_bypass_homepage_overlap(self):
+    def test_navigation_prompts_retrieve_current_pages_for_the_model(self):
         expected_urls = {
             "Class topics": server.WORKSHOPS_URL,
             "Dates & locations": server.CALENDAR_URL,
             "Register": server.CONTACT_URL,
         }
         for question, expected_url in expected_urls.items():
-            self.assertFalse(
-                server.question_needs_model_clarification(question), question
-            )
             scope, sources = server.retrieval_plan(
                 question,
                 {"url": "https://www.fortunedigitalequity.org/"},
             )
             self.assertEqual(scope, "site")
             self.assertEqual([source["url"] for source in sources], [expected_url])
-
-    def test_clear_requests_skip_deterministic_clarification(self):
-        for question in ("Can I get a free laptop?", "I want an Excel pivot table class", "When is the email class?", "current laptop eligibility rules"):
-            self.assertFalse(
-                server.question_needs_model_clarification(question), question
-            )
 
     def test_typos_and_prompt_attacks_are_reduced_to_the_useful_intent(self):
         self.assertEqual(
@@ -1479,14 +1532,13 @@ class AmbiguityAndPrivacyTests(unittest.TestCase):
             "",
         )
 
-    def test_spanish_requests_are_detected_and_clarified_in_spanish(self):
+    def test_spanish_requests_are_detected_without_behavioral_classification(self):
         self.assertEqual(server.detect_language("Necesito ayuda con una clase"), "es")
-        self.assertEqual(server.request_kind("¿Cómo puedo registrarme?"), "procedure")
+        self.assertEqual(server.request_kind("¿Cómo puedo registrarme?"), "retrieval")
         self.assertEqual(
             server.request_kind("Which Excel class teaches formatting?"),
-            "navigation",
+            "retrieval",
         )
-        self.assertTrue(server.question_needs_model_clarification("clase", "es"))
 
     def test_language_detection_does_not_treat_non_latin_text_as_english(self):
         self.assertEqual(server.detect_language("需要帮助"), "other")
@@ -1725,6 +1777,20 @@ class ResponseContractTests(unittest.TestCase):
             server.model_answer_is_grounded(
                 "One tutoring session is offered by appointment.",
                 counted,
+            )
+        )
+
+    def test_sentence_initial_one_to_one_is_not_misread_as_an_entity(self):
+        support = server.SOURCE_BY_ID["individual"]
+        answer = (
+            "One-on-one tutoring is available by appointment, while quick "
+            "questions can be handled during office hours or at the Support Desk."
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(
+                answer,
+                support,
+                "Can I walk in for one-on-one help?",
             )
         )
 
@@ -2182,9 +2248,19 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources("computer class")
         grounded = server.source_excerpt(retrieved[0], "computer class").splitlines()[0]
         raw = model_response(retrieved[0], "computer class", " ".join([grounded] * 4))
-        result = server.parse_model_selection(raw, "computer class", retrieved)
-        self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
-        self.assertLessEqual(len(result["reason"].split()), server.MAX_REASON_WORDS)
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                retrieved,
+                {"chat_stage": "initial", "request_language": "en"},
+                "",
+                "computer class",
+                "computer class",
+            ),
+            "response too long",
+        )
+        with self.assertRaises(server.ModelResponseRejected):
+            server.parse_model_selection(raw, "computer class", retrieved)
 
     def test_long_answers_prefer_a_complete_sentence_boundary(self):
         text = ("A useful first sentence has enough words to carry a complete participant-facing instruction clearly. "
@@ -2445,7 +2521,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         self.assertIn("stay in this tab across pages", html)
         self.assertIn('window.sessionStorage', app)
         self.assertIn("return window.parent.sessionStorage", app)
-        self.assertIn('"fortune-website-guide:replica:v1"', app)
+        self.assertIn('"fortune-website-guide:replica:v20"', app)
         self.assertIn('frameUrl.searchParams.set("v", "20260817-route-refresh-1")', replica_shell)
         self.assertIn("persistConversation();", app)
         self.assertIn("restoreConversation();", app)
@@ -2463,7 +2539,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             self.assertNotIn(destructive_reset, reset)
 
         self.assertIn('window.sessionStorage', wix)
-        self.assertIn('"fortune-website-guide:wix:v1"', wix)
+        self.assertIn('"fortune-website-guide:wix:v20"', wix)
         self.assertIn("this.persistConversation();", wix)
         self.assertIn("this.restoreConversation()", wix)
         self.assertNotIn("window.localStorage", wix)
@@ -2683,9 +2759,10 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         app = (DEMO / "app.js").read_text(encoding="utf-8")
         wix = (DEMO / "wix-app" / "site" / "fortune-guide-element.js").read_text(encoding="utf-8")
         self.assertIn('apiUrl("/api/warmup")', app)
-        self.assertLess(app.index("warmupPromise = warmModel"), app.index("window.FortuneGuide ="))
+        self.assertIn("if (modelReady) warmModel();", app)
+        self.assertIn("if (warmupPromise) return warmupPromise;", app)
         self.assertIn('this.apiUrl("/api/warmup")', wix)
-        remote_answer = app[app.index("async function remoteAnswer") : app.index("async function warmModel")]
+        remote_answer = app[app.index("async function remoteAnswer") : app.index("function warmModel")]
         wix_ask_start = wix.index("async ask")
         wix_ask = wix[wix_ask_start : wix.index("\n    beginEdit()", wix_ask_start)]
         self.assertNotIn("await warmupPromise", remote_answer)

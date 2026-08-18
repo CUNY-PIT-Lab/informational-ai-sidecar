@@ -387,7 +387,7 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         )
         self.assertIn('timeHtml(message.created_at, "message-time")', javascript)
         self.assertIn("readableTimestamp(detail.last_turn_at)", javascript)
-        self.assertIn("20260818-prompts-v3", html)
+        self.assertIn("20260818-prompts-v21", html)
 
     def test_prompt_lab_is_compact_shared_and_has_no_activation_control(self):
         html = (DEMO / "evaluation.html").read_text(encoding="utf-8")
@@ -401,11 +401,11 @@ class EvaluationFrontendContractTests(unittest.TestCase):
         self.assertIn("<h2>Prompts</h2>", html)
         self.assertNotIn(">Prompt Lab<", html)
         self.assertIn("Current compiled prompt", html)
-        self.assertIn('version: "2026-08-18-v19"', javascript)
+        self.assertIn('version: "2026-08-18-v21"', javascript)
         self.assertIn(
-            'behavior_release: "model-authored-natural-clarification"', javascript
+            'behavior_release: "infobot-priority-grounded-guide"', javascript
         )
-        self.assertIn('current_variant: "brief_natural_follow_up"', javascript)
+        self.assertIn('current_variant: "blocking_ambiguity_only"', javascript)
         self.assertIn("Production changes still require code review", html)
         self.assertIn("module-diff-columns", css)
         self.assertIn("Current ·", javascript)

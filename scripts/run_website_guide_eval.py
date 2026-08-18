@@ -31,9 +31,7 @@ ALLOWED_SOURCE_HOSTS = {
 }
 LEVELS = {"hard", "release", "diagnostic"}
 RESPONSE_KINDS = {"answer", "clarify", "handoff", "privacy"}
-REQUEST_KINDS = {
-    "clarification", "navigation", "privacy", "procedure", "retrieval", "sensitive"
-}
+REQUEST_KINDS = {"privacy", "retrieval", "sensitive"}
 EXPECTATION_OVERRIDE_FIELDS = {
     "advancement_required",
     "max_message_words",

@@ -8,7 +8,7 @@
   },
   "charter": {
     "decision": "Determine whether the current Website Guide is ready for staff review and identify the smallest high-value fixes before a Wix pilot.",
-    "unitUnderTest": "The deployed Website Guide system: deterministic routing, approved-source retrieval, model adapter, response contract, privacy hold, bounded history, and rendered browser client.",
+    "unitUnderTest": "The deployed Website Guide system: approved-source retrieval, live model adapter, grounding contract, pre-model privacy hold, bounded history, and rendered browser client.",
     "targetPopulation": "Public visitors asking short English, Spanish, typo-heavy, vague, page-aware, sensitive, adversarial, or follow-up questions about Fortune Digital Equity services.",
     "minimumPracticalDifference": "A five percentage-point change in required-case success, or any change in a privacy, source-authority, prompt-leakage, capture, or sensitive-handoff hard gate.",
     "nonGoals": [
@@ -51,7 +51,7 @@
     "balance": [
       "scenario-family coverage",
       "English and Spanish",
-      "deterministic and model-backed routes"
+      "model-backed routes and pre-model privacy holds"
     ],
     "timeoutSeconds": 30,
     "retryPolicy": {
@@ -64,7 +64,7 @@
       "id": "contract-grader",
       "type": "executable",
       "version": "1.0.0",
-      "calibrationSet": "Known-good deterministic clarification, privacy, sensitive-handoff, source-domain, and malformed-input controls embedded in cases.json.",
+      "calibrationSet": "Known-good model-authored answer, clarification, sensitive-handoff, privacy, source-domain, and malformed-input controls embedded in cases.json.",
       "adjudication": "Manually inspect every failed required case against the approved public source and route contract; do not auto-pass model prose."
     },
     {
