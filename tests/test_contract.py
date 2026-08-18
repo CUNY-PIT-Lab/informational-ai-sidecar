@@ -965,6 +965,26 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(result["kind"], "answer")
         self.assertEqual(result["sources"][0]["id"], server.INTRO_EMAIL_ID)
 
+    def test_pronominal_one_is_not_misread_as_a_session_count(self):
+        question = "Do I need an email address before the class?"
+        answer = (
+            "No, you don't need an email address before class — you can create "
+            "one during the session."
+        )
+        source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+
+        self.assertEqual(server._claim_numbers(answer), set())
+        self.assertEqual(server._claim_number_unit_pairs(answer), set())
+        self.assertTrue(server.model_answer_is_grounded(answer, source, question))
+        self.assertEqual(
+            server._claim_number_unit_pairs("The course has two sessions."),
+            {("2", "session")},
+        )
+        self.assertEqual(
+            server._claim_number_unit_pairs("Attend at least five workshops."),
+            {("5", "workshop")},
+        )
+
     def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
         canva_id = "service-service-page-canva-design-tools-61911b2b"
         captured, model_calls = self.dispatch_chat(

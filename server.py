@@ -2380,9 +2380,10 @@ def _expanded_grounding_terms(value):
 def _claim_numbers(value):
     folded = fold_text(value)
     found = set(re.findall(r"(?<![\w])\d+(?![\w])", folded))
-    for word in re.findall(r"[a-z]+", folded):
-        if word in _NUMBER_WORDS:
-            found.add(_NUMBER_WORDS[word])
+    # Spelled-out numbers count only when they actually quantify a guarded
+    # unit. This keeps pronouns such as "create one during the session" from
+    # becoming a false claim of exactly one session.
+    found.update(number for number, _unit in _claim_number_unit_pairs(value))
     return found
 
 
@@ -2402,7 +2403,10 @@ def _claim_number_unit_pairs(value):
     )
     words = tokens(value_without_times, keep_stopwords=True)
     pairs = set()
-    barriers = {"and", "by", "for", "in", "of", "or", "through", "to", "with"}
+    barriers = {
+        "after", "and", "before", "by", "during", "for", "in", "of", "or",
+        "through", "to", "with",
+    }
     for index, word in enumerate(words):
         number = word if word.isdigit() else _NUMBER_WORDS.get(word)
         if number is None:
