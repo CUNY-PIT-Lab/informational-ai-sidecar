@@ -2832,16 +2832,6 @@ def parse_model_selection(
             retrieval_scope,
         )
     selected = allowed[selected_id]
-    support_query = (
-        question
-        if distinctive_query_terms(question)
-        else (routing_question or question)
-    )
-    # A single candidate was already resolved by the server's deterministic
-    # intent router or current-page gate. Reapplying the lexical site-search
-    # filter here rejects natural wording such as "help using a device."
-    if len(retrieved) > 1 and not source_supports_query(selected, support_query):
-        raise ModelResponseRejected("The selected source does not support the question")
     grounding_question = routing_question or question
     source_claim_text = (
         source_excerpt(
@@ -2941,13 +2931,6 @@ def model_selection_retry_reason(
     selected = allowed[parsed["pick"]]
     if model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
-    support_query = (
-        question
-        if distinctive_query_terms(question)
-        else (routing_question or question)
-    )
-    if len(retrieved) > 1 and not source_supports_query(selected, support_query):
-        return "unsupported selection"
     grounding_question = routing_question or question
     source_claim_text = (
         source_excerpt(

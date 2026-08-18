@@ -1175,22 +1175,36 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(len(model_calls), 1)
 
     def test_grounded_page_answer_may_end_with_a_natural_follow_up_question(self):
-        answer = (
-            "Hello! Welcome to the Fortune Society Digital Equity Hub. We offer "
-            "digital tools, workshops, and support for justice-impacted New Yorkers. "
-            "How can I help you today?"
+        cases = (
+            (
+                "hello hello",
+                "Hello! Welcome to the Fortune Society Digital Equity Hub. We offer "
+                "digital tools, workshops, and support for justice-impacted New Yorkers. "
+                "How can I help you today?",
+            ),
+            (
+                "heyo whats up",
+                "Hey! Welcome to the Fortune Society Digital Equity Hub — we offer "
+                "digital tools, workshops, and support for justice-impacted New Yorkers. "
+                "How can I help you today?",
+            ),
         )
-        captured, model_calls = self.dispatch_chat(
-            "hello hello",
-            "https://www.fortunedigitalequity.org/",
-            model_raws=[json.dumps({"pick": "home", "answer": answer})],
-        )
-        self.assertEqual(captured["status"], 200)
-        self.assertEqual(captured["payload"]["kind"], "answer")
-        self.assertEqual(captured["payload"]["sources"][0]["id"], "home")
-        self.assertEqual(captured["payload"]["message"], answer)
-        self.assertTrue(captured["payload"]["model_called"])
-        self.assertEqual(len(model_calls), 1)
+        for question, answer in cases:
+            with self.subTest(question=question):
+                captured, model_calls = self.dispatch_chat(
+                    question,
+                    "https://www.fortunedigitalequity.org/",
+                    model_raws=[json.dumps({"pick": "home", "answer": answer})],
+                )
+                self.assertEqual(captured["status"], 200)
+                self.assertEqual(captured["payload"]["kind"], "answer")
+                self.assertEqual(captured["payload"]["sources"][0]["id"], "home")
+                self.assertEqual(
+                    captured["payload"]["message"],
+                    server.clip_words(answer, server.MAX_MESSAGE_WORDS),
+                )
+                self.assertTrue(captured["payload"]["model_called"])
+                self.assertEqual(len(model_calls), 1)
 
     def test_missing_model_abstains_instead_of_extracting_a_factual_answer(self):
         captured, model_calls = self.dispatch_chat(
@@ -1589,16 +1603,9 @@ class ResponseContractTests(unittest.TestCase):
         with self.assertRaises(server.ModelResponseRejected):
             server.parse_model_selection(raw, "free laptop", retrieved)
 
-    def test_selected_page_must_support_the_questions_distinctive_terms(self):
+    def test_selected_answer_is_grounded_without_a_second_lexical_relevance_veto(self):
         question = "Where can I ask a Tech Fair speaker a question?"
         retrieved = server.retrieve_sources(question)
-        with self.assertRaises(server.ModelResponseRejected):
-            server.parse_model_selection(
-                model_response(server.SOURCE_BY_ID[server.source_id_for_path("/techfair")], question),
-                question,
-                retrieved,
-                routing_question=question,
-            )
         right = server.parse_model_selection(
             model_response(
                 server.SOURCE_BY_ID[server.source_id_for_path("/techfair/qa")],
