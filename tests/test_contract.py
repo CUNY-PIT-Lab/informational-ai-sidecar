@@ -884,6 +884,130 @@ class StagedRetrievalTests(unittest.TestCase):
             model_calls[1][0]["content"],
         )
 
+    def test_negative_source_status_cannot_be_rewritten_as_a_current_offering(self):
+        question = "I want to learn about the device distribution programs."
+        source = server.SOURCE_BY_ID["devices"]
+        unsafe = (
+            "The Fortune Society Digital Equity Program offers free smartphones "
+            "and phone service through the LifeLine Program, plus device distribution "
+            "through Computers 4 People and the Affordable Connectivity Program."
+        )
+        grounded = (
+            "Smartphone distribution is currently on hold. Fortune partners with "
+            "Computers 4 People to provide free refurbished laptops to participants."
+        )
+
+        self.assertFalse(server.model_answer_is_grounded(unsafe, source, question))
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "El programa ofrece un teléfono gratis y servicio telefónico "
+                "a través de LifeLine.",
+                source,
+                "¿Qué programas de distribución de dispositivos ofrecen?",
+            )
+        )
+        informational = (
+            "The program offers information on free smartphone and phone service "
+            "distribution through LifeLine. Smartphone distribution is currently "
+            "on hold due to loss of federal funding."
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(informational, source, question)
+        )
+        parsed = server.parse_model_selection(
+            json.dumps({"pick": "devices", "answer": informational}),
+            question,
+            [source],
+            "site",
+        )
+        self.assertEqual(parsed["kind"], "answer")
+        self.assertTrue(
+            parsed["message"].lower().startswith(
+                "smartphone distribution is currently on hold"
+            )
+        )
+        self.assertTrue(server.model_answer_is_grounded(grounded, source, question))
+        mixed = (
+            unsafe
+            + " Smartphone distribution is currently on hold due to loss of "
+            "federal funding through the Affordable Connectivity Program."
+        )
+        recovered = server.parse_model_selection(
+            json.dumps({"pick": "devices", "answer": mixed}),
+            question,
+            [source],
+            "site",
+        )
+        self.assertEqual(recovered["kind"], "answer")
+        self.assertTrue(
+            recovered["message"].lower().startswith(
+                "smartphone distribution is currently on hold"
+            )
+        )
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                json.dumps({"pick": "devices", "answer": unsafe}),
+                [source],
+                {"chat_stage": "initial", "request_language": "en"},
+                "",
+                question,
+                question,
+            ),
+            "status contradiction",
+        )
+
+    def test_negative_source_status_retries_to_a_grounded_dynamic_answer(self):
+        question = "I want to learn about the device distribution programs."
+        unsafe = (
+            "The Fortune Society Digital Equity Program offers free smartphones "
+            "and phone service through the LifeLine Program, plus device distribution "
+            "through Computers 4 People and the Affordable Connectivity Program."
+        )
+        grounded = (
+            "Smartphone distribution is currently on hold. Fortune partners with "
+            "Computers 4 People to provide free refurbished laptops to participants."
+        )
+        captured, model_calls = self.dispatch_chat(
+            question,
+            server.ROOT_URL,
+            model_raws=[
+                json.dumps({"pick": "devices", "answer": unsafe}),
+                json.dumps({"pick": "devices", "answer": grounded}),
+            ],
+        )
+
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], grounded)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["status contradiction"],
+            model_calls[1][0]["content"],
+        )
+
+    def test_negative_status_guard_follows_the_approved_record(self):
+        question = "What device distribution programs are available?"
+        answer = (
+            "The program offers free smartphones and phone service through "
+            "the LifeLine Program."
+        )
+        available = copy.deepcopy(server.SOURCE_BY_ID["devices"])
+        available["description"] = answer
+        available["facts"] = []
+        available["blocks"] = [answer]
+        self.assertTrue(
+            server.model_answer_is_grounded(answer, available, question)
+        )
+
+        on_hold = copy.deepcopy(available)
+        on_hold["blocks"] = [
+            answer,
+            "Smartphone distribution and phone service are currently on hold.",
+        ]
+        self.assertFalse(
+            server.model_answer_is_grounded(answer, on_hold, question)
+        )
+
     def test_elliptical_laptop_qualification_uses_resolved_history_context(self):
         prior = (
             "Free refurbished laptops are available through our partnership with "
