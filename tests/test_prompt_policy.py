@@ -15,6 +15,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import conversation_store
+import evaluation_store
 import prompt_policy
 import server
 import source_selector
@@ -22,6 +23,7 @@ import source_selector
 
 class PromptPolicyTests(unittest.TestCase):
     def test_runtime_and_capture_use_one_policy_id(self):
+        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v18")
         self.assertEqual(server.PROMPT_POLICY_VERSION, prompt_policy.PROMPT_POLICY_VERSION)
         self.assertEqual(
             server.CONVERSATION_RECORDER.prompt_version,
@@ -49,6 +51,8 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("asks to confirm, restate, or explain", source_selector.SYSTEM_PROMPT)
         self.assertIn("preserve that status", source_selector.SYSTEM_PROMPT)
         self.assertIn("do not rewrite the service as currently offered or available", source_selector.SYSTEM_PROMPT)
+        self.assertIn("one or two short questions", source_selector.SYSTEM_PROMPT)
+        self.assertIn("one or two specific, short questions", source_selector.SYSTEM_PROMPT)
         self.assertIn("status contradiction", prompt_policy.RETRY_INSTRUCTIONS)
         self.assertIn(
             "State the affected service's negative status first",
@@ -69,6 +73,23 @@ class PromptPolicyTests(unittest.TestCase):
             prompt_policy.compile_system_prompt({"grounding": "anything"})
         with self.assertRaises(ValueError):
             prompt_policy.compile_system_prompt({"style": "free text"})
+
+    def test_visible_prompts_catalog_uses_current_clarification_variant(self):
+        catalog = {
+            module["key"]: module
+            for module in evaluation_store.EvaluationStore._prompt_module_catalog()
+        }
+        clarification = catalog["clarification"]
+        self.assertEqual(
+            clarification["current_variant"],
+            "one_or_two_short_questions",
+        )
+        self.assertEqual(
+            clarification["current_value"],
+            prompt_policy.TEAM_TUNABLE_PROMPT_MODULES["clarification"]
+            ["one_or_two_short_questions"],
+        )
+        self.assertIn("one or two", clarification["current_value"])
 
     def test_retry_text_is_allowlisted_and_versioned(self):
         base = prompt_policy.SYSTEM_PROMPT + "\nCANDIDATE RECORDS:\n[]"

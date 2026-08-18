@@ -218,9 +218,10 @@ class FakeStorage {
   removeItem(key) { this.values.delete(key); }
 }
 
-function fakeResponse(payload, ok = true) {
+function fakeResponse(payload, ok = true, status = ok ? 200 : 500) {
   return {
     ok,
+    status,
     headers: { get: name => String(name).toLowerCase() === "content-type" ? "application/json" : null },
     async json() { return payload; },
   };
@@ -248,7 +249,7 @@ async function waitFor(predicate, message = "frontend state did not settle") {
   assert.fail(message);
 }
 
-async function pagesHarness({ chatPayload, chatError } = {}) {
+async function pagesHarness({ chatPayload, chatError, chatResponses = [], modelEnabled = false } = {}) {
   const document = new FakeDocument();
   const panel = document.register("#guide-panel", new FakeElement("section", document));
   const toggle = document.register("#guide-toggle", new FakeElement("button", document));
@@ -273,19 +274,24 @@ async function pagesHarness({ chatPayload, chatError } = {}) {
 
   const storage = new FakeStorage();
   const chatRequests = [];
+  const pendingChatResponses = [...chatResponses];
   let healthRequests = 0;
   const fetch = async (url, options = {}) => {
     const value = String(url);
     if (value.endsWith("/health")) {
       healthRequests += 1;
-      return fakeResponse({ model_enabled: false, conversation_logging: { capture_mode: "none" } });
+      return fakeResponse({ model_enabled: modelEnabled, conversation_logging: { capture_mode: "none" } });
     }
     if (value.endsWith("/api/chat")) {
       chatRequests.push(JSON.parse(options.body));
       if (chatError) throw chatError;
+      if (pendingChatResponses.length) {
+        const next = pendingChatResponses.shift();
+        return fakeResponse(next.payload, next.status < 400, next.status);
+      }
       return fakeResponse(chatPayload);
     }
-    if (value.endsWith("/api/warmup")) return fakeResponse({ status: "disabled" });
+    if (value.endsWith("/api/warmup")) return fakeResponse({ status: modelEnabled ? "ready" : "disabled" });
     throw new Error(`Unexpected request: ${value}`);
   };
   const currentPage = {
@@ -376,10 +382,11 @@ class FakeShadowRoot extends FakeElement {
   }
 }
 
-async function wixHarness({ chatPayload, chatError } = {}) {
+async function wixHarness({ chatPayload, chatError, chatResponses = [] } = {}) {
   const document = new FakeDocument();
   const storage = new FakeStorage();
   const chatRequests = [];
+  const pendingChatResponses = [...chatResponses];
   let healthRequests = 0;
   let GuideElement = null;
   const fetch = async (url, options = {}) => {
@@ -392,6 +399,10 @@ async function wixHarness({ chatPayload, chatError } = {}) {
     if (value.endsWith("/api/chat")) {
       chatRequests.push(JSON.parse(options.body));
       if (chatError) throw chatError;
+      if (pendingChatResponses.length) {
+        const next = pendingChatResponses.shift();
+        return fakeResponse(next.payload, next.status < 400, next.status);
+      }
       return fakeResponse(chatPayload);
     }
     throw new Error(`Unexpected request: ${value}`);
@@ -770,6 +781,113 @@ test("Pages and Wix reject successful nonprivacy payloads outside the model cont
   }
 });
 
+test("Pages and Wix retry an in-progress turn with the same client event ID", async () => {
+  const inProgress = {
+    status: 409,
+    payload: {
+      error: "This question is still being processed.",
+      idempotency_complete: false,
+    },
+  };
+  const completed = { status: 200, payload: validModelAnswer };
+
+  const pages = await pagesHarness({
+    modelEnabled: true,
+    chatResponses: [inProgress, completed],
+  });
+  pages.input.value = "Help me";
+  pages.input.dispatchEvent(keyEvent("Enter"));
+  await waitFor(
+    () => pages.chatRequests.length === 1 && !pages.window.FortuneGuide.state().answering,
+    "Pages in-progress response did not settle",
+  );
+  const pagesEventId = pages.chatRequests[0].client_event_id;
+  assert.equal(pages.editStatus.textContent, "Still working. Try again.");
+  assert.equal(pages.input.value, "Help me");
+  assert.equal(pages.window.FortuneGuide.state().pendingClientEventId, pagesEventId);
+  assert.equal(pages.window.FortuneGuide.state().apiReady, true);
+  assert.equal(pages.window.FortuneGuide.state().modelReady, true);
+  assert.equal(descendants(pages.transcript).filter(element => element.classList.contains("assistant")).length, 0);
+
+  pages.input.dispatchEvent(keyEvent("Enter"));
+  await waitFor(
+    () => pages.chatRequests.length === 2 && !pages.window.FortuneGuide.state().answering,
+    "Pages in-progress retry did not settle",
+  );
+  assert.equal(pages.chatRequests[1].client_event_id, pagesEventId);
+  assert.equal(pages.window.FortuneGuide.state().pendingClientEventId, "");
+  assert.equal(pages.window.FortuneGuide.state().turnCount, 1);
+
+  const wix = await wixHarness({ chatResponses: [inProgress, completed] });
+  wix.input.value = "Help me";
+  wix.input.dispatchEvent(keyEvent("Enter"));
+  await waitFor(
+    () => wix.chatRequests.length === 1 && !wix.guide.answering,
+    "Wix in-progress response did not settle",
+  );
+  const wixEventId = wix.chatRequests[0].client_event_id;
+  assert.equal(wix.status.textContent, "Still working. Try again.");
+  assert.equal(wix.input.value, "Help me");
+  assert.equal(wix.guide.pendingClientEventId, wixEventId);
+  assert.notEqual(wix.guide.modelStatus.textContent, "Unavailable");
+  assert.equal(descendants(wix.transcript).filter(element => element.classList.contains("assistant")).length, 0);
+
+  wix.input.dispatchEvent(keyEvent("Enter"));
+  await waitFor(
+    () => wix.chatRequests.length === 2 && !wix.guide.answering,
+    "Wix in-progress retry did not settle",
+  );
+  assert.equal(wix.chatRequests[1].client_event_id, wixEventId);
+  assert.equal(wix.guide.pendingClientEventId, "");
+  assert.equal(wix.guide.turns.length, 1);
+});
+
+test("Pages and Wix distinguish bounded HTTP failures without adding Guide turns", async t => {
+  const cases = [
+    { status: 429, message: "Guide busy. Try again shortly.", backendReady: true },
+    { status: 502, message: "Try rephrasing.", backendReady: true },
+    { status: 503, message: "Guide unavailable. Try again.", backendReady: false },
+  ];
+
+  for (const failure of cases) {
+    await t.test(String(failure.status), async () => {
+      const chatResponses = [{
+        status: failure.status,
+        payload: {
+          error: "Bounded server failure.",
+          model_called: failure.status !== 429,
+        },
+      }];
+      const pages = await pagesHarness({ modelEnabled: true, chatResponses });
+      pages.input.value = "Help me";
+      pages.input.dispatchEvent(keyEvent("Enter"));
+      await waitFor(
+        () => pages.chatRequests.length === 1 && !pages.window.FortuneGuide.state().answering,
+        `Pages ${failure.status} response did not settle`,
+      );
+      assert.equal(pages.editStatus.textContent, failure.message);
+      assert.equal(pages.input.value, "Help me");
+      assert.equal(pages.window.FortuneGuide.state().turnCount, 0);
+      assert.equal(pages.window.FortuneGuide.state().apiReady, failure.backendReady);
+      assert.equal(pages.window.FortuneGuide.state().modelReady, failure.backendReady);
+      assert.equal(descendants(pages.transcript).filter(element => element.classList.contains("assistant")).length, 0);
+
+      const wix = await wixHarness({ chatResponses });
+      wix.input.value = "Help me";
+      wix.input.dispatchEvent(keyEvent("Enter"));
+      await waitFor(
+        () => wix.chatRequests.length === 1 && !wix.guide.answering,
+        `Wix ${failure.status} response did not settle`,
+      );
+      assert.equal(wix.status.textContent, failure.message);
+      assert.equal(wix.input.value, "Help me");
+      assert.equal(wix.guide.turns.length, 0);
+      assert.equal(wix.guide.modelStatus.textContent === "Unavailable", !failure.backendReady);
+      assert.equal(descendants(wix.transcript).filter(element => element.classList.contains("assistant")).length, 0);
+    });
+  }
+});
+
 test("Pages and Wix keep transport failures out of the Guide transcript", async () => {
   const pages = await pagesHarness({ chatError: new Error("network down") });
   pages.input.value = "Help me";
@@ -780,6 +898,8 @@ test("Pages and Wix keep transport failures out of the Guide transcript", async 
   );
   assert.equal(descendants(pages.transcript).filter(element => element.classList.contains("assistant")).length, 0);
   assert.equal(pages.editStatus.textContent, "Guide unavailable. Try again.");
+  assert.equal(pages.window.FortuneGuide.state().apiReady, false);
+  assert.equal(pages.window.FortuneGuide.state().modelReady, false);
 
   const wix = await wixHarness({ chatError: new Error("network down") });
   wix.input.value = "Help me";
@@ -790,6 +910,7 @@ test("Pages and Wix keep transport failures out of the Guide transcript", async 
   );
   assert.equal(descendants(wix.transcript).filter(element => element.classList.contains("assistant")).length, 0);
   assert.equal(wix.status.textContent, "Guide unavailable. Try again.");
+  assert.equal(wix.guide.modelStatus.textContent, "Unavailable");
 });
 
 test("Pages and Wix block personal information before any chat POST", async () => {

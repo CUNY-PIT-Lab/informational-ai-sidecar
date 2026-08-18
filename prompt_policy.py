@@ -8,8 +8,8 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-18-v17"
-PROMPT_BEHAVIOR_RELEASE = "model-authored-every-safe-turn"
+PROMPT_POLICY_VERSION = "2026-08-18-v18"
+PROMPT_BEHAVIOR_RELEASE = "model-authored-one-or-two-question-clarification"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
@@ -38,12 +38,12 @@ IMMUTABLE_PROMPT_MODULES = {
     "abstention": (
         "When the best page does not confirm a requested detail, say that briefly "
         "without guessing. For a vague, conversational, or unrelated message, respond "
-        "naturally with one short question that helps the participant say what they "
-        "need. Pick ASK only when participant detail is necessary for a useful answer."
+        "naturally with one or two short questions that help the participant say what "
+        "they need. Pick ASK only when participant detail is necessary for a useful answer."
     ),
     "response_contract": (
         'Return only JSON: {"pick":"<candidate ID or ASK>",'
-        '"answer":"<grounded answer or short clarification>"}'
+        '"answer":"<grounded answer or one or two short clarification questions>"}'
     ),
 }
 
@@ -70,9 +70,10 @@ TEAM_TUNABLE_PROMPT_MODULES = {
         ),
     },
     "clarification": {
-        "one_short_question": (
-            "When you pick ASK, ask one specific short question. Do not ask the "
-            "participant to choose a page or class when only one relevant page exists."
+        "one_or_two_short_questions": (
+            "When you pick ASK, ask one or two specific, short questions in response "
+            "to the participant's words. Do not ask the participant to choose a page "
+            "or class when only one relevant page exists."
         ),
     },
     "follow_up": {
@@ -103,7 +104,7 @@ TEAM_TUNABLE_PROMPT_MODULES = {
 
 CURRENT_TUNABLE_SELECTIONS = {
     "style": "plain_respectful_conversational",
-    "clarification": "one_short_question",
+    "clarification": "one_or_two_short_questions",
     "follow_up": "confirm_or_advance",
     "page_awareness": "explicit_reference_only",
     "language": "mirror_when_reliable",
@@ -125,12 +126,12 @@ PROMPT_LAB_TUNABLE_MODULES = (
 # allowlisted; no participant or evaluator text is interpolated into a prompt.
 RETRY_INSTRUCTIONS = {
     "clarification required": (
-        "Do not answer from a candidate page. Pick ASK and ask one natural short "
-        "question that helps the participant explain what they need."
+        "Do not answer from a candidate page. Pick ASK and ask one or two natural, "
+        "short questions that help the participant explain what they need."
     ),
     "invalid response": (
         "Return valid JSON with exactly pick and answer. Pick one candidate ID, or "
-        "pick ASK and ask one natural short question."
+        "pick ASK and ask one or two natural, short questions."
     ),
     "personal detail request": (
         "Do not ask for a name, ID, contact detail, address, case information, or "

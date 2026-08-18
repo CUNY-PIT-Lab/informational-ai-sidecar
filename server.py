@@ -1661,9 +1661,9 @@ def distinctive_query_terms(query):
 
     request_words = {
         "after", "ask", "asks", "cover", "covered", "covers", "else", "explain",
-        "current", "find", "hours", "instead", "learn", "making", "now", "its",
+        "begin", "begun", "current", "find", "help", "hours", "instead", "learn", "making", "now", "its",
         "need", "offered", "read", "regular", "status", "still", "switch", "switching",
-        "say", "says", "show", "shows", "teach", "teaches", "use", "uses", "who",
+        "option", "options", "say", "says", "show", "shows", "start", "started", "teach", "teaches", "use", "uses", "who",
         "today", "tomorrow", "class", "classes", "course", "courses", "workshop", "workshops",
     }
     known = {
@@ -2290,87 +2290,26 @@ def clean_source_title(source):
     ).strip()
 
 
-_EN_CLARIFICATION_AUX = r"(?:are|can|could|did|do|does|has|have|is|should|will|would)"
-_EN_CLARIFICATION_ACTION = (
-    r"(?:ask|asking|choose|clarify|find|get|interested|know|learn|like|look|looking|"
-    r"mean|need|prefer|seek|seeking|start|trying|use|want)"
-)
-_EN_CLARIFICATION_DESCRIPTOR = (
-    r"(?:class|detail|device|digital|eligibility|fortune's|help|information|kind|of|"
-    r"option|page|part|particular|program|question|service|specific|support|technology|"
-    r"topic|type|website)"
-)
-_EN_CLARIFICATION_NOUN = (
-    r"(?:area|class|classes|computer|computers|detail|details|device|devices|digital skills|"
-    r"eligibility|email|fortune's website|individual support|information|internet|laptop|"
-    r"laptops|option|options|page|phone|phones|program|programs|question|registration|"
-    r"schedule|service|services|something else|support|tech support|technology|topic|training|website|"
-    r"workshop|workshops)"
-)
-_EN_CLARIFICATION_NOUN_PHRASE = (
-    rf"(?:(?:a|an|more|particular|specific|the|this|those) )?{_EN_CLARIFICATION_NOUN}"
-)
-_EN_CLARIFICATION_LIST_CONNECTOR = r"(?:and|or|listsep(?: (?:and|or))?)"
-_EN_CLARIFICATION_NOUN_LIST = (
-    rf"{_EN_CLARIFICATION_NOUN_PHRASE}"
-    rf"(?: {_EN_CLARIFICATION_LIST_CONNECTOR} {_EN_CLARIFICATION_NOUN_PHRASE})*"
-)
-_EN_CLARIFICATION_COMPLEMENT = (
-    rf"(?:{_EN_CLARIFICATION_NOUN_LIST}|"
-    rf"help(?: with(?: {_EN_CLARIFICATION_NOUN_LIST})?|"
-    rf" finding(?: (?:from|in|on) {_EN_CLARIFICATION_NOUN_LIST}|"
-    rf" {_EN_CLARIFICATION_NOUN_LIST})?|"
-    rf" (?:choosing|using) {_EN_CLARIFICATION_NOUN_LIST})?|"
-    rf"(?:about|for|from|on|with)(?: {_EN_CLARIFICATION_NOUN_LIST})?|"
-    rf"in|today|"
-    rf"to (?:start|(?:choose|find|learn about|use) {_EN_CLARIFICATION_NOUN_LIST}|"
-    rf"know(?: more)? about(?: {_EN_CLARIFICATION_NOUN_LIST})?))"
-)
-_EN_CLARIFICATION_PATTERN = re.compile(
-    rf"^(?:"
-    rf"(?:what|which)(?: {_EN_CLARIFICATION_DESCRIPTOR}){{0,6}} {_EN_CLARIFICATION_AUX}"
-    rf" you {_EN_CLARIFICATION_ACTION}(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
-    rf"{_EN_CLARIFICATION_AUX} you {_EN_CLARIFICATION_ACTION}"
-    rf"(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
-    rf"(?:what|which|how)(?: {_EN_CLARIFICATION_DESCRIPTOR}){{0,6}}"
-    rf" (?:can|could|should|would) i (?:help|show|tell) you"
-    rf"(?:(?: {_EN_CLARIFICATION_ACTION})(?: {_EN_CLARIFICATION_COMPLEMENT})?|"
-    rf" {_EN_CLARIFICATION_COMPLEMENT})?|"
-    rf"(?:where|when) (?:could|do|would) you (?:like|need|prefer|want)"
-    rf" {_EN_CLARIFICATION_COMPLEMENT}|"
-    rf"(?:can|could|would) you (?:show|tell) me(?: (?:a little )?more)? about what you are"
-    rf" (?:asking|looking|searching) for|"
-    rf"what can i help you with today|"
-    rf"what are you looking for help with(?: today)?|"
-    rf"what kind of help are you looking for(?: today)?|"
-    rf"what can i help you (?:find|with) (?:on|from) "
-    rf"(?:the )?(?:digital equity )?(?:site|website)"
-    rf")"
-    rf"(?: listsep {_EN_CLARIFICATION_NOUN_LIST})?$"
-)
+def model_clarification_is_short_questions(value):
+    """Keep only a small shape check; the model writes the clarification."""
 
-_ES_CLARIFICATION_ACTION = r"(?:buscas|necesitas|podrias|prefieres|puedes|quieres)"
-_ES_CLARIFICATION_DESCRIPTOR = (
-    r"(?:ayuda|clase|de|detalle|dispositivo|especifica|especifico|informacion|opcion|"
-    r"pagina|programa|servicio|tema|tipo)"
-)
-_ES_CLARIFICATION_OBJECT = (
-    r"(?:al|apoyo|ayuda|capacitacion|clase|clases|computadora|computadoras|con|correo|"
-    r"de|del|detalle|detalles|digital|dispositivo|dispositivos|en|habilidades|individual|"
-    r"informacion|internet|listsep|mas|o|opcion|opciones|pagina|para|programa|programas|registro|"
-    r"servicio|servicios|sitio|sobre|taller|talleres|tecnologia|tema|tipo|web|y)"
-)
-_ES_CLARIFICATION_PATTERN = re.compile(
-    rf"^(?:"
-    rf"(?:que|cual|cuales)(?: {_ES_CLARIFICATION_DESCRIPTOR}){{0,6}}"
-    rf" {_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
-    rf"{_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
-    rf"como puedo ayudarte(?: a (?:encontrar|elegir|empezar))?"
-    rf"(?: {_ES_CLARIFICATION_OBJECT}){{0,12}}|"
-    rf"en que puedo ayudarte|como te puedo ayudar|que estas buscando|"
-    rf"donde (?:prefieres|quieres) empezar"
-    rf")$"
-)
+    raw = str(value or "").strip()
+    if not raw or "\n" in raw or "\r" in raw:
+        return False
+    greeting = re.match(
+        r"^(?:hey|hi|hello|okay|ok|sure|of course|hola|claro)[!.]\s+",
+        raw,
+        flags=re.I,
+    )
+    if greeting:
+        raw = raw[greeting.end():].strip()
+    parts = [part.strip() for part in re.findall(r"[^?]+(?:\?|$)", raw) if part.strip()]
+    if not 1 <= len(parts) <= 2:
+        return False
+    for part in parts:
+        if not part.endswith("?") or re.search(r"[.;:]", part[:-1]):
+            return False
+    return True
 
 
 def model_clarification_response(
@@ -2383,25 +2322,14 @@ def model_clarification_response(
     raw_message = str(model_question or "").strip()
     message = clip_words(raw_message, MAX_MESSAGE_WORDS).strip()
     folded = fold_text(message).lstrip("¿").strip()
-    question_body = folded[:-1].strip() if folded.endswith("?") else folded
-    grammar_text = re.sub(r"\byou're\b", "you are", question_body)
-    grammar_text = re.sub(r"\s*(?:,|[–—])\s*", " listsep ", grammar_text)
-    grammar_text = re.sub(r"[()]", " ", grammar_text)
-    grammar_text = re.sub(r"\s+", " ", grammar_text).strip()
     if (
-        not message.endswith("?")
-        or message.count("?") != 1
+        not model_clarification_is_short_questions(message)
         or "\n" in raw_message
         or "\r" in raw_message
-        or re.search(r"[.!;:]", message[:-1])
-        or not (
-            _EN_CLARIFICATION_PATTERN.fullmatch(grammar_text)
-            or _ES_CLARIFICATION_PATTERN.fullmatch(grammar_text)
-        )
         or re.search(r"https?://|www\.", message, flags=re.I)
         or re.search(
-            r"\b(?:system|developer|hidden) (?:prompt|message|instruction)|"
-            r"\b(?:ignore|reveal) (?:the )?(?:prompt|instructions|rules)\b",
+            r"\b(?:system|developer|hidden).{0,32}(?:prompt|message|instruction|rules|safety)|"
+            r"\b(?:ignore|reveal|override) (?:the )?(?:prompt|instructions|rules|safety)\b",
             folded,
         )
         or model_requests_personal_details(message)
@@ -2466,6 +2394,11 @@ def model_requests_personal_details(text):
         or re.search(r"\bwhere (?:do|did) you live\b", value)
         or re.search(r"\bhow old are you\b", value)
         or re.search(r"\bare you (?:on )?(?:parole|probation)\b", value)
+        or re.search(r"\b(?:who are you|where are you|what is your information)\b", value)
+        or re.search(
+            r"\bwhich (?:email|phone|address|name)\b.{0,32}\b(?:share|provide|use)\b",
+            value,
+        )
     )
 
 
@@ -3018,7 +2951,7 @@ def model_selection_retry_reason(
     if parsed["pick"] == SELECTOR_ASK:
         if require_answer:
             return "resolved source can answer"
-        return "resolved source can answer" if len(retrieved) == 1 else ""
+        return ""
     selected = allowed[parsed["pick"]]
     if parsed["answer"].endswith("?") or model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
@@ -3398,14 +3331,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 )
             )
             require_model_answer = sensitive_request or staff_confirmation
-            require_model_clarification = not require_model_answer and (
-                used_conversational_fallback
-                or question_needs_model_clarification(
-                    routing_question,
-                    interaction["request_language"],
-                    page_context,
-                )
-            )
+            # The model sees the current page plus bounded approved site records.
+            # It may answer from one supported record or pick ASK when the request
+            # is genuinely ambiguous; the server no longer predetermines that
+            # every broad or conversational message must become a clarification.
+            require_model_clarification = False
             prior_answer = next(
                 (
                     item.get("content", "")

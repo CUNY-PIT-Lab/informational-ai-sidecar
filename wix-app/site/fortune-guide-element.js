@@ -789,11 +789,10 @@
           })
         });
         const payload = await response.json();
-        this.pendingClientEventId = "";
-        this.pendingQuestion = "";
         if (!response.ok) {
           const error = new Error("Guide unavailable.");
           error.payload = payload;
+          error.status = response.status;
           throw error;
         }
         if (payload.kind === "privacy") {
@@ -807,9 +806,12 @@
         ) {
           const error = new Error("The guide returned an invalid response.");
           error.payload = payload;
+          error.status = response.status;
           throw error;
         }
 
+        this.pendingClientEventId = "";
+        this.pendingQuestion = "";
         const answer = redactSixDigitValues(payload.message);
         const turn = {
           question: safeQuestion,
@@ -839,23 +841,35 @@
         this.persistConversation();
         this.revealResult();
       } catch (error) {
-        if (error && Object.prototype.hasOwnProperty.call(error, "payload")) {
+        const status = Number(error?.status || 0);
+        const retryInProgress = status === 409
+          && error?.payload?.idempotency_complete === false;
+        if (error && Object.prototype.hasOwnProperty.call(error, "payload") && !retryInProgress) {
           this.pendingClientEventId = "";
           this.pendingQuestion = "";
         }
-        this.modelStatus.textContent = "Unavailable";
+        if (![409, 429, 502].includes(status)) this.modelStatus.textContent = "Unavailable";
+        const failureMessage = status === 409 && error?.payload?.idempotency_complete === false
+          ? (editing ? "Still working. Try again or cancel." : "Still working. Try again.")
+          : error?.payload?.idempotency_complete === true
+            ? (editing ? "Try again or cancel." : "Try again.")
+            : status === 429
+              ? (editing ? "Guide busy. Try again shortly or cancel." : "Guide busy. Try again shortly.")
+              : status === 502
+                ? (editing ? "Try rephrasing or cancel." : "Try rephrasing.")
+                : editing && status && status !== 503
+                  ? "Couldn’t update. Try again or cancel."
+                  : editing
+                    ? "Guide unavailable. Try again or cancel."
+                    : "Guide unavailable. Try again.";
         if (editing) {
           this.input.value = safeQuestion;
           this.resizeQuestionField();
-          this.setEditStatus(error?.payload?.idempotency_complete
-            ? "Try again or cancel."
-            : "Couldn’t update. Try again or cancel.");
+          this.setEditStatus(failureMessage);
         } else {
           this.input.value = safeQuestion;
           this.resizeQuestionField();
-          this.status.textContent = error?.payload?.idempotency_complete
-            ? "Try again."
-            : "Guide unavailable. Try again.";
+          this.status.textContent = failureMessage;
         }
       } finally {
         this.setBusy(false);
