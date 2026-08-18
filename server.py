@@ -2315,15 +2315,34 @@ def model_clarification_response(
         r"(?:necesitas|quieres|buscas|prefieres|puedes|podrias)\b|te gustaria\b)"
     )
     question_body = folded[:-1].strip() if folded.endswith("?") else folded
+    english_match = english_interrogative.match(question_body)
+    spanish_match = spanish_interrogative.match(question_body)
+    addressed_tail = question_body[
+        (english_match or spanish_match).end():
+    ] if (english_match or spanish_match) else ""
+    claim_tail = re.sub(
+        r"^[\s,]*(?:need|want|prefer|mean|like|provide|share|find|choose|know|"
+        r"use|learn|ask|tell|show|describe|clarify|explain|look|looking|trying|"
+        r"necesitar|querer|preferir|buscar|compartir|explicar|aclarar)\b",
+        "",
+        addressed_tail,
+        count=1,
+    )
     if (
         not message.endswith("?")
         or message.count("?") != 1
         or "\n" in raw_message
         or "\r" in raw_message
         or re.search(r"[.!;:—]", message[:-1])
-        or not (
-            english_interrogative.match(question_body)
-            or spanish_interrogative.match(question_body)
+        or not (english_match or spanish_match)
+        or re.search(
+            r"\b(?:am|is|are|was|were|be|been|being|do|does|did|have|has|had|"
+            r"can|could|will|would|should|may|might|must|offers?|provides?|"
+            r"includes?|lists?|states?|says?|gives?|guarantees?|promises?|"
+            r"costs?|covers?|teaches?|requires?|allows?|contains?|serves?|"
+            r"runs?|meets?|starts?|ends?|happens?|"
+            r"es|son|esta|estan|ofrece|incluye|lista|dice|garantiza|promete)\b",
+            claim_tail,
         )
         or len(
             re.findall(
@@ -2331,13 +2350,6 @@ def model_clarification_response(
                 question_body,
             )
         ) > 1
-        or re.search(
-            r"\b(?:fortune|the (?:page|site|website|class|program|service)|"
-            r"this (?:page|site|website|class|program|service)|we|it|they) "
-            r"(?:offers?|provides?|includes?|lists?|states?|says?|gives?|"
-            r"guarantees?|promises?|has|have|is|are)\b",
-            question_body,
-        )
         or re.search(r"https?://|www\.", message, flags=re.I)
         or re.search(
             r"\b(?:system|developer|hidden) (?:prompt|message|instruction)|"

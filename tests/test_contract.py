@@ -1899,8 +1899,8 @@ class ResponseContractTests(unittest.TestCase):
     def test_model_clarification_is_one_safe_model_authored_question(self):
         accepted = (
             "What would you like help finding?",
-            "Do you need classes, devices, or individual support?",
-            "¿Necesitas ayuda con clases, dispositivos o apoyo individual?",
+            "Do you need classes or devices or individual support?",
+            "¿Necesitas ayuda con clases o dispositivos o apoyo individual?",
         )
         for question in accepted:
             with self.subTest(question=question):
@@ -1917,6 +1917,8 @@ class ResponseContractTests(unittest.TestCase):
             "What Fortune offers is free laptops, which one do you need?",
             "What do you need\nFortune offers free laptops?",
             "What do you need Fortune offers free laptops?",
+            "What do you need, free laptops are available?",
+            "Which would you prefer, laptops are free?",
         )
         for question in rejected:
             with self.subTest(question=question):
