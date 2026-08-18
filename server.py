@@ -574,6 +574,7 @@ _QUERY_TERM_GROUPS = (
     frozenset({"class", "classes"}),
     frozenset({"device", "devices"}),
     frozenset({"eligible", "eligibility", "qualify", "qualified", "requirements"}),
+    frozenset({"format", "formatting", "technique", "techniques"}),
     frozenset({"laptop", "laptops"}),
     frozenset({"phone", "phones", "smartphone", "smartphones"}),
     frozenset({"register", "registered", "registering", "registration"}),

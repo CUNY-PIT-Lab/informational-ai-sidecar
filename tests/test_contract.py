@@ -1496,6 +1496,12 @@ class ResponseContractTests(unittest.TestCase):
                 "No design background is needed.",
             )
         )
+        self.assertTrue(
+            server.question_requests_prior_detail(
+                "What formatting techniques does that cover?",
+                "The class covers formatting titles, alignment, wrapping, and borders.",
+            )
+        )
 
     def test_malformed_model_output_abstains_instead_of_guessing(self):
         retrieved = server.retrieve_sources("free laptop")
