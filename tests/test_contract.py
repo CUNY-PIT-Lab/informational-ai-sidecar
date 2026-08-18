@@ -985,6 +985,24 @@ class StagedRetrievalTests(unittest.TestCase):
             {("5", "workshop")},
         )
 
+    def test_source_location_initialism_supports_its_natural_expansion(self):
+        question = "Where is Intro to Email offered?"
+        answer = (
+            "Intro to Email is offered at the Main Office in Long Island City, "
+            "SRP in the Bronx, and Fortune Academy in Harlem."
+        )
+        source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
+
+        self.assertIn("Main Office (LIC)", server.searchable_text(source))
+        self.assertTrue(server.model_answer_is_grounded(answer, source, question))
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                answer.replace("Long Island City", "Lower East Side"),
+                source,
+                question,
+            )
+        )
+
     def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
         canva_id = "service-service-page-canva-design-tools-61911b2b"
         captured, model_calls = self.dispatch_chat(

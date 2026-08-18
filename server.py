@@ -2548,6 +2548,17 @@ def _named_entities_are_supported(answer, source_text):
         at_sentence_start = not prefix or prefix[-1:] in ".!?"
         if len(entity_terms) == 1 and at_sentence_start:
             continue
+        # A model may naturally expand a location acronym already printed by
+        # the source (for example, Long Island City for LIC). Accept only an
+        # exact multiword initialism present in that same source record.
+        entity_words = [
+            word
+            for word in tokens(match.group(0), keep_stopwords=True)
+            if word not in {"and", "de", "del", "of", "the", "to", "y"}
+        ]
+        initialism = "".join(word[0] for word in entity_words if word)
+        if len(initialism) >= 2 and initialism in source_terms:
+            continue
         if any(term not in source_terms for term in entity_terms):
             return False
     return True
