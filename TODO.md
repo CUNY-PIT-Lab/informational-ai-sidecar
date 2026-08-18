@@ -20,7 +20,7 @@
   model.
 - [x] Register the dedicated v17 prompt and preserve the compiled v16 artifact
   for review history.
-- [x] Pass the complete local release suite: 277 Python, 23 browser-core, and 13
+- [x] Pass the complete local release suite: 279 Python, 23 browser-core, and 13
   snapshot tests.
 - [ ] Deploy the exact v17 commit to Railway staging and replay the reported
   `What the hell` → `Help me` conversation with `model_called: true` on both
