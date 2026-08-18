@@ -12,7 +12,7 @@
   const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v1";
   const STARTERS = Object.freeze([
     { label: "Page summary", prompt: "What is the main information here?" },
-    { label: "Next step", prompt: "Where should I go next?" }
+    { label: "Page options", prompt: "What can I do from this page?" }
   ]);
 
   if (customElements.get(TAG_NAME)) return;

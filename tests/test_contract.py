@@ -1304,6 +1304,24 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertTrue(captured["payload"]["model_called"])
         self.assertEqual(len(model_calls), 1)
 
+    def test_sensitive_handoff_gets_one_final_grounded_model_retry(self):
+        answer = "Contact the Fortune Society Digital Equity Program by email, phone, or its contact form."
+        captured, model_calls = self.dispatch_chat(
+            "I need parole advice",
+            server.ROOT_URL,
+            model_raws=[
+                json.dumps({"pick": "ASK", "answer": "What help do you need?"}),
+                json.dumps({"pick": "ASK", "answer": "What kind of help do you need?"}),
+                json.dumps({"pick": "contact", "answer": answer}),
+            ],
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["kind"], "handoff")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 3)
+        self.assertIn("Contact handoff", model_calls[2][0]["content"])
+
     def test_runtime_contains_no_canned_conversational_fallback(self):
         handler_source = inspect.getsource(server.Handler.do_POST)
         module_source = inspect.getsource(server)
@@ -1907,15 +1925,27 @@ class ResponseContractTests(unittest.TestCase):
             "What kind of class are you interested in?",
             "What would you like to know more about?",
             "How can I help you today?",
+            "What can I help you with today?",
+            "What are you looking for help with today?",
+            "What kind of help are you looking for—classes, a device, tech support, or something else?",
+            "What are you looking for help with—classes, devices, tech support, or something else?",
+            "What can I help you with today—workshops, devices, individual support, or something else?",
+            "What kind of help are you looking for — workshops, a device, individual support, or something else?",
+            "What can I help you with on the Digital Equity site—workshops, devices, support, or something else?",
+            "What can I help you find on the Digital Equity site—workshops, devices, support, or something else?",
             "¿Necesitas ayuda con clases o dispositivos o apoyo individual?",
             "¿En qué puedo ayudarte?",
             "¿Cómo te puedo ayudar?",
             "¿Qué estás buscando?",
+            "¿Cómo puedo ayudarte a elegir — clases, dispositivos o apoyo individual?",
         )
         for question in accepted:
             with self.subTest(question=question):
                 result = server.model_clarification_response("Help me", question)
-                self.assertEqual(result["message"], question)
+                self.assertEqual(
+                    result["message"],
+                    server.clip_words(question, server.MAX_MESSAGE_WORDS),
+                )
                 self.assertTrue(result["model_called"])
 
         rejected = (

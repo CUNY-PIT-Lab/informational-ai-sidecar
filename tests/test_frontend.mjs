@@ -557,7 +557,7 @@ test("every page has a tailored heading, placeholder, and exactly two prompts", 
 
 test("starter prompts keep their full question while exposing compact button labels", () => {
   assert.equal(Core.suggestionLabel("What is the main information here?"), "Page summary");
-  assert.equal(Core.suggestionLabel("Where should I go next?"), "Next step");
+  assert.equal(Core.suggestionLabel("What can I do from this page?"), "Page options");
   assert.equal(Core.suggestionLabel("What does this class cover?"), "Class details");
   assert.equal(Core.suggestionLabel("I need information about getting a device"), "Get a device");
   assert.equal(Core.suggestionLabel("Where and when are current classes?"), "Class times");
@@ -567,6 +567,7 @@ test("starter prompts keep their full question while exposing compact button lab
       const label = Core.suggestionLabel(prompt);
       assert.ok(label.length > 0 && label.length <= 32, `${page.url}: ${label}`);
       assert.equal(/[?!.]$/.test(label), false, `${page.url}: ${label}`);
+      assert.equal(/\bnext\b/i.test(`${label} ${prompt}`), false, `${page.url}: ${label}`);
     }
   }
 });

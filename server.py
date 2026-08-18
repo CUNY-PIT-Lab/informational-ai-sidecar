@@ -2304,7 +2304,7 @@ _EN_CLARIFICATION_NOUN = (
     r"(?:area|class|classes|computer|computers|detail|details|device|devices|digital skills|"
     r"eligibility|email|fortune's website|individual support|information|internet|laptop|"
     r"laptops|option|options|page|phone|phones|program|programs|question|registration|"
-    r"schedule|service|services|something else|support|technology|topic|training|website|"
+    r"schedule|service|services|something else|support|tech support|technology|topic|training|website|"
     r"workshop|workshops)"
 )
 _EN_CLARIFICATION_NOUN_PHRASE = (
@@ -2339,8 +2339,14 @@ _EN_CLARIFICATION_PATTERN = re.compile(
     rf"(?:where|when) (?:could|do|would) you (?:like|need|prefer|want)"
     rf" {_EN_CLARIFICATION_COMPLEMENT}|"
     rf"(?:can|could|would) you (?:show|tell) me(?: (?:a little )?more)? about what you are"
-    rf" (?:asking|looking|searching) for"
-    rf")$"
+    rf" (?:asking|looking|searching) for|"
+    rf"what can i help you with today|"
+    rf"what are you looking for help with(?: today)?|"
+    rf"what kind of help are you looking for(?: today)?|"
+    rf"what can i help you (?:find|with) (?:on|from) "
+    rf"(?:the )?(?:digital equity )?(?:site|website)"
+    rf")"
+    rf"(?: listsep {_EN_CLARIFICATION_NOUN_LIST})?$"
 )
 
 _ES_CLARIFICATION_ACTION = r"(?:buscas|necesitas|podrias|prefieres|puedes|quieres)"
@@ -2359,7 +2365,7 @@ _ES_CLARIFICATION_PATTERN = re.compile(
     rf"(?:que|cual|cuales)(?: {_ES_CLARIFICATION_DESCRIPTOR}){{0,6}}"
     rf" {_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
     rf"{_ES_CLARIFICATION_ACTION}(?: {_ES_CLARIFICATION_OBJECT}){{0,14}}|"
-    rf"como puedo ayudarte(?: a)?(?: encontrar|elegir|empezar)?"
+    rf"como puedo ayudarte(?: a (?:encontrar|elegir|empezar))?"
     rf"(?: {_ES_CLARIFICATION_OBJECT}){{0,12}}|"
     rf"en que puedo ayudarte|como te puedo ayudar|que estas buscando|"
     rf"donde (?:prefieres|quieres) empezar"
@@ -2379,7 +2385,7 @@ def model_clarification_response(
     folded = fold_text(message).lstrip("¿").strip()
     question_body = folded[:-1].strip() if folded.endswith("?") else folded
     grammar_text = re.sub(r"\byou're\b", "you are", question_body)
-    grammar_text = re.sub(r",", " listsep ", grammar_text)
+    grammar_text = re.sub(r"\s*(?:,|[–—])\s*", " listsep ", grammar_text)
     grammar_text = re.sub(r"[()]", " ", grammar_text)
     grammar_text = re.sub(r"\s+", " ", grammar_text).strip()
     if (
@@ -2387,7 +2393,7 @@ def model_clarification_response(
         or message.count("?") != 1
         or "\n" in raw_message
         or "\r" in raw_message
-        or re.search(r"[.!;:—]", message[:-1])
+        or re.search(r"[.!;:]", message[:-1])
         or not (
             _EN_CLARIFICATION_PATTERN.fullmatch(grammar_text)
             or _ES_CLARIFICATION_PATTERN.fullmatch(grammar_text)
@@ -3487,6 +3493,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 require_model_clarification,
                 require_model_answer,
             )
+            if (
+                final_validation_reason
+                and require_model_answer
+                and MODEL_CALL_BUDGET.claim(client_identifier)
+            ):
+                raw = self._ollama([
+                    {
+                        "role": "system",
+                        "content": build_retry_prompt(
+                            messages[0]["content"], "personal detail request"
+                        ),
+                    },
+                    messages[1],
+                ])
+                model_attempts = 3
+                final_validation_reason = model_selection_retry_reason(
+                    raw,
+                    model_sources,
+                    interaction,
+                    prior_answer,
+                    question,
+                    routing_question,
+                    require_model_clarification,
+                    require_model_answer,
+                )
             response = parse_model_selection(
                 raw,
                 question,

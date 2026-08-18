@@ -48,7 +48,7 @@ IMMUTABLE_PROMPT_MODULES = {
 }
 
 
-# These are the current reviewed presentation choices. Prompt Lab exposure is
+# These are the current reviewed presentation choices. Prompts exposure is
 # limited further below; a developer must turn an accepted suggestion into a
 # registered variant and reviewed code release.
 TEAM_TUNABLE_PROMPT_MODULES = {
