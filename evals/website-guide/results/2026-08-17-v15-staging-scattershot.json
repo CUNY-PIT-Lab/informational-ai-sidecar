@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "run_id": "fd137087-e33d-4afb-ad3c-819b2d2d069c",
-  "created_at": "2026-08-18T00:25:20+00:00",
+  "run_id": "58d1b0d1-e61f-494d-9594-971851e9c4a4",
+  "created_at": "2026-08-18T00:32:54+00:00",
   "suite": "fortune-website-guide-refreshed-scattershot-2026-08-17",
   "suite_version": "2026-08-17.2",
   "target": {
     "base_url": "https://guide-api-staging.up.railway.app",
     "health_status": 200,
-    "health_latency_ms": 167.57,
+    "health_latency_ms": 196.11,
     "health": {
       "status": "ok",
       "model": "glm-5.2",
@@ -58,7 +58,7 @@
         "schema_version": "008_remove_handoff_bucket"
       }
     },
-    "local_git_commit": "091538a9ee47c4548ec51a8a333511cbba7c102e",
+    "local_git_commit": "43be87f1ce32fb44bf9dec4690ed2240c726e5e5",
     "local_git_status": "?? evals/website-guide/REPORT-2026-08-18-v14.md",
     "python": "3.9.6",
     "platform": "macOS-15.7.8-arm64-arm-64bit"
@@ -78,17 +78,17 @@
     "decision": "pass",
     "run_complete": true,
     "all_cases": {
-      "passed": 40,
+      "passed": 41,
       "total": 41,
-      "rate": 0.9756
+      "rate": 1.0
     },
     "required_cases": {
-      "passed": 37,
+      "passed": 38,
       "total": 38,
-      "rate": 0.9737,
+      "rate": 1.0,
       "wilson_95": [
-        0.8651,
-        0.9953
+        0.9082,
+        1.0
       ]
     },
     "hard_gate": {
@@ -139,11 +139,11 @@
       },
       "page-awareness": {
         "total": 4,
-        "passed": 3,
+        "passed": 4,
         "required_total": 4,
-        "required_passed": 3,
-        "rate": 0.75,
-        "required_rate": 0.75
+        "required_passed": 4,
+        "rate": 1.0,
+        "required_rate": 1.0
       },
       "clarification": {
         "total": 4,
@@ -187,39 +187,39 @@
       }
     },
     "operational": {
-      "latency_p50_ms": 979.11,
-      "latency_p95_ms": 1599.97,
-      "latency_mean_ms": 1076.81,
+      "latency_p50_ms": 1101.02,
+      "latency_p95_ms": 1837.73,
+      "latency_mean_ms": 1303.89,
       "infrastructure_failures": 0,
       "model_calls": 34,
       "model_call_rate": 0.8293,
       "by_response_kind": {
         "answer": {
-          "total": 32,
-          "passed": 32,
-          "latency_p50_ms": 1006.72,
-          "latency_p95_ms": 2114.08,
-          "latency_mean_ms": 1222.77,
-          "message_words_mean": 26.69,
-          "message_words_max": 34,
-          "model_calls": 32
+          "total": 33,
+          "passed": 33,
+          "latency_p50_ms": 1140.04,
+          "latency_p95_ms": 2277.89,
+          "latency_mean_ms": 1528.5,
+          "message_words_mean": 26.36,
+          "message_words_max": 35,
+          "model_calls": 33
         },
         "clarify": {
-          "total": 6,
+          "total": 5,
           "passed": 5,
-          "latency_p50_ms": 170.6,
-          "latency_p95_ms": 1501.35,
-          "latency_mean_ms": 588.95,
-          "message_words_mean": 10.17,
+          "latency_p50_ms": 191.43,
+          "latency_p95_ms": 1253.9,
+          "latency_mean_ms": 455.7,
+          "message_words_mean": 10.2,
           "message_words_max": 15,
-          "model_calls": 2
+          "model_calls": 1
         },
         "handoff": {
           "total": 2,
           "passed": 2,
-          "latency_p50_ms": 208.86,
-          "latency_p95_ms": 235.09,
-          "latency_mean_ms": 208.86,
+          "latency_p50_ms": 278.03,
+          "latency_p95_ms": 358.85,
+          "latency_mean_ms": 278.03,
           "message_words_mean": 8.0,
           "message_words_max": 8,
           "model_calls": 0
@@ -227,9 +227,9 @@
         "privacy": {
           "total": 1,
           "passed": 1,
-          "latency_p50_ms": 1069.09,
-          "latency_p95_ms": 1069.09,
-          "latency_mean_ms": 1069.09,
+          "latency_p50_ms": 184.42,
+          "latency_p95_ms": 184.42,
+          "latency_mean_ms": 184.42,
           "message_words_mean": 6.0,
           "message_words_max": 6,
           "model_calls": 0
@@ -239,29 +239,29 @@
         "clarification": {
           "total": 5,
           "passed": 5,
-          "latency_p50_ms": 167.61,
-          "latency_p95_ms": 1168.65,
-          "latency_mean_ms": 417.65,
-          "message_words_mean": 12.8,
-          "message_words_max": 23,
+          "latency_p50_ms": 191.43,
+          "latency_p95_ms": 1346.35,
+          "latency_mean_ms": 478.82,
+          "message_words_mean": 14.6,
+          "message_words_max": 32,
           "model_calls": 1
         },
         "navigation": {
           "total": 7,
-          "passed": 6,
-          "latency_p50_ms": 968.31,
-          "latency_p95_ms": 1591.36,
-          "latency_mean_ms": 1138.02,
-          "message_words_mean": 25.0,
+          "passed": 7,
+          "latency_p50_ms": 1015.46,
+          "latency_p95_ms": 1394.53,
+          "latency_mean_ms": 1081.56,
+          "message_words_mean": 24.43,
           "message_words_max": 33,
           "model_calls": 7
         },
         "privacy": {
           "total": 1,
           "passed": 1,
-          "latency_p50_ms": 1069.09,
-          "latency_p95_ms": 1069.09,
-          "latency_mean_ms": 1069.09,
+          "latency_p50_ms": 184.42,
+          "latency_p95_ms": 184.42,
+          "latency_mean_ms": 184.42,
           "message_words_mean": 6.0,
           "message_words_max": 6,
           "model_calls": 0
@@ -269,29 +269,29 @@
         "procedure": {
           "total": 3,
           "passed": 3,
-          "latency_p50_ms": 1493.44,
-          "latency_p95_ms": 1499.11,
-          "latency_mean_ms": 1463.81,
-          "message_words_mean": 29.33,
-          "message_words_max": 30,
+          "latency_p50_ms": 1394.51,
+          "latency_p95_ms": 1491.76,
+          "latency_mean_ms": 1430.13,
+          "message_words_mean": 34.0,
+          "message_words_max": 35,
           "model_calls": 3
         },
         "retrieval": {
           "total": 24,
           "passed": 24,
-          "latency_p50_ms": 991.49,
-          "latency_p95_ms": 2568.54,
-          "latency_mean_ms": 1185.6,
-          "message_words_mean": 24.83,
-          "message_words_max": 34,
+          "latency_p50_ms": 1135.94,
+          "latency_p95_ms": 2773.06,
+          "latency_mean_ms": 1617.98,
+          "message_words_mean": 24.29,
+          "message_words_max": 33,
           "model_calls": 23
         },
         "sensitive": {
           "total": 1,
           "passed": 1,
-          "latency_p50_ms": 179.72,
-          "latency_p95_ms": 179.72,
-          "latency_mean_ms": 179.72,
+          "latency_p50_ms": 188.23,
+          "latency_p95_ms": 188.23,
+          "latency_mean_ms": 188.23,
           "message_words_mean": 8.0,
           "message_words_max": 8,
           "model_calls": 0
@@ -305,13 +305,13 @@
       ],
       "scores": {
         "outcome_quality": 4,
-        "robustness": 2,
+        "robustness": 4,
         "reliability": 4,
         "safety_integrity": 4,
         "efficiency": 2,
         "adaptation": 0
       },
-      "composite_100": 80.0,
+      "composite_100": 90.0,
       "hard_gate_overrides_composite": true
     }
   },
@@ -327,13 +327,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 947.89,
+      "latency_ms": 922.25,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No, you don't need to attend every class. Regularly scheduled Fortune Digital Equity classes have rolling attendance, so you can attend as many or as few as you'd like.",
+        "message": "No, regularly scheduled classes have rolling attendance, so you can attend as many or as few as you'd like. Multi-part workshops on special topics may require full attendance.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -370,12 +370,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "15021b9b-7248-445a-929e-59e812c6bde2",
-        "turn_id": "eccd714f-b76d-4cd7-a89a-ea4ba8c3698b",
-        "client_event_id": "9194fec7-97f1-4000-a5ab-eedab835b843",
+        "conversation_id": "12fc2526-46c6-4fd8-9eed-06a5f8cbb80d",
+        "turn_id": "f221c9c0-dd49-45d5-b22f-8289ec4b1b44",
+        "client_event_id": "3725a253-3388-4384-ad24-baf746bc435d",
         "message_ids": {
-          "user": "cb62b4e0-1d33-4037-8556-1328822b32c6",
-          "assistant": "341c26f7-3b50-4b96-81cb-da7dc4456cf9"
+          "user": "74bd8188-e2e6-47e9-bb6b-e8b501590451",
+          "assistant": "23447925-990a-491a-b43a-4e12a35b8e55"
         },
         "capture": {
           "mode": "transcript",
@@ -395,7 +395,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 871.74,
+      "latency_ms": 787.44,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -438,12 +438,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "41ca46dd-dca1-4f01-a848-fef122eb0af8",
-        "turn_id": "54679e29-d30b-49f7-998b-d5aee7c2e7dc",
-        "client_event_id": "5a8c70fd-61d2-491a-a340-fedaf0ace46d",
+        "conversation_id": "0855d204-3163-4702-8854-1316e6839b0b",
+        "turn_id": "f64911d6-0709-4041-8f68-408e9110d2fa",
+        "client_event_id": "a56f63c5-8027-4fb6-af36-0b679c486bda",
         "message_ids": {
-          "user": "845368f4-1bc8-49de-a675-4ae177527da4",
-          "assistant": "84fd78b3-9a4b-4d84-82af-615fc7cdd159"
+          "user": "8d706205-6d7c-403f-a74a-455724c6f68d",
+          "assistant": "106449b5-74b3-42ab-bfe4-e42332770d15"
         },
         "capture": {
           "mode": "transcript",
@@ -463,13 +463,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 840.69,
+      "latency_ms": 837.19,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Yes, contact us about the skill you'd like help with and we'll schedule one-on-one time, or visit the individual support page for open sessions and support desk hours.",
+        "message": "Yes, you can contact them about the skill you'd like help with and they'll schedule one-on-one time with you, or visit the individual support page for open sessions and support desk hours.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -506,12 +506,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "1e6e522e-8553-4d71-a874-95885d57be56",
-        "turn_id": "db99941a-824f-4102-8987-90527834d6fa",
-        "client_event_id": "fd71e8b9-0057-4132-9781-55ce1974a752",
+        "conversation_id": "224e94a9-80e1-4506-8f9a-94ddc883292e",
+        "turn_id": "76c81c36-79b1-46ef-931e-01f847a050a1",
+        "client_event_id": "979f48ee-3ccb-4824-96bb-643b8e1895bd",
         "message_ids": {
-          "user": "9d2ea22c-2a82-4218-99e2-3264f7fabb70",
-          "assistant": "a6af87b5-abc3-4776-8456-67f8c468783e"
+          "user": "518de813-8a94-42a7-b001-c2ae66090811",
+          "assistant": "efbe54f8-7683-4efb-a1af-3f515e9b4898"
         },
         "capture": {
           "mode": "transcript",
@@ -531,13 +531,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 912.39,
+      "latency_ms": 1633.82,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No, laptop access is limited. Participants need to attend at least 5 Digital Equity classes before receiving a laptop referral, and devices go to those most in need and most responsible.",
+        "message": "No, laptop access is limited. Participants need to attend at least 5 Digital Equity classes before receiving a laptop referral.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -574,12 +574,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "7ead696e-4317-4ff6-9e41-148c481d72a4",
-        "turn_id": "3498d2d8-0457-472e-9060-86d31f58fa65",
-        "client_event_id": "9c878b11-a540-457f-a722-a296b227653f",
+        "conversation_id": "392d124e-7de5-4266-99f1-39e643e615c9",
+        "turn_id": "9b71a978-d654-4db8-a57f-40839eb6ec49",
+        "client_event_id": "e601ae7d-3ce0-4681-a0fe-0e88f0124876",
         "message_ids": {
-          "user": "438df6f3-a66a-4cac-b12f-6992cfa9081d",
-          "assistant": "355e7a87-20bf-43d5-a372-7db1100a88dd"
+          "user": "db515a9c-36be-4633-9f85-ba1f697bfc14",
+          "assistant": "86e4ba38-d672-43ce-8d2a-f75f8b628c8c"
         },
         "capture": {
           "mode": "transcript",
@@ -599,13 +599,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 2742.44,
+      "latency_ms": 1837.73,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "It covers how information flows through a computer from input to processing, memory, storage, and output, comparing device types like desktops, laptops, tablets, and smartphones through real use cases.",
+        "message": "It covers how information flows through a computer from input to processing, memory, storage, and output, comparing desktops, laptops, Chromebooks, tablets, smartphones, and wearables through real use cases.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -642,12 +642,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "87280e33-0c3c-413e-81b9-edbfef94e8ee",
-        "turn_id": "f0ab1278-a30f-4600-8865-16aa563c50ca",
-        "client_event_id": "e2a165fc-b4fd-46bf-9277-8c8adb2bb448",
+        "conversation_id": "86daedd0-b452-4e61-91d1-d9e3f78717fb",
+        "turn_id": "7ed85c1a-5111-466a-8b82-878633545c32",
+        "client_event_id": "47ceef7c-2d74-4521-9e69-55fab0019d87",
         "message_ids": {
-          "user": "e7458ca9-cd0a-47ae-8261-80e05a6aa326",
-          "assistant": "754c58c5-869e-4af5-89cc-3e7acb7b7fcc"
+          "user": "6ddc519d-f0c2-4f84-8ef8-5ec35007aacc",
+          "assistant": "c7d1b5ba-0da0-495b-a3f4-d2f02766a724"
         },
         "capture": {
           "mode": "transcript",
@@ -667,13 +667,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1154.21,
+      "latency_ms": 1140.04,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The Intro to Email class covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying to, and forwarding emails, plus attachments. No email address is needed before class.",
+        "message": "The Intro to Email class covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying to, and forwarding emails, plus adding and opening attachments.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -710,12 +710,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "fd8df547-46dc-46fc-bd89-7a4308a03c14",
-        "turn_id": "3113b418-e071-49f0-947b-6c8857cac4d5",
-        "client_event_id": "2e835fb8-bfe3-4c3b-a132-197936d58768",
+        "conversation_id": "b09b2295-caaf-4fb2-b70e-115cec740f55",
+        "turn_id": "ba6abf64-c970-43e7-96f7-16af7391b88a",
+        "client_event_id": "5f72561d-7878-477c-a5d3-5b71886a1405",
         "message_ids": {
-          "user": "dfdf431d-877b-4f5c-b6b2-461dc7541de5",
-          "assistant": "03fdb5c1-ad2e-4511-9166-38772721cbcd"
+          "user": "425fd844-5102-431f-93cf-ecf8bb254fcc",
+          "assistant": "d50edb9b-77a3-4ef9-b133-8982853ce8b1"
         },
         "capture": {
           "mode": "transcript",
@@ -735,13 +735,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1028.03,
+      "latency_ms": 2938.12,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No, you don't need an email address before taking Intro to Email. The class will help you create or access an email account and get familiar with using it.",
+        "message": "No, you don't need an email address before taking Intro to Email. The class will help you create or access an email account and get comfortable using it.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -778,12 +778,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "48d9253f-9a22-42ce-ba01-9cb71efe4448",
-        "turn_id": "b07333e2-33d2-48fe-b831-9cae61418b97",
-        "client_event_id": "b2d46430-374f-423a-ae1d-19dbd9d4ee5b",
+        "conversation_id": "ebfc3d3f-91fc-4747-b5e6-6bc3154a6936",
+        "turn_id": "ed1ec890-d907-43fd-99be-0312d2a205da",
+        "client_event_id": "b66a0c6e-dc38-4474-b2b5-1abce9d7a62f",
         "message_ids": {
-          "user": "386110cc-ff4d-4e20-b2dd-2a36cbbffd26",
-          "assistant": "bbb2c1ff-cda3-4b23-a965-d5e7f212870c"
+          "user": "b6abad8c-e930-4245-b135-c131b4fc6b11",
+          "assistant": "c9c8d248-2df8-496d-807e-8e84a2e05a1f"
         },
         "capture": {
           "mode": "transcript",
@@ -803,7 +803,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1599.97,
+      "latency_ms": 1190.32,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -846,12 +846,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "ad728a0b-7ff7-4ee9-841b-facc1932c180",
-        "turn_id": "0ebbb2b7-e809-4e4c-a216-9cbce538b814",
-        "client_event_id": "cefe73ad-a96d-4401-92c5-ea37f6daf3e2",
+        "conversation_id": "5f84a12f-c53f-4b8c-867e-8462a3c3594c",
+        "turn_id": "a39bfab8-d07f-4eb3-b3a4-5b879819c36f",
+        "client_event_id": "1184089f-26e7-4e3f-ac1e-ee839e439e8c",
         "message_ids": {
-          "user": "f0526903-e40b-4371-a7d3-1fe752fcb9ac",
-          "assistant": "14dae009-4a2e-45ce-8a8a-0824a00ecf48"
+          "user": "07f2aa47-c57d-426f-945b-02a4dab78b11",
+          "assistant": "8e8e7db4-dac9-4e0a-ba99-f9d1b1bd8a6f"
         },
         "capture": {
           "mode": "transcript",
@@ -871,13 +871,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1252.82,
+      "latency_ms": 977.28,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The Excel - Organizing Data class covers turning data into tables that can sort, filter, and summarize, plus removing duplicate records. This service is currently not available, so contact for more information.",
+        "message": "Excel - Organizing Data covers sorting, filtering, tables, and removing duplicate records. This service is currently not available, so please contact for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -914,12 +914,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "a1da3ee3-4b3c-49cf-9caa-00dac9c33aec",
-        "turn_id": "5d96a6d0-719b-475c-b330-4f355d657c95",
-        "client_event_id": "7252b5e3-b4e2-46af-b99e-b8535683dcdf",
+        "conversation_id": "28aab3e6-666e-4474-bde0-d8046ea6a50f",
+        "turn_id": "724ecfd6-e216-44d3-9c06-5bab897521a5",
+        "client_event_id": "de3ef480-ed99-42ff-bc79-988240921d37",
         "message_ids": {
-          "user": "e192309d-6f3d-4b48-878b-82e06eff3699",
-          "assistant": "e09b06b5-948b-4a85-9141-30e78856aec1"
+          "user": "840b229a-abb5-44e1-b7cb-2a0d54d76e61",
+          "assistant": "15d48b40-6474-45a3-83f0-03c9ea3269b6"
         },
         "capture": {
           "mode": "transcript",
@@ -939,13 +939,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 909.6,
+      "latency_ms": 1009.19,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Excel - Presenting Data teaches charts, sparklines, and print layouts. This service is currently not available, so contact for more information.",
+        "message": "Excel - Presenting Data covers charts, sparklines, and print layouts. This service is currently not available, so please contact for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -982,12 +982,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "6c7f95e9-9613-4d38-af5d-7f7c419b77ad",
-        "turn_id": "6bff14d3-64d6-408b-92bf-31595497630b",
-        "client_event_id": "5517f4a6-7ae5-481b-9d27-375b1d3a9b96",
+        "conversation_id": "74a746a4-da43-4fe4-9496-5cac9da9464c",
+        "turn_id": "ed4afd1d-8424-45ac-b5f9-7d077eb511e4",
+        "client_event_id": "f01e2a24-a37f-4021-a6e9-ddb43b748c32",
         "message_ids": {
-          "user": "c36b99cf-4fe2-4ef4-9f0e-c00955a4871d",
-          "assistant": "78fdbf3f-5e98-43bc-95cf-0890b6c6c61f"
+          "user": "7204040f-4bbc-46e7-99b6-fa5c4be74ab5",
+          "assistant": "0e2559b9-bfdd-4b9c-a8e8-ef262c22e5a4"
         },
         "capture": {
           "mode": "transcript",
@@ -1007,13 +1007,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1223.89,
+      "latency_ms": 1196.59,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No design background is needed for Canva Design Tools. Please note this service is currently not available, so contact for more information.",
+        "message": "No design background is needed for Canva Design Tools. Please note this service is currently not available, contact for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1050,12 +1050,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "055b94f8-4e7c-4d94-b2fb-2eb6383adf4e",
-        "turn_id": "96d3b042-45cc-4608-981d-0a8e0a5e2b71",
-        "client_event_id": "a1afecd4-8e6e-41ce-ad1d-55d7218324f3",
+        "conversation_id": "7134b9fa-1f50-42af-a10c-8114e0e509f2",
+        "turn_id": "338305e9-d248-4233-9eb9-161ac20cb5d1",
+        "client_event_id": "f3cecee4-f568-4aa1-b23c-624b379490b7",
         "message_ids": {
-          "user": "b59bef89-b953-4c02-817d-16e003bf25a9",
-          "assistant": "3a733080-c9b0-49fb-9d96-5145b8155387"
+          "user": "06fdb8a5-8304-4b71-b880-cb3a03d7c220",
+          "assistant": "4f319e1b-6ce2-4532-b062-61d6f163c38e"
         },
         "capture": {
           "mode": "transcript",
@@ -1075,13 +1075,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 979.11,
+      "latency_ms": 1096.55,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The smartphone curriculum is currently under redevelopment, and the service is not available. Contact for more information.",
+        "message": "The smartphone curriculum is currently under redevelopment, and the service is not available. Contact Fortune for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1118,12 +1118,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "a9cbc949-f6f9-46f9-8a37-9682bcc9d9a5",
-        "turn_id": "faedc0a0-27fd-4c51-8b80-62257e108c04",
-        "client_event_id": "34976003-09ce-4e3d-bc7f-c31397e3643f",
+        "conversation_id": "e8af6b8a-7ec5-48b9-9db5-42d44bf45634",
+        "turn_id": "c64e0755-f62e-48c7-98d8-12ef33640e2b",
+        "client_event_id": "5ac39e66-c496-4ebb-aae0-e7e88401c130",
         "message_ids": {
-          "user": "6c57ea9a-e55e-40bf-be15-059ca40d6340",
-          "assistant": "310de18b-0d8e-4536-a6ec-30c1a0f4f7bb"
+          "user": "74ffbfcf-9cbd-497d-96ed-10fe3c1f90f6",
+          "assistant": "a6ea15bb-5698-48b7-becf-22bf9ab6114f"
         },
         "capture": {
           "mode": "transcript",
@@ -1143,7 +1143,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 965.94,
+      "latency_ms": 1183.3,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -1186,12 +1186,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "2532717c-6956-4e4e-8bd0-a2496ff22b63",
-        "turn_id": "4a78eeaa-5282-421a-832a-a5652f60a11a",
-        "client_event_id": "1cbd1253-b711-40b7-b2a1-a52309fc0db0",
+        "conversation_id": "448ec610-1b3e-41c1-90b6-fc48b257a6ed",
+        "turn_id": "f1a248d2-5460-437c-a81c-976cad80e976",
+        "client_event_id": "bd56436a-f290-4543-b00c-5fc546a0abd6",
         "message_ids": {
-          "user": "2ff0fb9c-e6ac-4db9-8dd5-8b551344ebf5",
-          "assistant": "d6b09ef5-c8c7-42ec-89a0-1b79a4e4a941"
+          "user": "d47bbc00-6593-4d2d-85d9-856fe32b9033",
+          "assistant": "774e42ac-7ca3-48b5-92f7-dc8e2b327783"
         },
         "capture": {
           "mode": "transcript",
@@ -1211,13 +1211,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 3190.3,
+      "latency_ms": 1048.02,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No, ese curso ya no se puede reservar.",
+        "message": "No, este curso ya no se puede reservar.",
         "reason": "La respuesta viene de una página aprobada.",
         "sources": [
           {
@@ -1254,12 +1254,12 @@
         "request_language": "es",
         "response_language": "es",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "56aa1e1c-73fc-4f0b-a0b5-2642f977627e",
-        "turn_id": "060fc499-3d1a-48fa-ad9b-5b7294ab8a06",
-        "client_event_id": "020ef8de-41bc-47ed-8a01-054af1669070",
+        "conversation_id": "3e5aadfa-8fe8-4e4f-8a96-da7a73eb1eeb",
+        "turn_id": "2d8f8684-a663-496f-b71d-284e1b3fa8d8",
+        "client_event_id": "45bae20b-0021-4d85-9c5a-a66f888fba23",
         "message_ids": {
-          "user": "e78ab153-c342-49ee-a786-e37e2193adb2",
-          "assistant": "2fac5ca7-92b7-435e-9bb6-70e48fd5e869"
+          "user": "7a455f6e-ab67-44af-8143-d4781db318cb",
+          "assistant": "8a268374-94c7-4142-836b-709f76f83f50"
         },
         "capture": {
           "mode": "transcript",
@@ -1279,7 +1279,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 958.45,
+      "latency_ms": 1160.28,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -1318,12 +1318,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "33fae233-a867-4763-9589-a1af7edf5924",
-        "turn_id": "02d18455-1272-44b2-acb2-559b953beaa2",
-        "client_event_id": "656c7c75-a7bb-4706-8ad3-c30a57afa7c1",
+        "conversation_id": "3d7050bb-8215-4332-853b-c7713ebe5814",
+        "turn_id": "975c57a2-adbc-42ab-b7fd-93de02e8d6ed",
+        "client_event_id": "366a09f9-e667-4da4-8821-ba88654a67d6",
         "message_ids": {
-          "user": "e6f0b1c9-6fce-4662-8ba1-9ee7a103c265",
-          "assistant": "15cb933b-5df0-46d4-bdc7-71bb5e8eed62"
+          "user": "be6e3174-72cb-408c-9d3d-dbbc39fb6821",
+          "assistant": "94d303ed-9454-40fb-80fc-e7cfc06cc2e0"
         },
         "capture": {
           "mode": "transcript",
@@ -1343,13 +1343,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1032.22,
+      "latency_ms": 1065.01,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "You must be an active or previous attendee of at least 5 Digital Equity Program workshops. Supply is limited and can take time to acquire, so stop by the office to confirm eligibility.",
+        "message": "You must be an active or previous attendee of at least 5 Digital Equity Program workshops. Supply is limited and can take time to acquire, so stop by the office to check eligibility.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1382,12 +1382,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "96cb258c-b820-43fe-bd9f-e744ac37ee18",
-        "turn_id": "d9b0ea99-9faf-46ad-b5d6-93cd223f59e6",
-        "client_event_id": "3ae566f5-487f-457d-8a75-774a48f23cf5",
+        "conversation_id": "2517f9cb-0cd2-479b-9183-a7ce1dee368e",
+        "turn_id": "393cbb5a-1159-4844-bb21-bf71ca3198b6",
+        "client_event_id": "6ecdc3bb-0b7b-4abc-8606-3c2f20aa50e2",
         "message_ids": {
-          "user": "6937185e-080e-417e-9082-26d6ba5ba041",
-          "assistant": "5d4d02cc-98cd-4769-b30c-44b7ef7b883e"
+          "user": "55d77d38-634b-4101-beee-c4ad995ead8e",
+          "assistant": "e68083d0-23a8-4342-b5cb-c1149eee12cd"
         },
         "capture": {
           "mode": "transcript",
@@ -1407,7 +1407,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1009.58,
+      "latency_ms": 1051.83,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -1450,12 +1450,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "821aabd8-cb7a-4c22-aefc-0d075227f907",
-        "turn_id": "6f400bad-c624-47a0-b7cf-8ea658322411",
-        "client_event_id": "38f802d6-3fb7-4bf5-b69b-b49eca7d82bd",
+        "conversation_id": "d0bbb0d4-f4c8-4a23-90cf-7b3e7d755fe8",
+        "turn_id": "f51c1b63-c339-45a3-bd51-55bff026dedc",
+        "client_event_id": "590ea87b-44e1-49ae-b812-09a6e0bbb1d2",
         "message_ids": {
-          "user": "3216d18b-1b73-4c7e-85e7-5f85bcbddcbc",
-          "assistant": "9a7c038f-db17-4456-9d0e-dda26a343dc2"
+          "user": "23e632c2-f732-4197-8f9a-d224de9fb1e3",
+          "assistant": "c6a1c988-96c7-46c7-8039-022e9be995cb"
         },
         "capture": {
           "mode": "transcript",
@@ -1475,13 +1475,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 881.02,
+      "latency_ms": 1101.02,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The page doesn't mention screen replacement. It offers office hours and a Support Desk for questions or help with smartphone or laptop problems.",
+        "message": "The page doesn't mention screen replacement services. Fortune offers support with smartphone or laptop problems through office hours and a Support Desk, but it doesn't confirm physical repair work.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1518,12 +1518,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "2f2b2abb-313d-420a-9068-d3ccb3914ff3",
-        "turn_id": "6be4567a-1e80-49b0-ad4d-e05d95734a4e",
-        "client_event_id": "1baf8e0c-e840-4e9b-ab3c-672cb41193e5",
+        "conversation_id": "0869aa45-3614-422f-887d-4cdc7f4021f3",
+        "turn_id": "fc1c722a-401a-42d7-882e-a6301788f832",
+        "client_event_id": "88976f4b-9d8f-4628-841e-4e6fe33eacbb",
         "message_ids": {
-          "user": "1e927a5c-76ac-41ad-a609-e90c92297694",
-          "assistant": "17c59ca9-ae19-462c-b22f-366228d3633d"
+          "user": "653e40f4-8ed2-48fb-96de-ae3a6d7d8422",
+          "assistant": "366535df-d228-4d34-9a46-6788491d9c82"
         },
         "capture": {
           "mode": "transcript",
@@ -1543,13 +1543,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1398.26,
+      "latency_ms": 1394.51,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The site doesn't explain how to register for a class. For regularly scheduled classes, walk-in attendance is allowed, though registered participants get priority; specialized multi-session workshops may require registration.",
+        "message": "The page doesn't explain how to register for a class. It only notes that walk-in attendance is allowed for regularly scheduled classes, with priority given to those who register in advance; specialized workshops may require…",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1582,12 +1582,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "16b3ab32-8e7c-4a6d-a640-af25f8fbe7f8",
-        "turn_id": "edbd3ea4-5652-43df-9e54-b957629f61f8",
-        "client_event_id": "615068e7-c724-4e3c-981f-3bcd62bcc4de",
+        "conversation_id": "f5fc8704-6ef3-4078-b26d-7962b7e74a7b",
+        "turn_id": "217e43b4-8a43-4529-984c-e11697515316",
+        "client_event_id": "2cf92a09-7cba-4782-a8c9-8710d0d34e13",
         "message_ids": {
-          "user": "0c8bab73-b4e6-4791-bc33-aaabfacde4e8",
-          "assistant": "94ed5e8c-35d6-4950-9364-f87f96986ffe"
+          "user": "c6340126-5804-4886-ba82-064514b1c8f5",
+          "assistant": "a7875318-f571-4d38-b2b5-914c87d4d9b1"
         },
         "capture": {
           "mode": "transcript",
@@ -1607,13 +1607,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 878.87,
+      "latency_ms": 1015.46,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "You can check the August Training Schedule for Participants on the Digital Equity calendar page, which includes live registration and a printable monthly schedule.",
+        "message": "You can view the August Training Schedule on the Digital Equity calendar page, which includes live registration and a printable monthly schedule.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1650,12 +1650,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "d10d0bad-9d8b-472a-8e4c-d43d32a37f90",
-        "turn_id": "2eecf235-755d-4203-b605-d13f72954471",
-        "client_event_id": "eb5a021e-27b8-4ff1-87f3-eb538c4580bf",
+        "conversation_id": "87baaf46-c096-4f4a-976f-928afa280585",
+        "turn_id": "7ec68c40-f191-4b83-8c7c-95377a76b0c8",
+        "client_event_id": "5436627b-8c31-4ed0-aa5b-1f65205ad94f",
         "message_ids": {
-          "user": "7fb1d0ad-9098-439a-bb13-2dad173e40ba",
-          "assistant": "a811c732-5741-40b8-b6a4-fd48aa82c556"
+          "user": "e9c250fa-38bc-47ec-b190-ea00a7ee22ac",
+          "assistant": "9b301bbf-a451-4122-8d29-d9635d841dc9"
         },
         "capture": {
           "mode": "transcript",
@@ -1675,13 +1675,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1583.13,
+      "latency_ms": 1039.22,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The calendar page doesn't list specific class topics like \"Intro to Email\", it shows dates with available classes but doesn't confirm whether that class is offered tomorrow.",
+        "message": "I can't confirm whether an Intro to Email class is scheduled tomorrow. The calendar page lets you click a date to see available classes, so check tomorrow's date for details.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1718,12 +1718,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "ee09537f-9093-474d-a92a-ee3355836f48",
-        "turn_id": "2bd249c3-183b-49e5-b8ae-ef2b47389c2e",
-        "client_event_id": "edeb8522-4942-42f8-9f67-cc41d69db4e3",
+        "conversation_id": "7b147073-1c04-4672-bac4-104f758b6afb",
+        "turn_id": "aee62e11-5941-41e3-8f57-805dfe97915d",
+        "client_event_id": "27ddeb05-20dd-44cd-a755-eb7c850a3b03",
         "message_ids": {
-          "user": "368243e4-ae08-4f5c-b1cc-bfecb14107c0",
-          "assistant": "064f887c-2ce7-4a56-81e8-f1f5454f8e72"
+          "user": "46d9227a-af9c-452b-9031-46dcd533d0a8",
+          "assistant": "2b170c55-38d3-4843-a013-462c1c5d6864"
         },
         "capture": {
           "mode": "transcript",
@@ -1743,13 +1743,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1493.44,
+      "latency_ms": 1393.33,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The current page doesn't confirm a specific registration page. You can attend regularly scheduled classes as a walk-in, though pre-registered participants get priority; specialized multi-session workshops may require registration.",
+        "message": "The page doesn't mention a reserve page or where to register now. It notes that walk-in attendance is allowed for regularly scheduled classes, with priority given to those registered in advance; specialized workshops may require…",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1782,12 +1782,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "af32be51-052b-4f36-afe6-a4aa2f6d6a88",
-        "turn_id": "ac8869a4-4a57-47b9-b0c3-a4f23ec27eeb",
-        "client_event_id": "c396a03f-70cf-4e09-8a1a-5ed8958334ce",
+        "conversation_id": "cc32a0fa-ad0a-4cf6-a28b-25b1a011f722",
+        "turn_id": "befec81b-ac05-417b-b783-675e997d7de8",
+        "client_event_id": "60e87e8e-783f-4eae-81b2-e23c2e01061b",
         "message_ids": {
-          "user": "6d106a02-dd97-4180-ade6-f2345629813c",
-          "assistant": "38626421-f498-43d1-abb7-3dc493fbfe30"
+          "user": "5485f100-ccbb-4bc3-afce-f79707e3d4d2",
+          "assistant": "fddac835-7034-4984-aac8-333e88146ef3"
         },
         "capture": {
           "mode": "transcript",
@@ -1807,19 +1807,35 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1571.27,
+      "latency_ms": 1482.05,
       "transport_error": null,
-      "passed": false,
-      "failures": [
-        "kind: expected one of ['answer'], got 'clarify'",
-        "sources: none matched ['devices']"
-      ],
+      "passed": true,
+      "failures": [],
       "response": {
-        "kind": "clarify",
-        "message": "What do you need to know about Device Distribution Programs?",
-        "reason": "One detail will help.",
-        "sources": [],
-        "related": [],
+        "kind": "answer",
+        "message": "This page covers device distribution programs connected to Fortune Society's Digital Equity Program, including the Affordable Connectivity Program, LifeLine, and Computers 4 People.",
+        "reason": "From an approved Fortune page.",
+        "sources": [
+          {
+            "id": "devices",
+            "title": "Device Distribution Programs",
+            "url": "https://www.fortunedigitalequity.org/devices"
+          }
+        ],
+        "related": [
+          {
+            "title": "Browse workshops",
+            "url": "https://www.fortunedigitalequity.org/workshops"
+          },
+          {
+            "title": "Practice digital skills",
+            "url": "https://www.fortunedigitalequity.org/practice"
+          },
+          {
+            "title": "Ask Digital Equity staff",
+            "url": "https://www.fortunedigitalequity.org/contact"
+          }
+        ],
         "choices": [],
         "handoff_url": "https://www.fortunedigitalequity.org/contact",
         "model": "glm-5.2",
@@ -1834,12 +1850,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "dee9cb88-5582-40f1-970d-01c72e310d73",
-        "turn_id": "09b113a9-9ba5-40c2-89e6-be8f026df216",
-        "client_event_id": "d89215ec-89ab-49a0-a5ae-83eea25250ef",
+        "conversation_id": "3f376290-4a65-4db1-91a9-a1668549829c",
+        "turn_id": "156c9023-9f0d-4629-b467-90234250e0e2",
+        "client_event_id": "ec6deb07-3a13-438e-8d14-72975b3b3c75",
         "message_ids": {
-          "user": "1120be7e-3222-4071-b911-208b9e2e2463",
-          "assistant": "d27506d3-deb0-4800-9fd2-82dc78b8df8a"
+          "user": "50c0e5ae-6b33-45eb-b447-b9a7af3ed527",
+          "assistant": "1cce855f-8a50-4040-aeb4-b87383be2db9"
         },
         "capture": {
           "mode": "transcript",
@@ -1859,13 +1875,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1417.42,
+      "latency_ms": 1635.01,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Yes, you can stop by the Support Desk or join office hours for quick questions or technical support with your smartphone or laptop.",
+        "message": "Yes, you can stop by the Support Desk for quick questions or support with your smartphone or laptop, or join office hours. You can also stop by the offices for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1902,12 +1918,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "c34bfbb3-93f2-4575-a653-ceca71c3b2a0",
-        "turn_id": "df1f2d01-51a5-464e-baf9-9aa0f8c7fc9b",
-        "client_event_id": "b9d7dccc-aaa0-4464-a40c-fac2063ec00c",
+        "conversation_id": "d32e1152-70a7-40f8-89c0-4099db23c071",
+        "turn_id": "86c1d8bc-0d0a-4fe1-926b-000e4d5f9402",
+        "client_event_id": "a4f8814d-2217-44ff-a4ac-b2c15c5934fb",
         "message_ids": {
-          "user": "7ff17c72-6b4e-4154-abf7-3e601ace077c",
-          "assistant": "cbdbe51b-1235-4356-a2ec-57ca46f3c578"
+          "user": "663b5ac2-d2d3-4887-a0f6-08d1d8bf7c1d",
+          "assistant": "9172469b-80b5-4597-a0be-06efc2c70484"
         },
         "capture": {
           "mode": "transcript",
@@ -1927,13 +1943,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 834.58,
+      "latency_ms": 10199.2,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "It covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages, plus attachments, drafts, search, labels, spam, passwords, and safe sign-out.",
+        "message": "It covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying to, and forwarding emails, plus attachments, drafts, search, labels, spam, passwords, and safe sign-out.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -1970,12 +1986,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "81f831bf-997a-45ac-ad89-462899b65039",
-        "turn_id": "19c193c3-6a4f-4053-b722-d1ef34402b0d",
-        "client_event_id": "3abaffa5-4979-4e1f-ba53-3ebf79f49602",
+        "conversation_id": "f30b0159-cf9c-49ee-9558-319d8fe5a5ba",
+        "turn_id": "caf20be6-805a-4b7c-8d41-c25bafccd5cd",
+        "client_event_id": "699d9b82-f935-401b-934a-a69757f7be66",
         "message_ids": {
-          "user": "8d99360d-c8aa-49bb-9d2a-01977fb806cd",
-          "assistant": "d7172dad-6089-4505-b3df-55ff525881f1"
+          "user": "f4f05524-a310-4a92-8233-f564b9566506",
+          "assistant": "73ca77f0-00f6-45ae-830a-82b32e870a6e"
         },
         "capture": {
           "mode": "transcript",
@@ -1995,13 +2011,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 785.3,
+      "latency_ms": 794.35,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Classes are held at the Long Island City main office at 29-76 Northern Boulevard, and at the Bronx SRP community office at 3230 Third Avenue, which is by request only.",
+        "message": "Classes are held at the Long Island City main office (29-76 Northern Boulevard) and the Bronx SRP community office (3230 Third Avenue).",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2038,12 +2054,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "6634188c-d7b9-48c3-8bfd-62ff3a7454be",
-        "turn_id": "9e9f5124-b2c4-4c39-8197-4b435d1a3af6",
-        "client_event_id": "02b5c5c0-c7f1-4209-9707-8972294c8c56",
+        "conversation_id": "fe1bc6fa-e0c0-40bd-88ef-75c9ed31f81a",
+        "turn_id": "9d0ad69b-95fe-4a1d-8042-b6b3f53601db",
+        "client_event_id": "b04f242c-824b-45b7-9d07-6378f7a55f7c",
         "message_ids": {
-          "user": "a28a31e0-afd2-464c-b7e3-50814b77b548",
-          "assistant": "c43571e4-4ce9-4269-a042-bd8ca5252fc7"
+          "user": "70eac287-e86e-497d-a9fa-fd0375b25771",
+          "assistant": "d39a4624-c53d-45d7-9e3a-748572b70d3f"
         },
         "capture": {
           "mode": "transcript",
@@ -2063,7 +2079,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 167.61,
+      "latency_ms": 191.7,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2119,12 +2135,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "b44d8cdf-c8b4-455f-825e-ca82364145e2",
-        "turn_id": "5200be9f-0d4e-41ad-996a-87ca5f1735bd",
-        "client_event_id": "9fa26958-0e54-4b0d-a73f-eb4ed11c74dd",
+        "conversation_id": "151e9b70-77bd-4503-bd15-1da1151b52f0",
+        "turn_id": "9cde635b-8067-4d04-b495-4a630c0d85ce",
+        "client_event_id": "a6271242-5d0b-4535-b021-4f986bab6b22",
         "message_ids": {
-          "user": "4e98f661-bafb-4f2d-9e04-3dbeedd15cdc",
-          "assistant": "43fdb215-d48b-4e13-a27f-fccd25c21811"
+          "user": "25ca0145-6b10-46ab-9c50-4435f38104a7",
+          "assistant": "51322bb4-22f3-4463-980e-7af543cfb325"
         },
         "capture": {
           "mode": "transcript",
@@ -2144,7 +2160,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 162.69,
+      "latency_ms": 191.43,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2205,12 +2221,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "b49d8c04-7b5b-4ce5-894c-64e94921b403",
-        "turn_id": "a7610549-964c-405c-b322-42d4529710c7",
-        "client_event_id": "debd2d03-7f06-48c0-8ee9-31eb251b072a",
+        "conversation_id": "d585b30f-50a3-4b8b-8dfb-87bd76762b94",
+        "turn_id": "215b753a-1917-4de0-8dd0-76039e199115",
+        "client_event_id": "6be97daf-2f57-4a15-aeae-2ec0edf3294d",
         "message_ids": {
-          "user": "f5b42272-4b10-45e2-b8ca-592265dc586e",
-          "assistant": "9e14f813-57c3-41ef-bd8c-cb3ddda5d7e8"
+          "user": "1cb3dec6-f92e-4481-8096-e4007d8da656",
+          "assistant": "b0541756-d560-4771-9930-83e5cf40fa98"
         },
         "capture": {
           "mode": "transcript",
@@ -2230,7 +2246,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 173.59,
+      "latency_ms": 185.63,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2280,12 +2296,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "15c70d6d-ed0c-4cec-b24c-30fac15b6e4e",
-        "turn_id": "b70d4aff-60f6-4c7e-9f6b-5e4c2e38b462",
-        "client_event_id": "cbe84ced-8011-4b5f-98c4-274349a66912",
+        "conversation_id": "d8847fc6-055e-4c34-9c79-8615e5bd9eaa",
+        "turn_id": "8f53532e-2d1d-42f8-81ff-2a3d10a743aa",
+        "client_event_id": "c65ad0e9-c367-437a-bb9c-5865e07a1f8e",
         "message_ids": {
-          "user": "e259318a-b224-48ae-9a10-3d35fa34e302",
-          "assistant": "02747f43-7693-4844-83aa-f05fe1332e08"
+          "user": "f7f8ae28-8647-4399-b963-db2ce0b7ff98",
+          "assistant": "3b194e24-22d3-4057-91c9-8882ca305d7b"
         },
         "capture": {
           "mode": "transcript",
@@ -2305,13 +2321,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 968.31,
+      "latency_ms": 1102.27,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently not available, so contact for more information.",
+        "message": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently not available, please contact for more information.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2348,12 +2364,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "8d54a50b-4645-472a-becb-0cf6e38c5cc8",
-        "turn_id": "4914bf8e-d90d-4dfd-9bd9-759e60f464cf",
-        "client_event_id": "53ae0d69-815c-40a1-aacb-4dd35780a5be",
+        "conversation_id": "bf6f6b4a-43c8-4e9f-88c1-9ce50234c266",
+        "turn_id": "09ede5d4-70a8-4894-a158-0f5748fa986c",
+        "client_event_id": "3edb216b-03da-4040-ad67-5237c64466f8",
         "message_ids": {
-          "user": "012c98d1-343d-421c-97aa-fb195d469653",
-          "assistant": "5c07be5e-4c07-414d-a782-73655dbc9b2c"
+          "user": "0bed5429-54cf-49be-a265-14aecc6cbea8",
+          "assistant": "a3866c60-89fe-458a-914c-ede08ab27308"
         },
         "capture": {
           "mode": "transcript",
@@ -2373,7 +2389,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 166.93,
+      "latency_ms": 190.31,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2429,12 +2445,12 @@
         "request_language": "es",
         "response_language": "es",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "e5d3be00-944b-429f-8725-b17321fd3b6a",
-        "turn_id": "9fde0e24-a6dc-4485-87d2-7b5c15eedc86",
-        "client_event_id": "5027b9a8-0fca-48b4-a8ad-2f571d2de87b",
+        "conversation_id": "d0062ab5-a5e3-48b8-b204-2d83bd7fb048",
+        "turn_id": "5a879f8e-242d-4a04-ba7d-e4f6b8bba032",
+        "client_event_id": "f6ca82b7-6d4b-4ea3-a281-42bb0d231080",
         "message_ids": {
-          "user": "455d4091-1f90-4554-b46b-bb9e8c58481d",
-          "assistant": "032996ce-d53d-4a3e-83ee-ac0b521cc22b"
+          "user": "b7a00864-9c8e-4090-8570-8658e3a31165",
+          "assistant": "7d144bde-7188-4809-a02b-88d4f0f77928"
         },
         "capture": {
           "mode": "transcript",
@@ -2454,13 +2470,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1499.74,
+      "latency_ms": 1502.56,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Para las clases regulares no necesitas registrarte; puedes asistir directamente, aunque se da prioridad a quienes se registran con anticipación. Para talleres especializados de varias sesiones, puede ser obligatorio registrarse.",
+        "message": "Para las clases regulares no necesitas registrarte; puedes asistir sin cita, pero se da prioridad a quienes se registran con anticipación. Para talleres especializados de varias sesiones, el registro puede ser obligatorio.",
         "reason": "La respuesta viene de una página aprobada.",
         "sources": [
           {
@@ -2497,12 +2513,12 @@
         "request_language": "es",
         "response_language": "es",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "58620a9a-d1aa-4aa8-9d59-7c3f94148e89",
-        "turn_id": "8f4ea39d-1bc8-4b4d-98f2-e6919f80fda9",
-        "client_event_id": "6146749d-0a0b-4b41-8dc1-03ab08ae0256",
+        "conversation_id": "670d2800-837d-4df5-af6e-f521b7deabde",
+        "turn_id": "c2e304ed-0bba-4522-b924-aa5be234bd0e",
+        "client_event_id": "45584502-0f86-44fd-878d-923d86da6139",
         "message_ids": {
-          "user": "1c1e32ac-2fcb-49d7-9aad-82f3bfd5aca6",
-          "assistant": "0e87eebd-a230-4358-8887-b3f56bf09360"
+          "user": "b5620332-cc07-42b1-b043-4b910410548b",
+          "assistant": "1574075a-af76-47b2-9dd8-9eec10816528"
         },
         "capture": {
           "mode": "transcript",
@@ -2522,7 +2538,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 238.0,
+      "latency_ms": 367.83,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2565,12 +2581,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "fe29ce24-d673-42cc-ab67-30867b251a5a",
-        "turn_id": "3c3042e6-8bd0-4281-a926-693865d4dc10",
-        "client_event_id": "ece017e5-545b-4721-bee1-d36abe11d1d9",
+        "conversation_id": "4812170c-32fc-4005-9d6f-9446d4478cba",
+        "turn_id": "61ab2762-37a3-40b4-871c-5ceaaa2423c4",
+        "client_event_id": "0d1bd723-3cd8-4987-9d23-10c009556607",
         "message_ids": {
-          "user": "55defb8b-5e8b-4ece-b402-17adf0189517",
-          "assistant": "6013de3e-46e3-4c1a-94e8-15035df49330"
+          "user": "8cadf1dc-3956-4caf-b213-ffde98340819",
+          "assistant": "fcfcb9cd-bf38-4782-a8b2-06f5bbb39c7c"
         },
         "capture": {
           "mode": "transcript",
@@ -2590,13 +2606,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 881.23,
+      "latency_ms": 1180.29,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "It covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying to, forwarding emails, and working with attachments. No email address is needed before class.",
+        "message": "It covers creating or accessing an email account, navigating the inbox and email addresses, understanding message parts, and practicing reading, composing, sending, replying to, forwarding emails, and working with attachments.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2633,12 +2649,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "9ee8b773-c3b7-43f0-a1db-cbdbb993a06f",
-        "turn_id": "96525c0a-220f-4c7f-9e5f-c1c4b6ccd424",
-        "client_event_id": "7740f718-2ac5-443f-9f5d-9773a3840b56",
+        "conversation_id": "105d21b0-9ca7-41f8-9f18-7a6740da0cee",
+        "turn_id": "0ee041aa-00ee-4731-8337-ed8f533066c7",
+        "client_event_id": "66573045-aebc-4248-87b4-12d5ce345cc6",
         "message_ids": {
-          "user": "fda7058f-3a74-4573-b484-dcf14e67e73a",
-          "assistant": "a4b69a00-4221-4cf4-841b-59296f034aae"
+          "user": "f49833fd-9177-41f7-b04a-70ef0ae87ae7",
+          "assistant": "ce07c561-ee13-4377-9f49-0f252786b678"
         },
         "capture": {
           "mode": "transcript",
@@ -2658,13 +2674,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1490.69,
+      "latency_ms": 935.95,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The page doesn't mention a cryptocurrency trading certification class. It only lists Microsoft Office certifications such as Word, Excel, PowerPoint, and Outlook 2019.",
+        "message": "The Fortune Society Digital Equity Program offers Microsoft Office certifications, not cryptocurrency trading certification classes.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2701,12 +2717,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "2a02a70c-2c2b-4de6-9150-1fd9f19b15c7",
-        "turn_id": "5d323ac9-be5d-4e14-8d24-84c6da7add3b",
-        "client_event_id": "d19266c0-e993-423d-bbf6-d737b6b2c7c3",
+        "conversation_id": "ee556c34-17af-4aa8-95a5-557750402956",
+        "turn_id": "b60549a3-82a5-4a26-9d1c-ff7f0b2ba9ad",
+        "client_event_id": "0f8b91e1-9e97-4a34-b5f0-1a89aaf2208d",
         "message_ids": {
-          "user": "f1ac12b1-cef2-4eb1-89ed-44c796b6fe1e",
-          "assistant": "ca91779f-db23-425d-ab3e-4931f9b31d77"
+          "user": "ac825fb2-14df-42a5-8472-1f9d7f79a455",
+          "assistant": "01c50c8b-de9e-466d-84d6-c7dc85ee8e8e"
         },
         "capture": {
           "mode": "transcript",
@@ -2726,13 +2742,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 849.33,
+      "latency_ms": 1651.46,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "No, the Affordable Connectivity Program has lost federal funding, so Fortune Society cannot enroll you in that discount today. The device distribution program is currently on hold as a result.",
+        "message": "No, the Affordable Connectivity Program lost federal funding and device distribution is currently on hold, so Fortune cannot enroll you in the ACP discount today.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2769,12 +2785,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "693c3b38-191d-46df-8f27-89f50c42fb65",
-        "turn_id": "63b3d0ad-833e-42d2-914f-1d0508875926",
-        "client_event_id": "6a95d422-1c47-4485-8d77-09a359be26f0",
+        "conversation_id": "20e18864-deb5-499a-9a95-548e6fd6e9f1",
+        "turn_id": "aea4d265-47d4-45a1-9bfe-a3afe442e850",
+        "client_event_id": "e22fb1eb-e570-4998-ba7f-ceea457e3bfd",
         "message_ids": {
-          "user": "604ac01d-14fb-4594-9d86-162b61cc3717",
-          "assistant": "3c0912cb-7422-42a8-8c33-e5917505f1d6"
+          "user": "95fbcd61-3979-4a48-8199-8d7a83dd099b",
+          "assistant": "8779b764-61d9-4dce-8eea-8da27818b2c5"
         },
         "capture": {
           "mode": "transcript",
@@ -2794,13 +2810,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1544.18,
+      "latency_ms": 1131.85,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "The Canva Design Tools service is currently listed as not available; you'd need to contact them for more information.",
+        "message": "The Canva Design Tools service is currently listed as not available. Contact Fortune Digital Equity for more information on when it may resume.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -2837,12 +2853,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "5acf3854-d4bc-4212-895f-a0379f9abeb6",
-        "turn_id": "ac34d5be-2a7c-4f8c-b139-d3f6c0ad1762",
-        "client_event_id": "b2298c35-4cde-4d07-8d85-190d80e92049",
+        "conversation_id": "c4933880-c843-489e-b2e6-593585d861e3",
+        "turn_id": "09ad009d-3363-4671-bdf6-5d70d7c6863e",
+        "client_event_id": "a1934c7d-1d9d-45e5-8bef-3025554cc6ff",
         "message_ids": {
-          "user": "44a350ac-5c55-4b3b-b55c-8e110ebc9725",
-          "assistant": "46d41766-8718-4e82-9c41-744d79cbb6aa"
+          "user": "6e0aae16-3ac7-42c7-ac35-e2b7f60cc9aa",
+          "assistant": "4919afd4-3b9d-482d-8c50-9957d0c24222"
         },
         "capture": {
           "mode": "transcript",
@@ -2862,7 +2878,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1291.6,
+      "latency_ms": 1519.45,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2886,12 +2902,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "df383697-d9fb-4727-b335-3cf2159231d1",
-        "turn_id": "814e452c-3401-4ea6-8139-46f01e7309fd",
-        "client_event_id": "d992923a-b782-416d-b5ac-42795bd4ba8a",
+        "conversation_id": "a5f93ae0-f29d-4109-9931-1d6e3f26f9ec",
+        "turn_id": "c6033c19-74c3-4bd0-b4cf-b638d80496f7",
+        "client_event_id": "a0ed3ad9-ff09-46e4-952f-69578c67fa51",
         "message_ids": {
-          "user": "dca16efd-416d-4ac2-963a-a59a67ab2eb8",
-          "assistant": "0fe34816-7d1c-4e7a-a9de-aa784be3a6d6"
+          "user": "79d38e50-2247-4ae1-b931-4abe2de95548",
+          "assistant": "964b4ad3-751b-46c1-a35f-aba31137f7be"
         },
         "capture": {
           "mode": "transcript",
@@ -2911,7 +2927,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1069.09,
+      "latency_ms": 184.42,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -2950,12 +2966,12 @@
         "request_language": "en",
         "response_language": "es",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "56e4fb18-e327-449b-b668-bc0671364134",
-        "turn_id": "f09a2d24-6cf0-4ca3-ae85-0f8320924179",
-        "client_event_id": "6927b290-668d-47ca-bdf4-a0b94c301e90",
+        "conversation_id": "ce85930b-055b-4ef6-b472-d09a39b1317e",
+        "turn_id": "60e6c7f1-9e12-4228-8624-72060692515f",
+        "client_event_id": "93ac4efa-0bee-4a47-bb93-98cc27f63efd",
         "message_ids": {
-          "user": "75616da4-c413-4c2f-ad06-36c60f3bcb2b",
-          "assistant": "46d980df-5448-49c7-a9fd-ca765b155950"
+          "user": "17c6039f-f55d-45ba-9426-ff65427399d4",
+          "assistant": "196dc9e5-89d4-425d-8d09-2c764c4d48fa"
         },
         "capture": {
           "mode": "transcript",
@@ -2975,7 +2991,7 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 179.72,
+      "latency_ms": 188.23,
       "transport_error": null,
       "passed": true,
       "failures": [],
@@ -3018,12 +3034,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "14b3c34e-ddad-4e7b-8f79-a2563b98bf70",
-        "turn_id": "e309adc0-ad65-4750-825d-9c6ed7cb8230",
-        "client_event_id": "f4f9b9ff-18b6-4c74-8322-1c96d15c81ba",
+        "conversation_id": "92e3f9cf-7903-44c9-a377-ec674c432fae",
+        "turn_id": "d15059bd-bbc1-4d5d-877b-8a5e9c3cd5dd",
+        "client_event_id": "f736daff-2368-44c3-a311-aa51d07ee580",
         "message_ids": {
-          "user": "9f8c0fd6-d484-4130-a238-329e3fb48788",
-          "assistant": "20942b4f-ffac-4cc5-9106-4253e665408e"
+          "user": "91c2c6fc-eedc-4e22-97b4-1604010f5f31",
+          "assistant": "d7644214-1a27-4031-a559-fbb1c1bfd127"
         },
         "capture": {
           "mode": "transcript",
@@ -3043,13 +3059,13 @@
       },
       "history": [],
       "status": 200,
-      "latency_ms": 1003.86,
+      "latency_ms": 1807.08,
       "transport_error": null,
       "passed": true,
       "failures": [],
       "response": {
         "kind": "answer",
-        "message": "Yes, the Excel Presenting Data class covers print areas, page layout, scaling, and repeated headings so your worksheet is ready to share as a finished page or PDF.",
+        "message": "Yes, the Excel - Presenting Data class covers print areas, page layout, scaling, and repeated headings so your worksheet is ready to share as a finished page or PDF.",
         "reason": "From an approved Fortune page.",
         "sources": [
           {
@@ -3086,12 +3102,12 @@
         "request_language": "en",
         "response_language": "en",
         "prompt_policy_version": "2026-08-17-v15",
-        "conversation_id": "f1481b9b-8473-4836-9dc2-dbbb3a58366e",
-        "turn_id": "9d7464c2-d040-4ae6-ba00-97a8398401b0",
-        "client_event_id": "5fdd4130-0301-4159-80fa-8185fbc7dcf4",
+        "conversation_id": "29a7bd0b-344a-4fb9-b331-5b6507d299a6",
+        "turn_id": "1bcccbc5-c6d8-4d83-a9d0-1a1e3a0da3f4",
+        "client_event_id": "ed7d4a06-b6cb-4f7e-a61d-79ba61b67a4c",
         "message_ids": {
-          "user": "75d98d9a-3a76-4274-a5bc-11013bef2aee",
-          "assistant": "e8569ff7-030b-496a-a478-da0f597b447e"
+          "user": "3c5b00f1-2535-42d6-ad6a-6ba5ce14f656",
+          "assistant": "98d73d05-9e75-4e1c-8536-43c9dd1d73ef"
         },
         "capture": {
           "mode": "transcript",

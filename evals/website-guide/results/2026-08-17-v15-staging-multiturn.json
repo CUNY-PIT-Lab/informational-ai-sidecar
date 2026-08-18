@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "run_id": "22e4a641-5cc1-462b-9908-54cd476ee304",
-  "created_at": "2026-08-18T00:27:17+00:00",
+  "run_id": "937b72c5-b399-47d3-9185-9997829e32a6",
+  "created_at": "2026-08-18T00:34:06+00:00",
   "suite": "fortune-website-guide-refreshed-multiturn-2026-08-17",
-  "suite_version": "2026-08-17.2",
+  "suite_version": "2026-08-17.3",
   "target": {
     "base_url": "https://guide-api-staging.up.railway.app",
     "health_status": 200,
-    "health_latency_ms": 159.81,
+    "health_latency_ms": 185.73,
     "health": {
       "status": "ok",
       "model": "glm-5.2",
@@ -58,14 +58,14 @@
         "schema_version": "008_remove_handoff_bucket"
       }
     },
-    "local_git_commit": "091538a9ee47c4548ec51a8a333511cbba7c102e",
-    "local_git_status": "?? evals/website-guide/REPORT-2026-08-18-v14.md\n?? evals/website-guide/results/2026-08-17-v15-staging-scattershot.json",
+    "local_git_commit": "43be87f1ce32fb44bf9dec4690ed2240c726e5e5",
+    "local_git_status": "M evals/website-guide/results/2026-08-17-v15-staging-scattershot.json\n?? evals/website-guide/REPORT-2026-08-18-v14.md",
     "python": "3.9.6",
     "platform": "macOS-15.7.8-arm64-arm-64bit"
   },
   "lineage": {
     "cases_sha256": "8db87973a168d3562ac6e5259b14128de5f16220cb7ce69e40c57c6e29570a15",
-    "spec_sha256": "55ce15995df320e52621aa1f927356a00b53f7a7344361538625f15afedb0f08",
+    "spec_sha256": "ee3f58b34114a1edb39341c4f6ac4ea44f82c60af925f3941b7a96dd9f8bf50e",
     "runner_sha256": "a859f2997015c0ae0195a26f789e4affbc055121080265dc7d65d3dac5fa2e1d"
   },
   "protocol": {
@@ -76,33 +76,31 @@
     "capture_allowed": true
   },
   "aggregate": {
-    "decision": "block",
+    "decision": "pass",
     "run_complete": true,
     "episodes": {
-      "passed": 11,
+      "passed": 12,
       "total": 12
     },
     "required_episodes": {
-      "passed": 11,
+      "passed": 12,
       "total": 12,
-      "rate": 0.9167,
+      "rate": 1.0,
       "wilson_95": [
-        0.6461,
-        0.9851
+        0.7575,
+        1.0
       ]
     },
     "turns": {
-      "passed": 49,
+      "passed": 50,
       "total": 50,
-      "contextual_passed": 27,
+      "contextual_passed": 28,
       "contextual_total": 28,
-      "contextual_rate": 0.9643
+      "contextual_rate": 1.0
     },
     "hard_gate": {
-      "passed": false,
-      "failed_episodes": [
-        "stale_fact_negatives"
-      ],
+      "passed": true,
+      "failed_episodes": [],
       "health_failures": []
     },
     "slices": {
@@ -148,8 +146,8 @@
       },
       "stale-fact-negatives": {
         "episodes": 1,
-        "passed": 0,
-        "rate": 0.0
+        "passed": 1,
+        "rate": 1.0
       },
       "registration-and-current-status": {
         "episodes": 1,
@@ -158,9 +156,9 @@
       }
     },
     "operational": {
-      "latency_p50_ms": 962.16,
-      "latency_p95_ms": 5577.66,
-      "latency_mean_ms": 1987.72,
+      "latency_p50_ms": 1085.14,
+      "latency_p95_ms": 1834.21,
+      "latency_mean_ms": 1144.3,
       "infrastructure_failures": 0,
       "model_calls": 46,
       "model_call_rate": 0.92
@@ -183,9 +181,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "1ee535e3-114a-430b-a5de-8fc794097be4",
+          "client_event_id_sent": "fdef893d-9702-42f6-bfc7-c8a114e8d988",
           "status": 200,
-          "latency_ms": 15326.71,
+          "latency_ms": 862.43,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -228,12 +226,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-            "turn_id": "d009e219-a455-40ea-990a-8fa24b144fa3",
-            "client_event_id": "1ee535e3-114a-430b-a5de-8fc794097be4",
+            "conversation_id": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+            "turn_id": "ec97b544-bd76-4240-9b9e-d08bb7f1cdbf",
+            "client_event_id": "fdef893d-9702-42f6-bfc7-c8a114e8d988",
             "message_ids": {
-              "user": "fb1ba782-01d0-4b59-8639-8029d157d077",
-              "assistant": "4f2e4cb3-c44f-4624-ba44-e7147e94b82c"
+              "user": "a49ecf5b-bc7a-47b7-8f80-6a9dc00056fd",
+              "assistant": "13da7aa4-9272-43ef-9c9b-75ec4477183e"
             },
             "capture": {
               "mode": "transcript",
@@ -260,16 +258,16 @@
               "content": "No, regularly scheduled Fortune Digital Equity classes have rolling attendance, so you can attend as many or as few as you'd like. Multi-part workshops on special topics may require full attendance."
             }
           ],
-          "conversation_id_sent": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-          "client_event_id_sent": "6276fef6-2de7-495e-bbf0-99a7680bd20d",
+          "conversation_id_sent": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+          "client_event_id_sent": "4c271dc3-b200-4d24-8980-bf78b8ed3ab5",
           "status": 200,
-          "latency_ms": 800.53,
+          "latency_ms": 710.16,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Multi-part workshops on special topics may require full attendance, unlike regularly scheduled classes which have rolling attendance.",
+            "message": "Multi-part workshops on special topics may require full attendance.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -306,12 +304,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-            "turn_id": "48fac46a-0040-4550-870e-c25d0807cff2",
-            "client_event_id": "6276fef6-2de7-495e-bbf0-99a7680bd20d",
+            "conversation_id": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+            "turn_id": "b6c31582-5b16-4290-8877-24098fef25dd",
+            "client_event_id": "4c271dc3-b200-4d24-8980-bf78b8ed3ab5",
             "message_ids": {
-              "user": "12645380-a18d-4141-abdb-1b28298c28b7",
-              "assistant": "5ce02ed5-e855-4bb6-bbe4-7ce310a99f7d"
+              "user": "e6a80667-be4d-4e42-8b90-dbd69409783c",
+              "assistant": "9662b5fb-0d4e-41ee-8a9b-45a16164c4ec"
             },
             "capture": {
               "mode": "transcript",
@@ -343,19 +341,19 @@
             },
             {
               "role": "assistant",
-              "content": "Multi-part workshops on special topics may require full attendance, unlike regularly scheduled classes which have rolling attendance."
+              "content": "Multi-part workshops on special topics may require full attendance."
             }
           ],
-          "conversation_id_sent": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-          "client_event_id_sent": "f71327d1-d3d2-45e5-bf6d-77645e97fcc6",
+          "conversation_id_sent": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+          "client_event_id_sent": "fd696401-790b-431a-bbcb-d23de1e11c73",
           "status": 200,
-          "latency_ms": 1287.06,
+          "latency_ms": 1092.41,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "No, you can walk in to regularly scheduled classes without registering, though advance registration gives you priority. Specialized multi-session workshops may require registration.",
+            "message": "No, you can walk in to regularly scheduled classes without registering, though registered participants get priority. Specialized, multi-session workshops may require registration.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -388,12 +386,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-            "turn_id": "5ef213f7-3640-4fc8-b91f-99d2f53d659f",
-            "client_event_id": "f71327d1-d3d2-45e5-bf6d-77645e97fcc6",
+            "conversation_id": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+            "turn_id": "d5463c55-b34b-4b07-b508-b573a4d6ea30",
+            "client_event_id": "fd696401-790b-431a-bbcb-d23de1e11c73",
             "message_ids": {
-              "user": "555908f1-08c0-4880-9c6b-16d0c042fa44",
-              "assistant": "f177cadf-da84-4812-9697-6c4223f1b8bb"
+              "user": "4251d504-35b6-43f5-bbb7-d2201766a29d",
+              "assistant": "a868d666-4d27-4118-ab10-93d014a5ccf6"
             },
             "capture": {
               "mode": "transcript",
@@ -425,7 +423,7 @@
             },
             {
               "role": "assistant",
-              "content": "Multi-part workshops on special topics may require full attendance, unlike regularly scheduled classes which have rolling attendance."
+              "content": "Multi-part workshops on special topics may require full attendance."
             },
             {
               "role": "user",
@@ -433,19 +431,19 @@
             },
             {
               "role": "assistant",
-              "content": "No, you can walk in to regularly scheduled classes without registering, though advance registration gives you priority. Specialized multi-session workshops may require registration."
+              "content": "No, you can walk in to regularly scheduled classes without registering, though registered participants get priority. Specialized, multi-session workshops may require registration."
             }
           ],
-          "conversation_id_sent": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-          "client_event_id_sent": "f323c23e-ea2a-425f-9406-7a4fbb78a82e",
+          "conversation_id_sent": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+          "client_event_id_sent": "48d56427-6a6d-423b-9028-dcc7e1999c2d",
           "status": 200,
-          "latency_ms": 938.84,
+          "latency_ms": 744.04,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Registering in advance gives you priority for regularly scheduled classes, and some specialized multi-session workshops may require it.",
+            "message": "Registering in advance gives you priority seating over walk-in attendees for regularly scheduled classes.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -478,12 +476,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "b9b6e8a1-bf05-42ff-87d3-086420f4b72a",
-            "turn_id": "46045dcc-7fc0-48bb-9de1-49283a6147e7",
-            "client_event_id": "f323c23e-ea2a-425f-9406-7a4fbb78a82e",
+            "conversation_id": "5becbe22-f88b-4a61-ac28-5f8fc47025d4",
+            "turn_id": "a6923cb7-4fab-428d-882b-fb496dee74a8",
+            "client_event_id": "48d56427-6a6d-423b-9028-dcc7e1999c2d",
             "message_ids": {
-              "user": "06e18e45-3674-4731-b3f9-7a2bc26794d0",
-              "assistant": "6fb38f4b-5d64-456c-b10a-64c3d49a021b"
+              "user": "6714ee2e-3c82-489f-9dda-b3f9948d5735",
+              "assistant": "b15aa08e-0f98-4e4f-bcba-42ba0c1453a6"
             },
             "capture": {
               "mode": "transcript",
@@ -510,9 +508,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "a6a2cf61-231a-4987-8262-76032e81215f",
+          "client_event_id_sent": "4f260edd-d38a-401b-90c5-53b96480725e",
           "status": 200,
-          "latency_ms": 821.07,
+          "latency_ms": 952.25,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -551,12 +549,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "8c336f10-94d0-47e5-8df8-727817a88309",
-            "turn_id": "073176a3-67a9-45e1-984b-a7990b8165c6",
-            "client_event_id": "a6a2cf61-231a-4987-8262-76032e81215f",
+            "conversation_id": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+            "turn_id": "b8337b7f-d9f5-46e1-8bdd-ff56154cc2f7",
+            "client_event_id": "4f260edd-d38a-401b-90c5-53b96480725e",
             "message_ids": {
-              "user": "e4e92b81-a22c-4c14-a635-53c101f71455",
-              "assistant": "33728e9d-8e33-4b80-af31-3b09e8f9f1c5"
+              "user": "afa15f04-3fa4-4a2b-8719-e4120d974c92",
+              "assistant": "89c42ad7-58e9-4536-bad2-141863ad103e"
             },
             "capture": {
               "mode": "transcript",
@@ -583,10 +581,10 @@
               "content": "Free smartphone and phone service distribution is currently on hold due to lost federal funding. The program is working to revive distribution through the LifeLine Program."
             }
           ],
-          "conversation_id_sent": "8c336f10-94d0-47e5-8df8-727817a88309",
-          "client_event_id_sent": "b0fda3a3-984f-4a2b-a6d0-350ebe556226",
+          "conversation_id_sent": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+          "client_event_id_sent": "6fe25a8a-9deb-4b2b-b36a-07ace3f04f9b",
           "status": 200,
-          "latency_ms": 804.71,
+          "latency_ms": 1038.68,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -629,12 +627,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "8c336f10-94d0-47e5-8df8-727817a88309",
-            "turn_id": "fc5fb941-447b-4f8b-90e0-6c359a31e420",
-            "client_event_id": "b0fda3a3-984f-4a2b-a6d0-350ebe556226",
+            "conversation_id": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+            "turn_id": "8c703591-44b3-437d-98a7-59e5c688dd12",
+            "client_event_id": "6fe25a8a-9deb-4b2b-b36a-07ace3f04f9b",
             "message_ids": {
-              "user": "a0970e5a-1c05-455e-bbe5-4f4774d939ac",
-              "assistant": "10fced1e-24e6-40a2-b98b-82aa2615a21b"
+              "user": "256f5def-d202-4353-be7d-baea9f4ab3a0",
+              "assistant": "16120e72-d6d3-49b3-bbd0-cf630248d6f2"
             },
             "capture": {
               "mode": "transcript",
@@ -669,10 +667,10 @@
               "content": "Distribution is on hold because federal funding for devices through the Affordable Connectivity Program was lost."
             }
           ],
-          "conversation_id_sent": "8c336f10-94d0-47e5-8df8-727817a88309",
-          "client_event_id_sent": "994c3fb3-6772-4548-86b4-e0bc006a3f49",
+          "conversation_id_sent": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+          "client_event_id_sent": "692c542d-4a63-4a04-add0-92f3ea75f673",
           "status": 200,
-          "latency_ms": 1006.42,
+          "latency_ms": 980.41,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -711,12 +709,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "8c336f10-94d0-47e5-8df8-727817a88309",
-            "turn_id": "ace1605f-3918-45dc-a37b-a6d484c9403e",
-            "client_event_id": "994c3fb3-6772-4548-86b4-e0bc006a3f49",
+            "conversation_id": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+            "turn_id": "10944fe7-2b6c-4428-b65b-0a1fd5c2ceb2",
+            "client_event_id": "692c542d-4a63-4a04-add0-92f3ea75f673",
             "message_ids": {
-              "user": "583f1e05-e413-4bdf-8ac7-8d8919be73be",
-              "assistant": "e0c98493-ec72-45f9-93a2-19ff892be789"
+              "user": "0a82db91-437f-4b60-a55f-36ea8b1c3115",
+              "assistant": "29ea2ab5-2765-4878-90ff-3238083fa0b0"
             },
             "capture": {
               "mode": "transcript",
@@ -759,16 +757,16 @@
               "content": "Free refurbished laptops are available through our partnership with Computers 4 People. You must be an active attendee or have attended at least 5 Digital Equity Program workshops to qualify."
             }
           ],
-          "conversation_id_sent": "8c336f10-94d0-47e5-8df8-727817a88309",
-          "client_event_id_sent": "5b40a924-7dc1-4376-a0fc-6b67369f1275",
+          "conversation_id_sent": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+          "client_event_id_sent": "c35d70e6-5fed-41a9-ac2e-035577541b9d",
           "status": 200,
-          "latency_ms": 972.31,
+          "latency_ms": 1704.59,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "You'd need to be an active attendee or have attended at least 5 Digital Equity Program workshops. Stop by the office to check eligibility, though supply is limited and can take time to acquire.",
+            "message": "You'd qualify by being an active attendee or having attended at least 5 Digital Equity Program workshops.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -805,12 +803,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "8c336f10-94d0-47e5-8df8-727817a88309",
-            "turn_id": "728f984d-5937-42da-aab3-d7c99a17b6ab",
-            "client_event_id": "5b40a924-7dc1-4376-a0fc-6b67369f1275",
+            "conversation_id": "7ee582ba-5f8a-45de-8491-f654093eb37a",
+            "turn_id": "355e1fd8-bfd8-4620-a139-263f43e67033",
+            "client_event_id": "c35d70e6-5fed-41a9-ac2e-035577541b9d",
             "message_ids": {
-              "user": "006fe76c-e791-4626-be40-c4a947bde368",
-              "assistant": "03d34e45-ed90-484c-8205-839993d50f21"
+              "user": "4328e0ed-b344-4463-a46c-fbf2440813f8",
+              "assistant": "9d21a8ff-f23c-4d9c-bc8c-53fbdfa348c1"
             },
             "capture": {
               "mode": "transcript",
@@ -837,15 +835,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "5609390c-8205-49b1-a01e-52d5fb86d76d",
+          "client_event_id_sent": "e4b8e784-121a-43d8-8d9e-7dbc498a8fa8",
           "status": 200,
-          "latency_ms": 1058.37,
+          "latency_ms": 1293.81,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Intro to Email covers creating or accessing an account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. No email address is required prior to class.",
+            "message": "Intro to Email is a good fit, it starts with creating or accessing an email account and covers reading, composing, sending, replying, forwarding, and attachments. No email address is required before class.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -882,12 +880,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-            "turn_id": "2f1db0ff-99c9-4fec-a668-cc956632f963",
-            "client_event_id": "5609390c-8205-49b1-a01e-52d5fb86d76d",
+            "conversation_id": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+            "turn_id": "9552dede-3ab6-42ce-bce5-8c7ced01c24b",
+            "client_event_id": "e4b8e784-121a-43d8-8d9e-7dbc498a8fa8",
             "message_ids": {
-              "user": "00a178ab-2aa4-40d4-8e4a-71e9d913b014",
-              "assistant": "9de27b53-badd-4338-bcf6-420d7cc6a130"
+              "user": "229535eb-7159-47ef-ba6f-0cf585a29af3",
+              "assistant": "02442621-7031-4105-a558-4628ccbfe095"
             },
             "capture": {
               "mode": "transcript",
@@ -911,19 +909,19 @@
             },
             {
               "role": "assistant",
-              "content": "Intro to Email covers creating or accessing an account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. No email address is required prior to class."
+              "content": "Intro to Email is a good fit, it starts with creating or accessing an email account and covers reading, composing, sending, replying, forwarding, and attachments. No email address is required before class."
             }
           ],
-          "conversation_id_sent": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-          "client_event_id_sent": "86ebeefc-8ba5-4d20-b820-27250beae048",
+          "conversation_id_sent": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+          "client_event_id_sent": "ddfe1fb7-1d75-45d0-a438-03d7e92151cc",
           "status": 200,
-          "latency_ms": 1030.5,
+          "latency_ms": 1273.15,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, and forwarding messages with attachments.",
+            "message": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, forwarding emails, and working with attachments.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -960,12 +958,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-            "turn_id": "7786eb6e-3415-474f-a61e-4465874bd264",
-            "client_event_id": "86ebeefc-8ba5-4d20-b820-27250beae048",
+            "conversation_id": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+            "turn_id": "8c2c631b-e78d-41f6-a765-cb1ba3d57020",
+            "client_event_id": "ddfe1fb7-1d75-45d0-a438-03d7e92151cc",
             "message_ids": {
-              "user": "a025dfff-876d-47bc-9ca2-f0d6337fcf0d",
-              "assistant": "5a884336-5e06-4cba-b471-6a24c7c62931"
+              "user": "5a17858a-85eb-4b89-b1c8-e5355c217a50",
+              "assistant": "0f67611e-6236-4008-89e0-e65ac98479a6"
             },
             "capture": {
               "mode": "transcript",
@@ -989,7 +987,7 @@
             },
             {
               "role": "assistant",
-              "content": "Intro to Email covers creating or accessing an account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. No email address is required prior to class."
+              "content": "Intro to Email is a good fit, it starts with creating or accessing an email account and covers reading, composing, sending, replying, forwarding, and attachments. No email address is required before class."
             },
             {
               "role": "user",
@@ -997,19 +995,19 @@
             },
             {
               "role": "assistant",
-              "content": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, and forwarding messages with attachments."
+              "content": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, forwarding emails, and working with attachments."
             }
           ],
-          "conversation_id_sent": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-          "client_event_id_sent": "a9b14669-9d76-4453-a165-3e36727f482a",
+          "conversation_id_sent": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+          "client_event_id_sent": "e63b89c6-8c65-4e5c-b46e-b9d2dfc157f2",
           "status": 200,
-          "latency_ms": 958.17,
+          "latency_ms": 1032.89,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Yes, it covers adding and opening attachments, plus managing spam, deleted messages, drafts, search tools, labels, and passwords.",
+            "message": "Yes, the class covers adding and opening attachments, along with managing spam, deleted messages, labels, search tools, and passwords.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1046,12 +1044,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-            "turn_id": "f5499d94-1758-4b1c-80f9-a65a4b131629",
-            "client_event_id": "a9b14669-9d76-4453-a165-3e36727f482a",
+            "conversation_id": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+            "turn_id": "3f7232da-caaa-4854-8487-a55abab8c13f",
+            "client_event_id": "e63b89c6-8c65-4e5c-b46e-b9d2dfc157f2",
             "message_ids": {
-              "user": "95e4e915-f538-46aa-94c3-be45633cd7ba",
-              "assistant": "4568fd8e-3435-4d7c-bfe8-5be11dc531a2"
+              "user": "fa09c7dc-574b-4e8b-b9f9-30add996e940",
+              "assistant": "74845b9b-b961-4062-b5e8-d3e67780d389"
             },
             "capture": {
               "mode": "transcript",
@@ -1075,7 +1073,7 @@
             },
             {
               "role": "assistant",
-              "content": "Intro to Email covers creating or accessing an account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. No email address is required prior to class."
+              "content": "Intro to Email is a good fit, it starts with creating or accessing an email account and covers reading, composing, sending, replying, forwarding, and attachments. No email address is required before class."
             },
             {
               "role": "user",
@@ -1083,7 +1081,7 @@
             },
             {
               "role": "assistant",
-              "content": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, and forwarding messages with attachments."
+              "content": "You'd learn to create or access an email account, navigate the inbox, and practice reading, composing, sending, replying, forwarding emails, and working with attachments."
             },
             {
               "role": "user",
@@ -1091,19 +1089,19 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, it covers adding and opening attachments, plus managing spam, deleted messages, drafts, search tools, labels, and passwords."
+              "content": "Yes, the class covers adding and opening attachments, along with managing spam, deleted messages, labels, search tools, and passwords."
             }
           ],
-          "conversation_id_sent": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-          "client_event_id_sent": "4af46cf3-47ac-452a-8198-1676cb7f2a0c",
+          "conversation_id_sent": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+          "client_event_id_sent": "32195c51-fb29-43c2-a6b0-9acf77b912a1",
           "status": 200,
-          "latency_ms": 842.47,
+          "latency_ms": 865.39,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "For regularly scheduled classes, no registration is needed, walk-ins are welcome, though priority goes to those registered in advance. For specialized, multi-session workshops, registration may be required.",
+            "message": "For regularly scheduled classes, no registration is needed, walk-ins are welcome, though pre-registered participants get priority. Specialized, multi-session workshops may require registration.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1136,12 +1134,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "2f071b4a-8d5c-4945-9d3e-93392c94f471",
-            "turn_id": "a9799c90-d8a7-4aef-9343-8859fee722df",
-            "client_event_id": "4af46cf3-47ac-452a-8198-1676cb7f2a0c",
+            "conversation_id": "02179a86-371d-4e7d-8bd0-1608ef0601ff",
+            "turn_id": "5f6503ed-ce0c-4ee6-9391-f575f5632c53",
+            "client_event_id": "32195c51-fb29-43c2-a6b0-9acf77b912a1",
             "message_ids": {
-              "user": "0e7f39ba-650b-43b5-a405-7f25098874cf",
-              "assistant": "b6a31326-1121-473e-acd4-19aecb2f2f26"
+              "user": "7acbbe0f-f397-41da-8b4c-6622b7c619ec",
+              "assistant": "09af3298-819c-470f-b0a2-60cde59e2bb2"
             },
             "capture": {
               "mode": "transcript",
@@ -1168,15 +1166,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "ad629cf8-323d-4bbf-8d93-04a327fda4f2",
+          "client_event_id_sent": "df32f8ff-2701-4b26-a551-20f6b4381818",
           "status": 200,
-          "latency_ms": 967.52,
+          "latency_ms": 1172.38,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing data, plus working with cell ranges and autofill. This service is currently not available, so contact for more information.",
+            "message": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently listed as not available, so contact for more information.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1213,12 +1211,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-            "turn_id": "64ab75b6-5693-4ccb-a53b-b115001a403d",
-            "client_event_id": "ad629cf8-323d-4bbf-8d93-04a327fda4f2",
+            "conversation_id": "0a401556-2551-467d-9075-2bb36864dfc6",
+            "turn_id": "cf427402-0699-4768-8eb1-d7ce4622d2ae",
+            "client_event_id": "df32f8ff-2701-4b26-a551-20f6b4381818",
             "message_ids": {
-              "user": "1671ed27-e4ea-4c88-9e5a-5822cfc9444c",
-              "assistant": "df4c3416-f04e-4c89-8305-b39be1b85be9"
+              "user": "81e810a1-afda-40b4-9043-09fc6c893620",
+              "assistant": "98005575-5803-4f82-8f1d-f8ef114e4e33"
             },
             "capture": {
               "mode": "transcript",
@@ -1242,19 +1240,19 @@
             },
             {
               "role": "assistant",
-              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing data, plus working with cell ranges and autofill. This service is currently not available, so contact for more information."
+              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently listed as not available, so contact for more information."
             }
           ],
-          "conversation_id_sent": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-          "client_event_id_sent": "4df3fcb1-f69a-49e6-871c-9a1415db9685",
+          "conversation_id_sent": "0a401556-2551-467d-9075-2bb36864dfc6",
+          "client_event_id_sent": "dd6891b2-24d7-4f46-8352-9f642d06fbd2",
           "status": 200,
-          "latency_ms": 893.14,
+          "latency_ms": 1210.29,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting.",
+            "message": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting of important values.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1291,12 +1289,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-            "turn_id": "e42ebca4-e831-4bf0-9dc3-1193ec134c2c",
-            "client_event_id": "4df3fcb1-f69a-49e6-871c-9a1415db9685",
+            "conversation_id": "0a401556-2551-467d-9075-2bb36864dfc6",
+            "turn_id": "51f10a0b-d5c8-411e-959b-ebe92fa4532b",
+            "client_event_id": "dd6891b2-24d7-4f46-8352-9f642d06fbd2",
             "message_ids": {
-              "user": "c94d8988-d085-47e0-9a25-9f25be284fed",
-              "assistant": "9119dd1d-28c9-43ae-b292-02312988fdc5"
+              "user": "687f11ec-1a30-4287-b981-d0fda0998697",
+              "assistant": "b200be3e-fd04-4a0f-ba56-21cd403f6a33"
             },
             "capture": {
               "mode": "transcript",
@@ -1320,7 +1318,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing data, plus working with cell ranges and autofill. This service is currently not available, so contact for more information."
+              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently listed as not available, so contact for more information."
             },
             {
               "role": "user",
@@ -1328,19 +1326,19 @@
             },
             {
               "role": "assistant",
-              "content": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting."
+              "content": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting of important values."
             }
           ],
-          "conversation_id_sent": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-          "client_event_id_sent": "eaf6d04d-a7cc-44e7-ba15-bb7177468555",
+          "conversation_id_sent": "0a401556-2551-467d-9075-2bb36864dfc6",
+          "client_event_id_sent": "b998d721-987a-47a9-9646-db57c21ee3b1",
           "status": 200,
-          "latency_ms": 864.6,
+          "latency_ms": 1034.65,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "It covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting.",
+            "message": "It covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting of important values.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1377,12 +1375,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-            "turn_id": "4d66da29-850e-452b-a601-dc7a4f5382db",
-            "client_event_id": "eaf6d04d-a7cc-44e7-ba15-bb7177468555",
+            "conversation_id": "0a401556-2551-467d-9075-2bb36864dfc6",
+            "turn_id": "f557a8b5-5ea1-49c7-aa46-dcb4c5cf4955",
+            "client_event_id": "b998d721-987a-47a9-9646-db57c21ee3b1",
             "message_ids": {
-              "user": "ec9809a1-1403-49c7-8646-23986cbd0cb8",
-              "assistant": "fa977676-ef57-47e8-880f-867fe0552230"
+              "user": "906cace8-ddf9-48e8-b452-b05296695035",
+              "assistant": "90bdcaf7-c622-4778-a9e8-a698ba0a3521"
             },
             "capture": {
               "mode": "transcript",
@@ -1406,7 +1404,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing data, plus working with cell ranges and autofill. This service is currently not available, so contact for more information."
+              "content": "The Intro to Microsoft Excel class covers entering, editing, selecting, moving, copying, and clearing information, plus working with cell ranges and autofill. This service is currently listed as not available, so contact for more information."
             },
             {
               "role": "user",
@@ -1414,7 +1412,7 @@
             },
             {
               "role": "assistant",
-              "content": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting."
+              "content": "Excel - Formatting Data covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting of important values."
             },
             {
               "role": "user",
@@ -1422,19 +1420,19 @@
             },
             {
               "role": "assistant",
-              "content": "It covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting."
+              "content": "It covers formatting titles, headers, text, numbers, dates, times, currency, percentages, alignment, wrapping, merging, fills, borders, cell styles, format painter, paste options, resetting formatting, and automatic highlighting of important values."
             }
           ],
-          "conversation_id_sent": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-          "client_event_id_sent": "981545d1-cc06-4c34-97b9-1cf903972e1c",
+          "conversation_id_sent": "0a401556-2551-467d-9075-2bb36864dfc6",
+          "client_event_id_sent": "4328c1ba-9a27-4afb-a3d9-ca9cb7aa4250",
           "status": 200,
-          "latency_ms": 936.2,
+          "latency_ms": 1135.74,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The Excel - Presenting Data class teaches sparklines and charts, along with data bars, color scales, icon sets, and print/page layout for sharing worksheets.",
+            "message": "Excel - Presenting Data teaches charts and sparklines, along with data bars, color scales, icon sets, and print/page layout for sharing worksheets.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1471,12 +1469,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "9d25e7c9-30de-45b8-ae0e-4921dcb95903",
-            "turn_id": "918c4d19-c501-4a17-9f3a-6f15884cf4f7",
-            "client_event_id": "981545d1-cc06-4c34-97b9-1cf903972e1c",
+            "conversation_id": "0a401556-2551-467d-9075-2bb36864dfc6",
+            "turn_id": "d76cfa87-6a5b-4235-a5dc-4de5cf5024ae",
+            "client_event_id": "4328c1ba-9a27-4afb-a3d9-ca9cb7aa4250",
             "message_ids": {
-              "user": "12647415-0c21-45ac-8af6-08bf7587044d",
-              "assistant": "34580eac-dd77-4575-aaca-57c1ce159fe5"
+              "user": "758b99c7-7968-4b8d-a51e-9df4df151bb0",
+              "assistant": "bc24e94f-7854-4598-9191-40003475d1cf"
             },
             "capture": {
               "mode": "transcript",
@@ -1503,15 +1501,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "08c05744-9910-475c-b8d2-7f4c0b70eb49",
+          "client_event_id_sent": "2bbf37f2-7783-4f1e-94bf-5564f2f24c61",
           "status": 200,
-          "latency_ms": 934.26,
+          "latency_ms": 1037.14,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Yes, you can get individual technical support at the Support Desk or during office hours. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only.",
+            "message": "Yes, you can get individual technical support by joining office hours or stopping by the Support Desk. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1548,12 +1546,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-            "turn_id": "7da6b9fc-22cf-400b-b24e-863337952225",
-            "client_event_id": "08c05744-9910-475c-b8d2-7f4c0b70eb49",
+            "conversation_id": "bdc789ab-b222-4325-8890-b32413e423c9",
+            "turn_id": "329777c4-abde-40a2-9072-56aa3a7b0b1f",
+            "client_event_id": "2bbf37f2-7783-4f1e-94bf-5564f2f24c61",
             "message_ids": {
-              "user": "2bdefb10-a000-4865-b205-d1a739d43632",
-              "assistant": "2b2f94eb-8fcb-4187-9950-01b50091ac43"
+              "user": "161535ed-46fc-4fb1-891a-31ade1566032",
+              "assistant": "b903ea87-fbd9-413c-b9d6-b65e3ea53f74"
             },
             "capture": {
               "mode": "transcript",
@@ -1577,19 +1575,19 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, you can get individual technical support at the Support Desk or during office hours. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
+              "content": "Yes, you can get individual technical support by joining office hours or stopping by the Support Desk. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
             }
           ],
-          "conversation_id_sent": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-          "client_event_id_sent": "6b7fe96d-34bc-45be-837c-66eee013cd10",
+          "conversation_id_sent": "bdc789ab-b222-4325-8890-b32413e423c9",
+          "client_event_id_sent": "6cbe755a-01f3-42f3-a235-966c8ccd43d3",
           "status": 200,
-          "latency_ms": 804.47,
+          "latency_ms": 984.55,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "You can get help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk.",
+            "message": "You can get help with digital skills and technical support, including quick questions or problems on your smartphone or laptop, through office hours or the Support Desk.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1626,12 +1624,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-            "turn_id": "c33bd3fb-389a-4be0-a03b-a39569daffcb",
-            "client_event_id": "6b7fe96d-34bc-45be-837c-66eee013cd10",
+            "conversation_id": "bdc789ab-b222-4325-8890-b32413e423c9",
+            "turn_id": "d91d99e1-3c5d-4e80-b253-242585a69667",
+            "client_event_id": "6cbe755a-01f3-42f3-a235-966c8ccd43d3",
             "message_ids": {
-              "user": "493ef2b1-d40d-46b5-9572-f2c6c18b43f5",
-              "assistant": "35e26d01-ddef-4a1c-81ba-6d6ced147bae"
+              "user": "8f5855ac-f877-41c4-8252-d57cbd29065c",
+              "assistant": "e55a4822-873b-407a-9113-d8c800aa878c"
             },
             "capture": {
               "mode": "transcript",
@@ -1655,7 +1653,7 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, you can get individual technical support at the Support Desk or during office hours. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
+              "content": "Yes, you can get individual technical support by joining office hours or stopping by the Support Desk. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
             },
             {
               "role": "user",
@@ -1663,19 +1661,19 @@
             },
             {
               "role": "assistant",
-              "content": "You can get help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk."
+              "content": "You can get help with digital skills and technical support, including quick questions or problems on your smartphone or laptop, through office hours or the Support Desk."
             }
           ],
-          "conversation_id_sent": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-          "client_event_id_sent": "d253d1c4-cca4-47d8-b945-e033ccadd161",
+          "conversation_id_sent": "bdc789ab-b222-4325-8890-b32413e423c9",
+          "client_event_id_sent": "0085116b-0a94-4442-9a66-a9b3fe6e5951",
           "status": 200,
-          "latency_ms": 811.77,
+          "latency_ms": 1063.18,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The page doesn't mention screen replacement services. It covers help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk.",
+            "message": "The page doesn't mention screen repair services. It covers help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1712,12 +1710,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-            "turn_id": "8b36bf0f-3bf5-4ac7-a80c-132a8db638ee",
-            "client_event_id": "d253d1c4-cca4-47d8-b945-e033ccadd161",
+            "conversation_id": "bdc789ab-b222-4325-8890-b32413e423c9",
+            "turn_id": "554621ba-530c-498d-a664-0678abc9c3e1",
+            "client_event_id": "0085116b-0a94-4442-9a66-a9b3fe6e5951",
             "message_ids": {
-              "user": "1d44e3ae-9f8a-4c7d-aa86-e13d3c9d8925",
-              "assistant": "812b4919-a247-4cea-8939-4afa521fefde"
+              "user": "4223edf7-dd23-4678-87a5-4e3938fb382d",
+              "assistant": "37147c91-7cc4-4178-a254-581f64964fe4"
             },
             "capture": {
               "mode": "transcript",
@@ -1741,7 +1739,7 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, you can get individual technical support at the Support Desk or during office hours. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
+              "content": "Yes, you can get individual technical support by joining office hours or stopping by the Support Desk. Support is available Tuesday and Wednesday, 11:30 AM to 1:30 PM, by appointment only."
             },
             {
               "role": "user",
@@ -1749,7 +1747,7 @@
             },
             {
               "role": "assistant",
-              "content": "You can get help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk."
+              "content": "You can get help with digital skills and technical support, including quick questions or problems on your smartphone or laptop, through office hours or the Support Desk."
             },
             {
               "role": "user",
@@ -1757,19 +1755,19 @@
             },
             {
               "role": "assistant",
-              "content": "The page doesn't mention screen replacement services. It covers help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk."
+              "content": "The page doesn't mention screen repair services. It covers help with quick questions or problems on your smartphone or laptop through office hours or the Support Desk."
             }
           ],
-          "conversation_id_sent": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-          "client_event_id_sent": "fc355359-d57c-4a58-a4dc-749586e6d011",
+          "conversation_id_sent": "bdc789ab-b222-4325-8890-b32413e423c9",
+          "client_event_id_sent": "7dfa7967-6a12-40d6-af66-fff11e00a59e",
           "status": 200,
-          "latency_ms": 1785.09,
+          "latency_ms": 1077.88,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "You can schedule an appointment for individualized training at the LIC Office, or stop by the offices or contact us for more information.",
+            "message": "You can schedule an appointment for 1-on-1 tutoring or individualized training at the LIC office. The page also mentions walk-in options and contacting the office for more information.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1806,12 +1804,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "131e98de-4d71-46c1-b798-320c5ccc3e7c",
-            "turn_id": "bca6f842-ccc1-44f7-918f-c6e8214eb1f0",
-            "client_event_id": "fc355359-d57c-4a58-a4dc-749586e6d011",
+            "conversation_id": "bdc789ab-b222-4325-8890-b32413e423c9",
+            "turn_id": "b99bfa5b-6862-4ea4-a589-e7f18e07cf52",
+            "client_event_id": "7dfa7967-6a12-40d6-af66-fff11e00a59e",
             "message_ids": {
-              "user": "b8097bd7-0060-4358-a6f3-2679f4350be7",
-              "assistant": "306e6ced-12de-414a-9598-b9e523f6f29d"
+              "user": "c556d1d8-d5f4-4e12-baa6-5f38059ee686",
+              "assistant": "b57e518b-e646-4074-a742-1736ae62d82e"
             },
             "capture": {
               "mode": "transcript",
@@ -1838,15 +1836,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "5c08043b-7088-4eba-9db8-156b1a75e240",
+          "client_event_id_sent": "9fcbe586-e0e6-4028-a749-0f77a91dd60f",
           "status": 200,
-          "latency_ms": 4954.03,
+          "latency_ms": 923.41,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support via office hours and a Support Desk, and an open computer lab for practice.",
+            "message": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support during office hours or at a Support Desk, and an Open Computer Lab for practice.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1883,12 +1881,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-            "turn_id": "c1e3d37a-fbb4-4dfb-a418-cdddfe7a0213",
-            "client_event_id": "5c08043b-7088-4eba-9db8-156b1a75e240",
+            "conversation_id": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+            "turn_id": "7d2b04e5-b526-400e-bc20-060f08f247b6",
+            "client_event_id": "9fcbe586-e0e6-4028-a749-0f77a91dd60f",
             "message_ids": {
-              "user": "6cab02f1-a607-4b7e-acb3-5dc575d0e2af",
-              "assistant": "63b588e0-c680-4d99-9653-8caea2cd9a01"
+              "user": "1381972c-a674-4f02-bdb2-949cf0d3beb1",
+              "assistant": "540a86c9-8d8e-45ea-b638-c5bdeaf960a5"
             },
             "capture": {
               "mode": "transcript",
@@ -1912,19 +1910,19 @@
             },
             {
               "role": "assistant",
-              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support via office hours and a Support Desk, and an open computer lab for practice."
+              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support during office hours or at a Support Desk, and an Open Computer Lab for practice."
             }
           ],
-          "conversation_id_sent": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-          "client_event_id_sent": "669a26da-a1fa-4418-a9e3-a3c35ebe77e7",
+          "conversation_id_sent": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+          "client_event_id_sent": "a539b56c-ff45-47bf-9313-1e55f7a6dafd",
           "status": 200,
-          "latency_ms": 1197.11,
+          "latency_ms": 1106.74,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Yes, you can stop by the Support Desk or attend office hours for quick questions or device help. The page doesn't specify exact walk-in hours, so contact them to confirm when staff are available.",
+            "message": "Yes, you can stop by the Support Desk for technical support, or visit the Open Computer Lab for extra practice time.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -1961,12 +1959,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-            "turn_id": "d8c9d14e-f842-414a-97ac-981f811b627c",
-            "client_event_id": "669a26da-a1fa-4418-a9e3-a3c35ebe77e7",
+            "conversation_id": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+            "turn_id": "a9159ab8-2831-4008-befa-6598102c8ac7",
+            "client_event_id": "a539b56c-ff45-47bf-9313-1e55f7a6dafd",
             "message_ids": {
-              "user": "ee516659-4e81-4ce4-849b-3e7761c063e3",
-              "assistant": "3baed36f-028f-46d6-80ed-563cae68d71d"
+              "user": "d36583e1-bfc6-432e-ad1e-b1847e539f8f",
+              "assistant": "2cc2b279-7486-4cfa-8f96-90be13f19d0e"
             },
             "capture": {
               "mode": "transcript",
@@ -1990,7 +1988,7 @@
             },
             {
               "role": "assistant",
-              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support via office hours and a Support Desk, and an open computer lab for practice."
+              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support during office hours or at a Support Desk, and an Open Computer Lab for practice."
             },
             {
               "role": "user",
@@ -1998,19 +1996,19 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, you can stop by the Support Desk or attend office hours for quick questions or device help. The page doesn't specify exact walk-in hours, so contact them to confirm when staff are available."
+              "content": "Yes, you can stop by the Support Desk for technical support, or visit the Open Computer Lab for extra practice time."
             }
           ],
-          "conversation_id_sent": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-          "client_event_id_sent": "3fb70ccb-c8d1-4a08-a846-d992c7cb16fc",
+          "conversation_id_sent": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+          "client_event_id_sent": "53b18fbc-4d9d-413f-bcb5-a04795f4922c",
           "status": 200,
-          "latency_ms": 1175.78,
+          "latency_ms": 4036.67,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Intro to Email covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. It also covers drafts, search, labels, spam, passwords, and safe sign-out.",
+            "message": "Intro to Email covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2047,12 +2045,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-            "turn_id": "71593e63-d763-4ee2-8af3-1fb83526af0d",
-            "client_event_id": "3fb70ccb-c8d1-4a08-a846-d992c7cb16fc",
+            "conversation_id": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+            "turn_id": "d7a763fe-4594-4cfb-aef6-b78f0b7d06a2",
+            "client_event_id": "53b18fbc-4d9d-413f-bcb5-a04795f4922c",
             "message_ids": {
-              "user": "95d87aaa-4493-4e48-81a4-e9e34be11292",
-              "assistant": "240edfce-b66a-458d-bfa4-70d81765781a"
+              "user": "f54afef9-d73b-4a80-b5a0-2d21a9f8c1f5",
+              "assistant": "6f5344bc-4bb3-4e8a-a392-3769ab441d8b"
             },
             "capture": {
               "mode": "transcript",
@@ -2076,7 +2074,7 @@
             },
             {
               "role": "assistant",
-              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support via office hours and a Support Desk, and an open computer lab for practice."
+              "content": "It offers individual digital skills and technical support, including 1-on-1 tutoring by appointment, technical support during office hours or at a Support Desk, and an Open Computer Lab for practice."
             },
             {
               "role": "user",
@@ -2084,7 +2082,7 @@
             },
             {
               "role": "assistant",
-              "content": "Yes, you can stop by the Support Desk or attend office hours for quick questions or device help. The page doesn't specify exact walk-in hours, so contact them to confirm when staff are available."
+              "content": "Yes, you can stop by the Support Desk for technical support, or visit the Open Computer Lab for extra practice time."
             },
             {
               "role": "user",
@@ -2092,13 +2090,13 @@
             },
             {
               "role": "assistant",
-              "content": "Intro to Email covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments. It also covers drafts, search, labels, spam, passwords, and safe sign-out."
+              "content": "Intro to Email covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages with attachments."
             }
           ],
-          "conversation_id_sent": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-          "client_event_id_sent": "5e06b342-9b68-4afc-9f7f-f1287055edde",
+          "conversation_id_sent": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+          "client_event_id_sent": "96d47b7c-e418-4311-9c62-07748f8f82fe",
           "status": 200,
-          "latency_ms": 1633.36,
+          "latency_ms": 1592.74,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -2141,12 +2139,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "206727fb-3fc9-4ead-b72a-3d802cd1a88e",
-            "turn_id": "4b14a148-78bb-4994-96d5-b022e307caeb",
-            "client_event_id": "5e06b342-9b68-4afc-9f7f-f1287055edde",
+            "conversation_id": "2d654eda-73f5-4ac2-b108-744dab6d4c77",
+            "turn_id": "246b0921-fa32-401d-8802-bd83b98652c6",
+            "client_event_id": "96d47b7c-e418-4311-9c62-07748f8f82fe",
             "message_ids": {
-              "user": "c36e37c5-3aaf-447e-9a6e-cdfca7057edb",
-              "assistant": "f9eff977-38cf-4435-bcb2-4c288c93bda3"
+              "user": "5e5ce733-d9b6-43a1-9da7-53805451829a",
+              "assistant": "04c85b5f-aa70-4fa6-905d-53a0ad0e8382"
             },
             "capture": {
               "mode": "transcript",
@@ -2173,9 +2171,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "ff177537-b5f7-47dc-8c41-f3b6ed8423e3",
+          "client_event_id_sent": "5989d3c0-422c-488e-8463-bdd0510794ee",
           "status": 200,
-          "latency_ms": 1736.83,
+          "latency_ms": 1171.07,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -2218,12 +2216,12 @@
             "request_language": "es",
             "response_language": "es",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-            "turn_id": "8df41976-d216-41fe-bc04-a4d6f87190eb",
-            "client_event_id": "ff177537-b5f7-47dc-8c41-f3b6ed8423e3",
+            "conversation_id": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+            "turn_id": "1e0b05d9-59c3-4426-ab4e-bece57b46664",
+            "client_event_id": "5989d3c0-422c-488e-8463-bdd0510794ee",
             "message_ids": {
-              "user": "733705e8-69d9-409f-a230-5bd8a44299fc",
-              "assistant": "f1cd3669-a7fa-4451-8ccc-102d1a40f1d1"
+              "user": "3745a16c-85aa-4d57-9df9-d718cd0e7111",
+              "assistant": "9e7fdea8-29ff-4488-9f51-0378a0d17f3d"
             },
             "capture": {
               "mode": "transcript",
@@ -2250,10 +2248,10 @@
               "content": "Es un curso de alfabetización digital básica en español, impartido por instructores invitados especiales de Computers4People. Actualmente, este curso ya no se puede reservar."
             }
           ],
-          "conversation_id_sent": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-          "client_event_id_sent": "8c0374d6-3c77-4bea-ac0f-a3bb2bc6e29a",
+          "conversation_id_sent": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+          "client_event_id_sent": "9d57e777-f0fe-4d9c-a3fa-326641034774",
           "status": 200,
-          "latency_ms": 287.42,
+          "latency_ms": 462.87,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -2296,12 +2294,12 @@
             "request_language": "es",
             "response_language": "es",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-            "turn_id": "cee18b5b-3cb8-4cfe-8db8-614c1fb7428a",
-            "client_event_id": "8c0374d6-3c77-4bea-ac0f-a3bb2bc6e29a",
+            "conversation_id": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+            "turn_id": "02a88130-af97-4424-bb5b-1f988a989106",
+            "client_event_id": "9d57e777-f0fe-4d9c-a3fa-326641034774",
             "message_ids": {
-              "user": "729a01b3-cb09-468a-8beb-c0d688135737",
-              "assistant": "6e7fc70f-b934-412a-9f23-6b050944190e"
+              "user": "3220156c-61ee-452e-a212-cb1dbad0ad00",
+              "assistant": "f5741def-4286-45d4-bf8c-0b14d912dc86"
             },
             "capture": {
               "mode": "transcript",
@@ -2336,16 +2334,16 @@
               "content": "No pude confirmarlo en las páginas públicas de Fortune."
             }
           ],
-          "conversation_id_sent": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-          "client_event_id_sent": "2c27b38c-6337-411f-a7ff-9677acefe545",
+          "conversation_id_sent": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+          "client_event_id_sent": "c93df314-a1ec-44e8-ae97-1c123b1a22f8",
           "status": 200,
-          "latency_ms": 1177.75,
+          "latency_ms": 1884.99,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Enseña a crear o acceder a una cuenta de correo, usar la bandeja de entrada y redactar, enviar, responder y reenviar mensajes, además de manejar adjuntos, borradores, etiquetas, spam y contraseñas.",
+            "message": "Enseña a crear o acceder a una cuenta de correo, navegar la bandeja de entrada y leer, redactar, enviar, responder y reenviar mensajes, además de manejar adjuntos, borradores, etiquetas, spam y contraseñas.",
             "reason": "La respuesta viene de una página aprobada.",
             "sources": [
               {
@@ -2382,12 +2380,12 @@
             "request_language": "es",
             "response_language": "es",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-            "turn_id": "44129302-fa89-4bb1-89e1-947740d73a57",
-            "client_event_id": "2c27b38c-6337-411f-a7ff-9677acefe545",
+            "conversation_id": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+            "turn_id": "dab6ea91-df6e-4916-aa05-df1dd89ead84",
+            "client_event_id": "c93df314-a1ec-44e8-ae97-1c123b1a22f8",
             "message_ids": {
-              "user": "9fa2eb1c-edec-42e3-a5fc-beceeaab0cde",
-              "assistant": "5a4a5045-fb59-4529-81ad-6cc3977b1c44"
+              "user": "39f5b9f9-48bb-409b-8977-fbdbd2165ce4",
+              "assistant": "cff2bac1-a2f4-421f-8b88-4ee3957fa92b"
             },
             "capture": {
               "mode": "transcript",
@@ -2427,19 +2425,19 @@
             },
             {
               "role": "assistant",
-              "content": "Enseña a crear o acceder a una cuenta de correo, usar la bandeja de entrada y redactar, enviar, responder y reenviar mensajes, además de manejar adjuntos, borradores, etiquetas, spam y contraseñas."
+              "content": "Enseña a crear o acceder a una cuenta de correo, navegar la bandeja de entrada y leer, redactar, enviar, responder y reenviar mensajes, además de manejar adjuntos, borradores, etiquetas, spam y contraseñas."
             }
           ],
-          "conversation_id_sent": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-          "client_event_id_sent": "3b92a9c3-4d84-4fef-b5aa-b4396f0c2bfe",
+          "conversation_id_sent": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+          "client_event_id_sent": "75ffdf70-cf04-4232-b074-338de8769a17",
           "status": 200,
-          "latency_ms": 901.05,
+          "latency_ms": 876.48,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Para clases regulares no necesitas registrarte; puedes asistir directamente, aunque se da prioridad a quienes se registran con anticipación. Para talleres especializados de varias sesiones, el registro puede ser obligatorio.",
+            "message": "No necesitas registrarte para las clases regulares; se permite asistir sin cita, pero damos prioridad a quienes se registran con anticipación. Para los talleres especializados de varias sescciones, puede ser obligatorio registrarse.",
             "reason": "La respuesta viene de una página aprobada.",
             "sources": [
               {
@@ -2476,12 +2474,12 @@
             "request_language": "es",
             "response_language": "es",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "a8995458-9ea3-43ca-9e81-36290b9548f8",
-            "turn_id": "c0a5f2a0-7181-4ef6-88f3-29fbdb3cf0a7",
-            "client_event_id": "3b92a9c3-4d84-4fef-b5aa-b4396f0c2bfe",
+            "conversation_id": "c3e2bb88-a714-4326-bdc1-f17369c58687",
+            "turn_id": "fe8af8e8-536d-4b8c-890f-82e655936749",
+            "client_event_id": "75ffdf70-cf04-4232-b074-338de8769a17",
             "message_ids": {
-              "user": "f481aac8-4e65-4afd-b528-46f0a093d2b4",
-              "assistant": "1c5531a5-2c55-4d2a-b448-049dcf28028d"
+              "user": "120a12d0-b118-40b7-a324-3e433cb2dbac",
+              "assistant": "22199f96-9833-47fa-b71f-9d34580c3470"
             },
             "capture": {
               "mode": "transcript",
@@ -2508,9 +2506,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "cd2cf1d9-b77a-4a3c-813c-1c4ddfac4f7c",
+          "client_event_id_sent": "e73a753c-9d0c-4dee-9a97-740853468091",
           "status": 200,
-          "latency_ms": 844.38,
+          "latency_ms": 964.3,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -2549,12 +2547,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "8e1ee47a-02d1-404e-a36a-8389be075692",
-            "client_event_id": "cd2cf1d9-b77a-4a3c-813c-1c4ddfac4f7c",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "f3bc9c2d-9a3c-4866-ad35-9175d6474c3f",
+            "client_event_id": "e73a753c-9d0c-4dee-9a97-740853468091",
             "message_ids": {
-              "user": "14ddba0a-18d5-42bb-a227-02a8cda891d9",
-              "assistant": "abaa34bf-11d2-4186-8642-eeb6db9de700"
+              "user": "381bfc01-5f38-4f0a-a2ba-7a7518f76087",
+              "assistant": "9a69cff0-25da-4f2e-b0fa-83f6d4e17bc8"
             },
             "capture": {
               "mode": "transcript",
@@ -2581,16 +2579,16 @@
               "content": "The page lists the Fortune Society Digital Equity Program's free smartphone and LifeLine phone service distribution, along with Computers 4 People Inventory and the Affordable Connectivity Program."
             }
           ],
-          "conversation_id_sent": "23ed314f-e870-4003-a947-22bb022f9493",
-          "client_event_id_sent": "8fe6db96-1a94-4794-848b-6c8fadb85e78",
+          "conversation_id_sent": "bc350a5f-b713-4611-842c-4b0784e72d90",
+          "client_event_id_sent": "6c6b1101-d147-42fc-b0d1-b3a7efcabba5",
           "status": 200,
-          "latency_ms": 857.78,
+          "latency_ms": 1154.28,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. To qualify, you must have attended at least 5 Digital Equity Program workshops.",
+            "message": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. You must have attended at least 5 workshops to qualify; supply is limited and can take time to acquire.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2623,12 +2621,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "416a555c-1aeb-48d2-9e47-331ccadd690b",
-            "client_event_id": "8fe6db96-1a94-4794-848b-6c8fadb85e78",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "4401a8e3-6c64-4da7-b78a-fa2b3fc2b55b",
+            "client_event_id": "6c6b1101-d147-42fc-b0d1-b3a7efcabba5",
             "message_ids": {
-              "user": "595d0833-f171-467f-ad98-38b5713ff2df",
-              "assistant": "3175dc9b-9857-49a9-8572-1df31201585c"
+              "user": "c12d2dbb-041f-463a-80a0-1410559bb631",
+              "assistant": "4923c07f-bd89-4349-b15e-8c1ed193284b"
             },
             "capture": {
               "mode": "transcript",
@@ -2660,19 +2658,19 @@
             },
             {
               "role": "assistant",
-              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. To qualify, you must have attended at least 5 Digital Equity Program workshops."
+              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. You must have attended at least 5 workshops to qualify; supply is limited and can take time to acquire."
             }
           ],
-          "conversation_id_sent": "23ed314f-e870-4003-a947-22bb022f9493",
-          "client_event_id_sent": "a3d7a4cd-b55d-411d-b06a-7547f769b4ee",
+          "conversation_id_sent": "bc350a5f-b713-4611-842c-4b0784e72d90",
+          "client_event_id_sent": "fa7ffe42-dcdf-4ba8-b6bd-2327b620eada",
           "status": 200,
-          "latency_ms": 1065.5,
+          "latency_ms": 1147.64,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The Excel - Formulas & Functions class teaches formulas, starting with basic operators and order of calculation, plus fixed references, conditional formulas, and IF functions. It is currently not available, so contact for more information.",
+            "message": "The Excel - Formulas & Functions class covers basic operators, fixed references, conditional formulas, and IF functions. It's currently listed as not available, so contact for more information.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2709,12 +2707,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "263f45de-1611-40f5-9930-aa92500fc096",
-            "client_event_id": "a3d7a4cd-b55d-411d-b06a-7547f769b4ee",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "ecd7e9ff-c273-4fa7-8df4-7262ac2211ac",
+            "client_event_id": "fa7ffe42-dcdf-4ba8-b6bd-2327b620eada",
             "message_ids": {
-              "user": "b2022654-2378-41e6-b79e-1b6318fde71d",
-              "assistant": "fe39dc44-5ecf-4a6c-96fd-a77ea28dd822"
+              "user": "531392e5-886b-4fce-9889-df81d3e3b061",
+              "assistant": "2963e230-33b6-4715-8d06-db7c5f712ab6"
             },
             "capture": {
               "mode": "transcript",
@@ -2746,7 +2744,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. To qualify, you must have attended at least 5 Digital Equity Program workshops."
+              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. You must have attended at least 5 workshops to qualify; supply is limited and can take time to acquire."
             },
             {
               "role": "user",
@@ -2754,19 +2752,19 @@
             },
             {
               "role": "assistant",
-              "content": "The Excel - Formulas & Functions class teaches formulas, starting with basic operators and order of calculation, plus fixed references, conditional formulas, and IF functions. It is currently not available, so contact for more information."
+              "content": "The Excel - Formulas & Functions class covers basic operators, fixed references, conditional formulas, and IF functions. It's currently listed as not available, so contact for more information."
             }
           ],
-          "conversation_id_sent": "23ed314f-e870-4003-a947-22bb022f9493",
-          "client_event_id_sent": "0edd9047-cec5-43a2-b3dd-d8afdf6ea85b",
+          "conversation_id_sent": "bc350a5f-b713-4611-842c-4b0784e72d90",
+          "client_event_id_sent": "0b3c0f3c-2a34-4fda-9479-553e0b5bc63b",
           "status": 200,
-          "latency_ms": 870.06,
+          "latency_ms": 1017.12,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "It covers IF functions and conditional formulas, along with fixed references, basic operators, and the order of calculation.",
+            "message": "It covers IF functions and conditional formulas, along with basic operators, fixed references, reading formulas, and correcting common mistakes.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2803,12 +2801,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "1a96f93f-5874-48d5-9c88-16823d03d1c5",
-            "client_event_id": "0edd9047-cec5-43a2-b3dd-d8afdf6ea85b",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "650372cd-a9d0-4a13-bd13-7c5eed503c24",
+            "client_event_id": "0b3c0f3c-2a34-4fda-9479-553e0b5bc63b",
             "message_ids": {
-              "user": "e7633f38-ba9e-489b-8cf2-c5e963f9832e",
-              "assistant": "6bbf8f06-5cd9-4782-ad72-12fd08e89e5a"
+              "user": "f98b80d6-6cf4-4b2b-86c7-b19a00db1bd6",
+              "assistant": "118f6f11-f1d7-4db3-a440-aebf1c127ba2"
             },
             "capture": {
               "mode": "transcript",
@@ -2832,7 +2830,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. To qualify, you must have attended at least 5 Digital Equity Program workshops."
+              "content": "The Digital Equity Program partners with Computers 4 People to provide free refurbished laptops. You must have attended at least 5 workshops to qualify; supply is limited and can take time to acquire."
             },
             {
               "role": "user",
@@ -2840,7 +2838,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Excel - Formulas & Functions class teaches formulas, starting with basic operators and order of calculation, plus fixed references, conditional formulas, and IF functions. It is currently not available, so contact for more information."
+              "content": "The Excel - Formulas & Functions class covers basic operators, fixed references, conditional formulas, and IF functions. It's currently listed as not available, so contact for more information."
             },
             {
               "role": "user",
@@ -2848,19 +2846,19 @@
             },
             {
               "role": "assistant",
-              "content": "It covers IF functions and conditional formulas, along with fixed references, basic operators, and the order of calculation."
+              "content": "It covers IF functions and conditional formulas, along with basic operators, fixed references, reading formulas, and correcting common mistakes."
             }
           ],
-          "conversation_id_sent": "23ed314f-e870-4003-a947-22bb022f9493",
-          "client_event_id_sent": "2fe8fa9c-9897-440b-84b6-c37770f4a177",
+          "conversation_id_sent": "bc350a5f-b713-4611-842c-4b0784e72d90",
+          "client_event_id_sent": "19a3335c-8189-4b11-b0a8-6622e1a624cb",
           "status": 200,
-          "latency_ms": 6087.9,
+          "latency_ms": 1858.4,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Canva Design Tools covers creating a business card from a template, navigating the Canva workspace, and using object tools to move, resize, rotate, crop, recolor, group, duplicate, align, and layer elements.",
+            "message": "Canva Design Tools covers creating a business card template, navigating the Canva workspace, and using object tools to move, resize, rotate, crop, recolor, group, duplicate, align, and layer designs.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2897,12 +2895,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "3b1d57fa-7ff3-4aca-8b2d-aade6ac7f14c",
-            "client_event_id": "2fe8fa9c-9897-440b-84b6-c37770f4a177",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "cfdf93e1-a021-40c5-bcba-22dc5f9a3ef5",
+            "client_event_id": "19a3335c-8189-4b11-b0a8-6622e1a624cb",
             "message_ids": {
-              "user": "976ebbc9-2fa6-4023-b0ae-71612591c6a9",
-              "assistant": "47e1f682-8c5e-4e36-a4d4-54a14d004685"
+              "user": "736d4d95-bfb7-41c8-a843-8d727a068ff7",
+              "assistant": "9b6062f8-a24e-4ab4-912a-fdba81936992"
             },
             "capture": {
               "mode": "transcript",
@@ -2926,7 +2924,7 @@
             },
             {
               "role": "assistant",
-              "content": "The Excel - Formulas & Functions class teaches formulas, starting with basic operators and order of calculation, plus fixed references, conditional formulas, and IF functions. It is currently not available, so contact for more information."
+              "content": "The Excel - Formulas & Functions class covers basic operators, fixed references, conditional formulas, and IF functions. It's currently listed as not available, so contact for more information."
             },
             {
               "role": "user",
@@ -2934,7 +2932,7 @@
             },
             {
               "role": "assistant",
-              "content": "It covers IF functions and conditional formulas, along with fixed references, basic operators, and the order of calculation."
+              "content": "It covers IF functions and conditional formulas, along with basic operators, fixed references, reading formulas, and correcting common mistakes."
             },
             {
               "role": "user",
@@ -2942,19 +2940,19 @@
             },
             {
               "role": "assistant",
-              "content": "Canva Design Tools covers creating a business card from a template, navigating the Canva workspace, and using object tools to move, resize, rotate, crop, recolor, group, duplicate, align, and layer elements."
+              "content": "Canva Design Tools covers creating a business card template, navigating the Canva workspace, and using object tools to move, resize, rotate, crop, recolor, group, duplicate, align, and layer designs."
             }
           ],
-          "conversation_id_sent": "23ed314f-e870-4003-a947-22bb022f9493",
-          "client_event_id_sent": "8403f8f1-79c2-4b0d-b4c0-331eae1ccf9e",
+          "conversation_id_sent": "bc350a5f-b713-4611-842c-4b0784e72d90",
+          "client_event_id_sent": "2a1e6542-7a79-466a-9965-61353640195e",
           "status": 200,
-          "latency_ms": 864.79,
+          "latency_ms": 1093.7,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "No design background is needed for Canva Design Tools. Note that the service is currently listed as not available, so contact them for more information.",
+            "message": "No design background is needed for Canva Design Tools. Please note the service is currently listed as not available, contact for more information.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -2991,12 +2989,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "23ed314f-e870-4003-a947-22bb022f9493",
-            "turn_id": "923cd9fe-32a7-4b97-9140-0593ab2ae183",
-            "client_event_id": "8403f8f1-79c2-4b0d-b4c0-331eae1ccf9e",
+            "conversation_id": "bc350a5f-b713-4611-842c-4b0784e72d90",
+            "turn_id": "040f9105-4f43-4824-877d-0bf736b7bbef",
+            "client_event_id": "2a1e6542-7a79-466a-9965-61353640195e",
             "message_ids": {
-              "user": "cefcab8b-934f-48e3-8845-d94045a60b0f",
-              "assistant": "1b2873c0-5b85-4bd3-aa2a-dfce222d6d0b"
+              "user": "c1de133d-8765-45f8-82e7-9b8c51c094eb",
+              "assistant": "312ee50c-3d40-461c-8bf0-25e62d614364"
             },
             "capture": {
               "mode": "transcript",
@@ -3023,9 +3021,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "af371123-6446-40a8-8d01-2069f5bdb5cb",
+          "client_event_id_sent": "2b9f5325-e35b-4f5a-a043-0e51ffcb7aa2",
           "status": 200,
-          "latency_ms": 1329.13,
+          "latency_ms": 1804.64,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -3068,12 +3066,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "064babfc-f851-463b-be5e-09a9c26c6174",
-            "turn_id": "d6203119-ab6f-46eb-b41f-bd5f27c2cb9a",
-            "client_event_id": "af371123-6446-40a8-8d01-2069f5bdb5cb",
+            "conversation_id": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+            "turn_id": "5da2166b-0859-4901-a9cc-79dba6407ac3",
+            "client_event_id": "2b9f5325-e35b-4f5a-a043-0e51ffcb7aa2",
             "message_ids": {
-              "user": "4c05e9f7-3b02-4744-8389-b544a4595654",
-              "assistant": "65449b01-ad3d-4e8e-9cd4-a10012b859d6"
+              "user": "0d23035f-42a7-48bc-bb1f-22b8f4eb4481",
+              "assistant": "aa13db54-2913-4ea6-959b-c665e1333f58"
             },
             "capture": {
               "mode": "transcript",
@@ -3100,10 +3098,10 @@
               "content": "The page doesn't mention a cryptocurrency trading certification class. It only lists Microsoft Office certifications such as Word, Excel, PowerPoint, and Outlook 2019."
             }
           ],
-          "conversation_id_sent": "064babfc-f851-463b-be5e-09a9c26c6174",
-          "client_event_id_sent": "9b6d83a1-56cc-4366-865d-f2c5f5af3283",
+          "conversation_id_sent": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+          "client_event_id_sent": "78ffa02d-7187-427a-841e-220fb6f065b7",
           "status": 200,
-          "latency_ms": 25458.85,
+          "latency_ms": 1415.89,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -3127,12 +3125,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "064babfc-f851-463b-be5e-09a9c26c6174",
-            "turn_id": "b42b7478-c7e0-491c-8d97-e813708d0915",
-            "client_event_id": "9b6d83a1-56cc-4366-865d-f2c5f5af3283",
+            "conversation_id": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+            "turn_id": "c85aab6f-0155-4511-863b-2676363a3aac",
+            "client_event_id": "78ffa02d-7187-427a-841e-220fb6f065b7",
             "message_ids": {
-              "user": "59069879-fed0-4826-bca2-416b4a9d7859",
-              "assistant": "c55ec372-1078-406e-a253-f785c89838cf"
+              "user": "970f3e82-d3ba-4f18-b3bd-38a1422ae48e",
+              "assistant": "7be42a3e-e1b0-4e89-8698-499ca9ae2aba"
             },
             "capture": {
               "mode": "transcript",
@@ -3167,10 +3165,10 @@
               "content": "What do you need to know about Microsoft Certifications?"
             }
           ],
-          "conversation_id_sent": "064babfc-f851-463b-be5e-09a9c26c6174",
-          "client_event_id_sent": "bbeae0ea-3b3f-4d0b-85c2-ee1271ec25d8",
+          "conversation_id_sent": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+          "client_event_id_sent": "9c5b10d1-cf6f-4a36-8a0d-662ee65e7968",
           "status": 200,
-          "latency_ms": 264.53,
+          "latency_ms": 379.45,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -3213,12 +3211,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "064babfc-f851-463b-be5e-09a9c26c6174",
-            "turn_id": "5f40153e-7c3f-4dbf-84c4-4609750ffffb",
-            "client_event_id": "bbeae0ea-3b3f-4d0b-85c2-ee1271ec25d8",
+            "conversation_id": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+            "turn_id": "78c0cd66-44a4-48fa-b750-68952b167d57",
+            "client_event_id": "9c5b10d1-cf6f-4a36-8a0d-662ee65e7968",
             "message_ids": {
-              "user": "55b9fdfa-eec2-403e-bba5-fbdacca0ec06",
-              "assistant": "9bf22f25-cc3f-4508-b243-dea2b00451fa"
+              "user": "f55c76f7-f42d-4f6a-9c8f-7564b17833ba",
+              "assistant": "089f4483-f9f0-4c10-a695-415b5db797c6"
             },
             "capture": {
               "mode": "transcript",
@@ -3261,10 +3259,10 @@
               "content": "I couldn’t confirm that on Fortune’s public pages."
             }
           ],
-          "conversation_id_sent": "064babfc-f851-463b-be5e-09a9c26c6174",
-          "client_event_id_sent": "66edf0fe-11d0-4a46-9456-798fced603b1",
+          "conversation_id_sent": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+          "client_event_id_sent": "c599ce1e-0351-4ee4-9399-1fd1d9c8ddf7",
           "status": 200,
-          "latency_ms": 2108.4,
+          "latency_ms": 1247.91,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -3307,12 +3305,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "064babfc-f851-463b-be5e-09a9c26c6174",
-            "turn_id": "00c3ce53-c365-4f32-917a-a157755cb0b1",
-            "client_event_id": "66edf0fe-11d0-4a46-9456-798fced603b1",
+            "conversation_id": "dbd1f5d8-cf14-47b6-86fe-7885b11d5600",
+            "turn_id": "402eac94-09e1-4120-8208-99782609df06",
+            "client_event_id": "c599ce1e-0351-4ee4-9399-1fd1d9c8ddf7",
             "message_ids": {
-              "user": "c4c01fda-a1df-4e9e-9011-9fb4f37d2441",
-              "assistant": "f51284ac-b6fc-4b40-a739-ca3246b06f35"
+              "user": "1befcc79-ba6b-4283-bd83-420d9e741d7e",
+              "assistant": "d795e1b8-1cee-4b22-b66e-18c290b75c11"
             },
             "capture": {
               "mode": "transcript",
@@ -3327,7 +3325,7 @@
       "id": "stale_fact_negatives",
       "slice": "stale-fact-negatives",
       "level": "hard",
-      "passed": false,
+      "passed": true,
       "turns": [
         {
           "id": "old-acp-enrollment",
@@ -3339,15 +3337,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "321c5cf2-5da1-48bc-aafc-d4d3e8bdf0dc",
+          "client_event_id_sent": "0af48237-681c-412a-a248-349ad1ee2423",
           "status": 200,
-          "latency_ms": 966.16,
+          "latency_ms": 1119.97,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "No, the Affordable Connectivity Program has lost federal funding and device distribution is currently on hold. The program is working to revive free smartphones and phone service through the LifeLine Program instead.",
+            "message": "No, Fortune cannot enroll you in the ACP today. Device distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3384,12 +3382,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-            "turn_id": "1fd02eb0-d99d-4091-ab78-1f41dc895e33",
-            "client_event_id": "321c5cf2-5da1-48bc-aafc-d4d3e8bdf0dc",
+            "conversation_id": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+            "turn_id": "cdfccbce-00f9-4b0d-b027-69a41455fdf3",
+            "client_event_id": "0af48237-681c-412a-a248-349ad1ee2423",
             "message_ids": {
-              "user": "1a897142-3d97-41f5-a681-3899e192789c",
-              "assistant": "9855729a-d735-4401-9fac-76bea29b3df7"
+              "user": "e56f9b09-826c-4bf5-875c-13cc8115b534",
+              "assistant": "f73d6145-510e-4414-a4b6-d728cdf13c4c"
             },
             "capture": {
               "mode": "transcript",
@@ -3413,21 +3411,19 @@
             },
             {
               "role": "assistant",
-              "content": "No, the Affordable Connectivity Program has lost federal funding and device distribution is currently on hold. The program is working to revive free smartphones and phone service through the LifeLine Program instead."
+              "content": "No, Fortune cannot enroll you in the ACP today. Device distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program."
             }
           ],
-          "conversation_id_sent": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-          "client_event_id_sent": "18aab0d6-96ab-4fe7-a41c-86e68bb3c5a8",
+          "conversation_id_sent": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+          "client_event_id_sent": "0c0879e9-4488-4d13-95b2-d049dee3d56c",
           "status": 200,
-          "latency_ms": 862.47,
+          "latency_ms": 1372.71,
           "transport_error": null,
-          "passed": false,
-          "failures": [
-            "continuity: answer repeats prior evidence instead of advancing"
-          ],
+          "passed": true,
+          "failures": [],
           "response": {
             "kind": "answer",
-            "message": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. The program is working to revive free smartphones and phone service through the LifeLine Program.",
+            "message": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. Fortune is working to revive distribution through the LifeLine Program.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3460,12 +3456,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-            "turn_id": "7cd8c594-5385-48e7-9047-5d637f8e0a16",
-            "client_event_id": "18aab0d6-96ab-4fe7-a41c-86e68bb3c5a8",
+            "conversation_id": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+            "turn_id": "9d90ca58-1a4a-4639-9bd1-ce54954ad8d0",
+            "client_event_id": "0c0879e9-4488-4d13-95b2-d049dee3d56c",
             "message_ids": {
-              "user": "3e246c99-11bc-4dd3-b7e4-f65b9c93bf08",
-              "assistant": "3a2cb6d8-71b9-43d1-b9df-089c531a398c"
+              "user": "9fbe7af9-f401-40ad-99b6-644b577c9d99",
+              "assistant": "26f14588-0c40-439b-833c-517c87212051"
             },
             "capture": {
               "mode": "transcript",
@@ -3489,7 +3485,7 @@
             },
             {
               "role": "assistant",
-              "content": "No, the Affordable Connectivity Program has lost federal funding and device distribution is currently on hold. The program is working to revive free smartphones and phone service through the LifeLine Program instead."
+              "content": "No, Fortune cannot enroll you in the ACP today. Device distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program."
             },
             {
               "role": "user",
@@ -3497,19 +3493,19 @@
             },
             {
               "role": "assistant",
-              "content": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. The program is working to revive free smartphones and phone service through the LifeLine Program."
+              "content": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. Fortune is working to revive distribution through the LifeLine Program."
             }
           ],
-          "conversation_id_sent": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-          "client_event_id_sent": "9e361917-99a1-454a-9cd8-43c6210ccc9a",
+          "conversation_id_sent": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+          "client_event_id_sent": "a593f62f-4a33-4ff9-9b32-0768e5ca07fa",
           "status": 200,
-          "latency_ms": 1425.38,
+          "latency_ms": 981.53,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The page indicates this service is currently not available, and suggests contacting for more information about Canva Design Tools.",
+            "message": "The Canva Design Tools class is currently listed as not available. Contact Fortune for more information about future scheduling.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3546,12 +3542,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-            "turn_id": "a1e55ff6-8293-422b-bea5-c5240b34fed1",
-            "client_event_id": "9e361917-99a1-454a-9cd8-43c6210ccc9a",
+            "conversation_id": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+            "turn_id": "a4ef6a30-8210-4d2a-a1d9-805c15c3ff88",
+            "client_event_id": "a593f62f-4a33-4ff9-9b32-0768e5ca07fa",
             "message_ids": {
-              "user": "7647baa6-e022-45c2-a75a-8060c24a1e7c",
-              "assistant": "7edd896e-9cd5-4b89-a5b5-2bd51b8d8510"
+              "user": "c590db42-bf01-470a-9b6a-b60ff171e9b4",
+              "assistant": "132a7e20-eb25-4a2c-98ff-1608cfc8f337"
             },
             "capture": {
               "mode": "transcript",
@@ -3575,7 +3571,7 @@
             },
             {
               "role": "assistant",
-              "content": "No, the Affordable Connectivity Program has lost federal funding and device distribution is currently on hold. The program is working to revive free smartphones and phone service through the LifeLine Program instead."
+              "content": "No, Fortune cannot enroll you in the ACP today. Device distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program."
             },
             {
               "role": "user",
@@ -3583,7 +3579,7 @@
             },
             {
               "role": "assistant",
-              "content": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. The program is working to revive free smartphones and phone service through the LifeLine Program."
+              "content": "No, free phone distribution is currently on hold due to the loss of federal funding for the Affordable Connectivity Program. Fortune is working to revive distribution through the LifeLine Program."
             },
             {
               "role": "user",
@@ -3591,13 +3587,13 @@
             },
             {
               "role": "assistant",
-              "content": "The page indicates this service is currently not available, and suggests contacting for more information about Canva Design Tools."
+              "content": "The Canva Design Tools class is currently listed as not available. Contact Fortune for more information about future scheduling."
             }
           ],
-          "conversation_id_sent": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-          "client_event_id_sent": "918743c2-018d-487a-8db8-fe74c1f51df7",
+          "conversation_id_sent": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+          "client_event_id_sent": "78e14c6e-90c2-4c9c-ae7b-90fd61295711",
           "status": 200,
-          "latency_ms": 1004.66,
+          "latency_ms": 1164.94,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -3640,12 +3636,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "6ecbbe9c-4e2c-4dc4-aace-db444dbee2a9",
-            "turn_id": "9a65a5f8-6c40-478e-b58b-5db7cc196393",
-            "client_event_id": "918743c2-018d-487a-8db8-fe74c1f51df7",
+            "conversation_id": "d520475d-f737-4c00-80cc-98cd2909b5a0",
+            "turn_id": "205381ae-50b0-49d9-a8b7-0100c5685635",
+            "client_event_id": "78e14c6e-90c2-4c9c-ae7b-90fd61295711",
             "message_ids": {
-              "user": "07de1c83-b57a-4e2c-91d9-75c29bb77aa0",
-              "assistant": "fa46b910-6832-4a57-9d53-f27be4136518"
+              "user": "72154cf3-0a43-474e-8274-22447b41d421",
+              "assistant": "9b46afd9-597d-4cf7-903b-15883a05bbf9"
             },
             "capture": {
               "mode": "transcript",
@@ -3672,15 +3668,15 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "4c246787-fe30-4597-a29a-26fecc02f027",
+          "client_event_id_sent": "f62a4a85-0cde-420e-9a6b-13e0d165f03c",
           "status": 200,
-          "latency_ms": 1574.9,
+          "latency_ms": 1579.16,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "The page shows Long Island City classes on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, and Bronx (SRP) by request only. This is the August training schedule.",
+            "message": "The page shows August training in Long Island City on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with Bronx (SRP) by request only.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3717,12 +3713,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "4c93953a-5ed1-437d-9dee-06a390034180",
-            "turn_id": "917501cc-f75b-4861-ba87-cc74c1ceaea7",
-            "client_event_id": "4c246787-fe30-4597-a29a-26fecc02f027",
+            "conversation_id": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+            "turn_id": "e5458cd3-b15f-4f42-8520-0def6e98b6e1",
+            "client_event_id": "f62a4a85-0cde-420e-9a6b-13e0d165f03c",
             "message_ids": {
-              "user": "bef1f595-681b-46a8-9da3-f808bbbe9209",
-              "assistant": "e15cb47e-144f-4bad-a5a3-74c6f654718e"
+              "user": "5c5a3891-b27e-4857-a341-a9ea2eb4d9be",
+              "assistant": "1bced4dd-0861-4b36-a327-6a1b0d8a8d03"
             },
             "capture": {
               "mode": "transcript",
@@ -3746,19 +3742,19 @@
             },
             {
               "role": "assistant",
-              "content": "The page shows Long Island City classes on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, and Bronx (SRP) by request only. This is the August training schedule."
+              "content": "The page shows August training in Long Island City on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with Bronx (SRP) by request only."
             }
           ],
-          "conversation_id_sent": "4c93953a-5ed1-437d-9dee-06a390034180",
-          "client_event_id_sent": "6d88d044-da0f-4993-a9e0-695a7b58e055",
+          "conversation_id_sent": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+          "client_event_id_sent": "38ef4961-ebd4-484e-b164-901359c0c295",
           "status": 200,
-          "latency_ms": 864.15,
+          "latency_ms": 932.8,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Long Island City classes are held at 29-76 Northern Boulevard, NY 11101, and Bronx (SRP) classes at 3230 Third Avenue, NY 10451.",
+            "message": "August classes are held at the Long Island City main office at 29-76 Northern Boulevard, and Bronx (SRP) classes at 3230 Third Avenue are by request only.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3795,12 +3791,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "4c93953a-5ed1-437d-9dee-06a390034180",
-            "turn_id": "e08cd3a1-cd54-4fc6-b355-65e6a4b059fa",
-            "client_event_id": "6d88d044-da0f-4993-a9e0-695a7b58e055",
+            "conversation_id": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+            "turn_id": "1d54e4ed-0d7b-4135-977d-66465b7b437a",
+            "client_event_id": "38ef4961-ebd4-484e-b164-901359c0c295",
             "message_ids": {
-              "user": "af0e07da-9c3a-410d-8d80-c9dbdcf60086",
-              "assistant": "dce0e18d-f87a-4902-b280-b705fbabc077"
+              "user": "f0c38132-8b98-483a-ab1b-16c98061caf2",
+              "assistant": "7c4f9734-f254-4a65-8a36-c75f89c344f0"
             },
             "capture": {
               "mode": "transcript",
@@ -3824,7 +3820,7 @@
             },
             {
               "role": "assistant",
-              "content": "The page shows Long Island City classes on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, and Bronx (SRP) by request only. This is the August training schedule."
+              "content": "The page shows August training in Long Island City on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with Bronx (SRP) by request only."
             },
             {
               "role": "user",
@@ -3832,19 +3828,19 @@
             },
             {
               "role": "assistant",
-              "content": "Long Island City classes are held at 29-76 Northern Boulevard, NY 11101, and Bronx (SRP) classes at 3230 Third Avenue, NY 10451."
+              "content": "August classes are held at the Long Island City main office at 29-76 Northern Boulevard, and Bronx (SRP) classes at 3230 Third Avenue are by request only."
             }
           ],
-          "conversation_id_sent": "4c93953a-5ed1-437d-9dee-06a390034180",
-          "client_event_id_sent": "f6ce18b9-c95b-4fa3-bed2-77250c353f96",
+          "conversation_id_sent": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+          "client_event_id_sent": "515bba7d-e69b-4e57-917c-bcbdc2e19786",
           "status": 200,
-          "latency_ms": 1505.01,
+          "latency_ms": 1003.11,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Regular classes run Tuesday through Thursday from 2:00 PM to 3:30 PM at the Long Island City location. Bronx classes are available by request only.",
+            "message": "Regular classes run Tuesday through Thursday from 2:00 PM to 3:30 PM at the Long Island City main office.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3881,12 +3877,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "4c93953a-5ed1-437d-9dee-06a390034180",
-            "turn_id": "05e1043a-e056-4739-aa30-7e753334551a",
-            "client_event_id": "f6ce18b9-c95b-4fa3-bed2-77250c353f96",
+            "conversation_id": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+            "turn_id": "1ac2efaa-70ff-44da-b8c0-c69ee11e2937",
+            "client_event_id": "515bba7d-e69b-4e57-917c-bcbdc2e19786",
             "message_ids": {
-              "user": "90ed868c-f7ef-4972-b5b4-42a975c6d3b6",
-              "assistant": "d8ecca49-3085-4dcf-b01c-915f096cd5dd"
+              "user": "634aaf58-f6d6-4bd9-bbfc-5410ae709e14",
+              "assistant": "253d33bb-848d-429c-85b7-5ebfb0c8f6da"
             },
             "capture": {
               "mode": "transcript",
@@ -3910,7 +3906,7 @@
             },
             {
               "role": "assistant",
-              "content": "The page shows Long Island City classes on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, and Bronx (SRP) by request only. This is the August training schedule."
+              "content": "The page shows August training in Long Island City on Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with Bronx (SRP) by request only."
             },
             {
               "role": "user",
@@ -3918,7 +3914,7 @@
             },
             {
               "role": "assistant",
-              "content": "Long Island City classes are held at 29-76 Northern Boulevard, NY 11101, and Bronx (SRP) classes at 3230 Third Avenue, NY 10451."
+              "content": "August classes are held at the Long Island City main office at 29-76 Northern Boulevard, and Bronx (SRP) classes at 3230 Third Avenue are by request only."
             },
             {
               "role": "user",
@@ -3926,19 +3922,19 @@
             },
             {
               "role": "assistant",
-              "content": "Regular classes run Tuesday through Thursday from 2:00 PM to 3:30 PM at the Long Island City location. Bronx classes are available by request only."
+              "content": "Regular classes run Tuesday through Thursday from 2:00 PM to 3:30 PM at the Long Island City main office."
             }
           ],
-          "conversation_id_sent": "4c93953a-5ed1-437d-9dee-06a390034180",
-          "client_event_id_sent": "5d0187aa-81ec-4a1e-8805-9727dcec26a5",
+          "conversation_id_sent": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+          "client_event_id_sent": "df4bde27-12af-4b95-899f-120f51f9ca75",
           "status": 200,
-          "latency_ms": 721.96,
+          "latency_ms": 863.87,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "You don't need to register, walk-ins are welcome for regular classes, though registered participants get priority. For specialized multi-session workshops, registration may be required.",
+            "message": "Regular classes allow walk-in attendance, but you can get priority by registering in advance. For specialized, multi-session workshops, registration may be required.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -3971,12 +3967,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "4c93953a-5ed1-437d-9dee-06a390034180",
-            "turn_id": "cb277b27-1894-4c1b-b914-9ef768af07e2",
-            "client_event_id": "5d0187aa-81ec-4a1e-8805-9727dcec26a5",
+            "conversation_id": "e414d0f2-463e-4e0d-b725-08e0848ca30a",
+            "turn_id": "7db249a0-1640-42aa-adbe-7998751bcf2d",
+            "client_event_id": "df4bde27-12af-4b95-899f-120f51f9ca75",
             "message_ids": {
-              "user": "7d448788-665d-4dfc-836a-d2aa5c4930cb",
-              "assistant": "bfa54f43-f47c-4eef-b6f0-c261a2235836"
+              "user": "b0a8f2d8-ddfd-4522-9e9f-53faf293b994",
+              "assistant": "6447f8b0-d8d2-4502-b38b-e70d19cc3f23"
             },
             "capture": {
               "mode": "transcript",
@@ -4003,9 +3999,9 @@
           },
           "history_sent": [],
           "conversation_id_sent": null,
-          "client_event_id_sent": "54cff8ac-c3f0-42ab-89bf-ab7ce4a80e7a",
+          "client_event_id_sent": "fb9997e0-1ded-4bc4-96a2-bddf69684e86",
           "status": 200,
-          "latency_ms": 164.61,
+          "latency_ms": 205.24,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -4061,12 +4057,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-            "turn_id": "3607ba6c-539b-4637-a003-8db345b55a94",
-            "client_event_id": "54cff8ac-c3f0-42ab-89bf-ab7ce4a80e7a",
+            "conversation_id": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+            "turn_id": "82f02c4d-00f6-4d4c-98b6-773d64b2b5ba",
+            "client_event_id": "fb9997e0-1ded-4bc4-96a2-bddf69684e86",
             "message_ids": {
-              "user": "52c85c8e-3822-4919-8d0d-60cae0fda64e",
-              "assistant": "7d6829e6-010f-45cd-a971-b91aa53d459a"
+              "user": "ca22c85f-c638-455e-87fc-06aa9ca8352c",
+              "assistant": "51370aa7-1e6d-46b4-a10d-8e403f7672ed"
             },
             "capture": {
               "mode": "transcript",
@@ -4093,10 +4089,10 @@
               "content": "What do you want to start with?"
             }
           ],
-          "conversation_id_sent": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-          "client_event_id_sent": "051d2955-60b1-48c9-9990-f1c9656c4378",
+          "conversation_id_sent": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+          "client_event_id_sent": "78453189-7ffb-44d2-b52f-e936ccd2b47e",
           "status": 200,
-          "latency_ms": 184.2,
+          "latency_ms": 190.95,
           "transport_error": null,
           "passed": true,
           "failures": [],
@@ -4146,12 +4142,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-            "turn_id": "a13d9c0d-0053-4892-aba3-a0a21f66b1c2",
-            "client_event_id": "051d2955-60b1-48c9-9990-f1c9656c4378",
+            "conversation_id": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+            "turn_id": "9e02dda3-1d14-4dfc-93cb-ee5b0b36c95e",
+            "client_event_id": "78453189-7ffb-44d2-b52f-e936ccd2b47e",
             "message_ids": {
-              "user": "7d7a5527-c798-44c7-a7b8-2fc0ac238087",
-              "assistant": "08d4e938-1f63-441b-8b8f-8c0288428440"
+              "user": "7842c1e5-d80f-48b7-b1ed-09bcfac6db85",
+              "assistant": "c105e017-eec6-40f4-96b8-b004a0af0363"
             },
             "capture": {
               "mode": "transcript",
@@ -4186,16 +4182,16 @@
               "content": "What do you need?"
             }
           ],
-          "conversation_id_sent": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-          "client_event_id_sent": "43c24122-9cd5-46db-9b51-4ad14cf7076e",
+          "conversation_id_sent": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+          "client_event_id_sent": "920addb2-48b3-4684-b90d-f9d67cea5364",
           "status": 200,
-          "latency_ms": 935.28,
+          "latency_ms": 1262.4,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "Intro to Email covers creating or accessing an account, then practicing reading, composing, sending, replying, and forwarding messages. It's offered at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem).",
+            "message": "Intro to Email covers creating or accessing an account, then practicing reading, composing, sending, replying, and managing your inbox. It's offered at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem).",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -4232,12 +4228,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-            "turn_id": "b199ad99-a132-4e4b-b0ef-c67c0d3342f6",
-            "client_event_id": "43c24122-9cd5-46db-9b51-4ad14cf7076e",
+            "conversation_id": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+            "turn_id": "023eff83-9e79-4edd-be6c-350b5431042e",
+            "client_event_id": "920addb2-48b3-4684-b90d-f9d67cea5364",
             "message_ids": {
-              "user": "0c06ea30-d40a-41cb-b23b-41fef00dc951",
-              "assistant": "94270c0d-aac0-48bc-ad6d-d0ed9a14f545"
+              "user": "6e1dcbcb-9a65-4375-a18f-40ca1764e538",
+              "assistant": "0ef0f64d-3a4c-484a-a1c2-4d34a42eba5b"
             },
             "capture": {
               "mode": "transcript",
@@ -4277,19 +4273,19 @@
             },
             {
               "role": "assistant",
-              "content": "Intro to Email covers creating or accessing an account, then practicing reading, composing, sending, replying, and forwarding messages. It's offered at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
+              "content": "Intro to Email covers creating or accessing an account, then practicing reading, composing, sending, replying, and managing your inbox. It's offered at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
             }
           ],
-          "conversation_id_sent": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-          "client_event_id_sent": "c6392587-0902-4c2b-a9b4-94f0f67353ef",
+          "conversation_id_sent": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+          "client_event_id_sent": "9253d079-5c23-4af2-83c3-e9206002ba77",
           "status": 200,
-          "latency_ms": 2518.59,
+          "latency_ms": 1134.01,
           "transport_error": null,
           "passed": true,
           "failures": [],
           "response": {
             "kind": "answer",
-            "message": "It covers creating or accessing an email account, navigating the inbox, and practicing reading, composing, sending, replying, and forwarding messages, plus adding and opening attachments.",
+            "message": "It covers creating or accessing an email account, then practicing reading, composing, sending, replying, forwarding emails, and managing attachments. No email address is required before class.",
             "reason": "From an approved Fortune page.",
             "sources": [
               {
@@ -4326,12 +4322,12 @@
             "request_language": "en",
             "response_language": "en",
             "prompt_policy_version": "2026-08-17-v15",
-            "conversation_id": "3ba3214b-3bc9-47c5-a3c7-69c509a0b3ce",
-            "turn_id": "9f539602-73e0-4a41-ab80-c40adc7cc7df",
-            "client_event_id": "c6392587-0902-4c2b-a9b4-94f0f67353ef",
+            "conversation_id": "9e6c4d71-d89e-445e-a93c-df09298a01e8",
+            "turn_id": "72c0d4f2-d85c-4395-96f3-84ef81ec8967",
+            "client_event_id": "9253d079-5c23-4af2-83c3-e9206002ba77",
             "message_ids": {
-              "user": "326f3e50-c69c-482c-9d21-171000a949b9",
-              "assistant": "581cfa2d-98d9-4a36-bbf1-62b7fe4d19be"
+              "user": "3d3eeb90-9e1d-47c8-aaf6-8179c7fd50fc",
+              "assistant": "f91b3973-35be-47c5-98a1-51f4a06421ad"
             },
             "capture": {
               "mode": "transcript",
