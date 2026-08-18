@@ -2,6 +2,7 @@
 """Key-free contract tests for the context-aware Digital Equity guide."""
 
 import copy
+import contextlib
 import io
 import inspect
 import json
@@ -547,6 +548,25 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
         self.assertEqual(len(model_calls), 1)
 
+    def test_support_page_accepts_grounded_one_to_one_session_wording(self):
+        question = "Can I walk in for the help described here?"
+        answer = (
+            "Yes, you can stop by the Support Desk for quick technical help, or "
+            "visit during office hours. For 1-on-1 tutoring, sessions are offered "
+            "by appointment, so you'd need to schedule those in advance."
+        )
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/support",
+            model_source_id="individual",
+            model_answer=answer,
+        )
+
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
+        self.assertEqual(len(model_calls), 1)
+
     def test_named_acp_enrollment_question_retrieves_current_device_status(self):
         question = "Can Fortune enroll me in the old $30 Affordable Connectivity Program discount today?"
         self.assertIsNone(server.ambiguity_response(question))
@@ -556,16 +576,33 @@ class StagedRetrievalTests(unittest.TestCase):
             "https://www.fortunedigitalequity.org/",
             model_source_id="devices",
             model_answer=(
-                "However, distribution is currently on hold, due to the loss of federal "
-                "funding for devices through the Affordable Connectivity Program."
+                "No, the Affordable Connectivity Program has lost federal funding, "
+                "so that discount is no longer available. Fortune's device distribution "
+                "is currently on hold as a result."
             ),
         )
         self.assertEqual(captured["payload"]["kind"], "answer")
         self.assertEqual(captured["payload"]["retrieval_scope"], "site")
         self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
         self.assertIn("currently on hold", captured["payload"]["message"])
+        self.assertIn("no longer available", captured["payload"]["message"])
         self.assertNotIn("$30", captured["payload"]["message"])
         self.assertEqual(len(model_calls), 1)
+
+    def test_leading_no_does_not_erase_a_local_negative_qualifier(self):
+        available = next(
+            group for group in server._RISKY_QUALIFIER_GROUPS if "available" in group
+        )
+        self.assertEqual(
+            server._qualifier_polarities("No, laptops are available.", available),
+            {"positive"},
+        )
+        self.assertEqual(
+            server._qualifier_polarities(
+                "No, that discount is no longer available.", available
+            ),
+            {"negative"},
+        )
 
     def test_chat_response_has_stable_modular_identifiers_even_when_capture_is_off(self):
         captured, _ = self.dispatch_chat(
@@ -758,6 +795,68 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(result["kind"], "answer")
         self.assertEqual(result["message"], answer)
 
+    def test_explicit_class_coverage_follow_up_can_restate_the_grounded_prior_detail(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Intro to Email covers creating an account, navigating the inbox, and "
+            "practicing reading, composing, sending, and managing emails. It's offered "
+            "at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
+        )
+        answer = (
+            "It covers creating or accessing an email account, navigating the inbox, "
+            "and practicing reading, composing, sending, replying to, forwarding "
+            "emails, and handling attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What does that class cover?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "I want to learn email from the beginning."},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answer=answer,
+        )
+        self.assertTrue(
+            server.question_requests_prior_detail(
+                "What does that class cover?", prior
+            )
+        )
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], source_id)
+        self.assertEqual(len(model_calls), 1)
+
+    def test_request_for_additional_class_coverage_still_has_to_advance(self):
+        source_id = server.INTRO_EMAIL_ID
+        prior = (
+            "Intro to Email covers creating an account, navigating the inbox, and "
+            "practicing reading, composing, sending, and managing emails. It's offered "
+            "at Main Office (LIC), SRP (Bronx), and Fortune Academy (Harlem)."
+        )
+        repeated = (
+            "It covers creating or accessing an email account, navigating the inbox, "
+            "and practicing reading, composing, sending, replying to, forwarding "
+            "emails, and handling attachments."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What else does that class cover?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            history=[
+                {"role": "user", "content": "I want to learn email from the beginning."},
+                {"role": "assistant", "content": prior},
+            ],
+            model_answers=[repeated, repeated],
+        )
+        self.assertFalse(
+            server.question_requests_prior_detail(
+                "What else does that class cover?", prior
+            )
+        )
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(len(model_calls), 2)
+
     def test_single_resolved_source_ask_retries_then_answers(self):
         grounded = (
             "To qualify, participants must be active attendees or previous attendees "
@@ -882,6 +981,130 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertIn(
             server.RETRY_INSTRUCTIONS["resolved source can answer"],
             model_calls[1][0]["content"],
+        )
+
+    def test_negative_source_status_cannot_be_rewritten_as_a_current_offering(self):
+        question = "I want to learn about the device distribution programs."
+        source = server.SOURCE_BY_ID["devices"]
+        unsafe = (
+            "The Fortune Society Digital Equity Program offers free smartphones "
+            "and phone service through the LifeLine Program, plus device distribution "
+            "through Computers 4 People and the Affordable Connectivity Program."
+        )
+        grounded = (
+            "Smartphone distribution is currently on hold. Fortune partners with "
+            "Computers 4 People to provide free refurbished laptops to participants."
+        )
+
+        self.assertFalse(server.model_answer_is_grounded(unsafe, source, question))
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "El programa ofrece un teléfono gratis y servicio telefónico "
+                "a través de LifeLine.",
+                source,
+                "¿Qué programas de distribución de dispositivos ofrecen?",
+            )
+        )
+        informational = (
+            "The program offers information on free smartphone and phone service "
+            "distribution through LifeLine. Smartphone distribution is currently "
+            "on hold due to loss of federal funding."
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(informational, source, question)
+        )
+        parsed = server.parse_model_selection(
+            json.dumps({"pick": "devices", "answer": informational}),
+            question,
+            [source],
+            "site",
+        )
+        self.assertEqual(parsed["kind"], "answer")
+        self.assertTrue(
+            parsed["message"].lower().startswith(
+                "smartphone distribution is currently on hold"
+            )
+        )
+        self.assertTrue(server.model_answer_is_grounded(grounded, source, question))
+        mixed = (
+            unsafe
+            + " Smartphone distribution is currently on hold due to loss of "
+            "federal funding through the Affordable Connectivity Program."
+        )
+        recovered = server.parse_model_selection(
+            json.dumps({"pick": "devices", "answer": mixed}),
+            question,
+            [source],
+            "site",
+        )
+        self.assertEqual(recovered["kind"], "answer")
+        self.assertTrue(
+            recovered["message"].lower().startswith(
+                "smartphone distribution is currently on hold"
+            )
+        )
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                json.dumps({"pick": "devices", "answer": unsafe}),
+                [source],
+                {"chat_stage": "initial", "request_language": "en"},
+                "",
+                question,
+                question,
+            ),
+            "status contradiction",
+        )
+
+    def test_negative_source_status_retries_to_a_grounded_dynamic_answer(self):
+        question = "I want to learn about the device distribution programs."
+        unsafe = (
+            "The Fortune Society Digital Equity Program offers free smartphones "
+            "and phone service through the LifeLine Program, plus device distribution "
+            "through Computers 4 People and the Affordable Connectivity Program."
+        )
+        grounded = (
+            "Smartphone distribution is currently on hold. Fortune partners with "
+            "Computers 4 People to provide free refurbished laptops to participants."
+        )
+        captured, model_calls = self.dispatch_chat(
+            question,
+            server.ROOT_URL,
+            model_raws=[
+                json.dumps({"pick": "devices", "answer": unsafe}),
+                json.dumps({"pick": "devices", "answer": grounded}),
+            ],
+        )
+
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], grounded)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["status contradiction"],
+            model_calls[1][0]["content"],
+        )
+
+    def test_negative_status_guard_follows_the_approved_record(self):
+        question = "What device distribution programs are available?"
+        answer = (
+            "The program offers free smartphones and phone service through "
+            "the LifeLine Program."
+        )
+        available = copy.deepcopy(server.SOURCE_BY_ID["devices"])
+        available["description"] = answer
+        available["facts"] = []
+        available["blocks"] = [answer]
+        self.assertTrue(
+            server.model_answer_is_grounded(answer, available, question)
+        )
+
+        on_hold = copy.deepcopy(available)
+        on_hold["blocks"] = [
+            answer,
+            "Smartphone distribution and phone service are currently on hold.",
+        ]
+        self.assertFalse(
+            server.model_answer_is_grounded(answer, on_hold, question)
         )
 
     def test_elliptical_laptop_qualification_uses_resolved_history_context(self):
@@ -1338,6 +1561,41 @@ class ResponseContractTests(unittest.TestCase):
         self.assertTrue(server.model_answer_is_grounded("The workshop lasts 2 months.", timed))
         self.assertFalse(server.model_answer_is_grounded("The workshop lasts 2 days.", timed))
 
+    def test_one_to_one_labels_are_not_misread_as_session_counts(self):
+        support = server.SOURCE_BY_ID["individual"]
+        for label in ("1-on-1", "1:1", "one-on-one"):
+            answer = f"{label} tutoring sessions are offered by appointment."
+            with self.subTest(label=label):
+                self.assertNotIn(
+                    ("1", "session"),
+                    server._claim_number_unit_pairs(answer),
+                )
+                self.assertTrue(
+                    server.model_answer_is_grounded(
+                        answer,
+                        support,
+                        "Can I walk in for the help described here?",
+                    )
+                )
+
+        counted = copy.deepcopy(support)
+        counted["description"] = (
+            "Two tutoring sessions are offered by appointment. "
+            "One participant attends at a time."
+        )
+        counted["facts"] = []
+        counted["blocks"] = [counted["description"]]
+        self.assertEqual(
+            server._claim_number_unit_pairs("One tutoring session is offered by appointment."),
+            {("1", "session")},
+        )
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "One tutoring session is offered by appointment.",
+                counted,
+            )
+        )
+
     def test_grounded_limitation_may_repeat_a_user_named_item_without_licensing_it(self):
         calendar = server.SOURCE_BY_ID["calendar"]
         question = "Is there an Intro to Email class tomorrow?"
@@ -1433,6 +1691,27 @@ class ResponseContractTests(unittest.TestCase):
             server.model_answer_is_grounded(
                 "Complete at least 5 months.", source, "What is required?"
             )
+        )
+
+    def test_clock_times_are_not_misread_as_session_counts(self):
+        source = server.SOURCE_BY_ID["calendar"]
+        question = "What current schedule is shown on this page?"
+        answers = (
+            "The page shows August training sessions in Long Island City on "
+            "Tuesday, Wednesday, and Thursday from 2:00 PM to 3:30 PM, with "
+            "Bronx (SRP) available by request only.",
+            "Digital Equity classes in Long Island City run Tuesday, Wednesday, "
+            "and Thursday from 2:00 PM to 3:30 PM. Bronx (SRP) sessions are by "
+            "request only.",
+        )
+        for answer in answers:
+            with self.subTest(answer=answer):
+                self.assertTrue(
+                    server.model_answer_is_grounded(answer, source, question)
+                )
+        self.assertNotIn(
+            ("30", "session"),
+            server._claim_number_unit_pairs(answers[1]),
         )
 
     def test_grounded_model_output_changes_when_the_approved_record_changes(self):
@@ -1719,6 +1998,29 @@ class ResponseContractTests(unittest.TestCase):
 
 
 class FrontendAndDeploymentTests(unittest.TestCase):
+    def test_model_validation_log_contains_only_bounded_outcomes(self):
+        handler = server.Handler.__new__(server.Handler)
+        handler._request_id = "request-id"
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            handler._log_model_validation(
+                attempts=2,
+                first_reason="resolved source can answer",
+                final_reason="accepted",
+                response_kind="answer",
+            )
+        event = json.loads(output.getvalue())
+        self.assertEqual(event, {
+            "event": "model_validation",
+            "request_id": "request-id",
+            "attempts": 2,
+            "first_reason": "resolved source can answer",
+            "final_reason": "accepted",
+            "response_kind": "answer",
+        })
+        self.assertNotIn("question", event)
+        self.assertNotIn("response", event)
+
     def test_browser_origin_policy_allows_same_origin_and_rejects_unknown_origins(self):
         self.assertTrue(server.origin_is_allowed("", "127.0.0.1:8790"))
         self.assertTrue(server.origin_is_allowed("http://127.0.0.1:8790", "127.0.0.1:8790"))
@@ -1778,7 +2080,7 @@ class FrontendAndDeploymentTests(unittest.TestCase):
         finally:
             server.ollama_request = original_request
         options = payloads[0]["options"]
-        self.assertEqual(options, {"temperature": 0})
+        self.assertEqual(options, {"temperature": 0, "seed": server.MODEL_SEED})
         self.assertEqual(payloads[0]["format"], server.MODEL_OUTPUT_SCHEMA)
         self.assertFalse(payloads[0]["format"]["additionalProperties"])
         self.assertEqual(

@@ -27,11 +27,17 @@
   exact-title and feature routing, FAQ/section evidence packing, relative-date
   routing, one-source `ASK` retry, concise direct-answer guidance, status
   caveats, and sentence-level repetition detection.
-- [ ] Deploy the exact v12 commit to Railway staging, rerun the versioned suites,
-  and require the substantive hard gates to pass before promotion.
-- [ ] Mark PR #18 ready, merge it, verify the GitHub Pages workflow and browser,
-  then deploy that exact merged tree to Railway production with capture `none`,
-  no database, and evaluation disabled.
+- [x] Vet `Infobot Notes_Fortune Society Digital Equity` from Documents and
+  adopt only the added-value, fact-free prompt guidance: automated/non-staff
+  identity plus plain, respectful, nonjudgmental language. Keep program facts,
+  logging disclosures, unapproved crisis directions, and broad staff/language
+  promises out of the system prompt.
+- [x] Qualify the exact v16 commit on Railway staging: 41/41 scattershot cases,
+  12/12 conversations, 50/50 turns, and 28/28 context-dependent turns, with
+  every factual answer model-generated from an approved Fortune source.
+- [ ] Push the v16 branch, merge its release PR, verify the GitHub Pages workflow
+  and public browser, then deploy that exact merged tree to Railway production
+  with capture `none`, no database, and evaluation disabled.
 - [x] Do not deploy or evaluate this guide on the CUNY PIT Lab website. PIT Lab
   may link to the canonical zmuhls production URL only if requested.
 

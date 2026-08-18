@@ -76,6 +76,7 @@ MAX_MESSAGE_WORDS = 35
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
+MODEL_SEED = 42
 MODEL_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -2644,6 +2645,16 @@ _NUMBER_WORDS = {
     "doce": "12",
 }
 
+_ONE_TO_ONE_LABEL_PATTERN = re.compile(
+    r"\b(?:"
+    r"(?:1|one)\s*-\s*(?:on|to)\s*-\s*(?:1|one)|"
+    r"1\s*[:/]\s*1|"
+    r"1\s+(?:on|to)\s+1|"
+    r"one\s+(?:on|to)\s+one"
+    r")\b",
+    re.I,
+)
+
 _CLAIM_UNITS = {
     "class": "class", "classes": "class", "clase": "class", "clases": "class",
     "day": "day", "days": "day", "dia": "day", "dias": "day",
@@ -2665,6 +2676,38 @@ _UNIVERSAL_CLAIM_PATTERNS = (
     re.compile(r"\b(?:anyone|everyone|every participant|all participants)\b", re.I),
     re.compile(r"\b(?:cualquier persona|para todos|todas las personas|todos los participantes)\b", re.I),
 )
+
+_NEGATIVE_STATUS_PATTERN = re.compile(
+    r"\b(?:not (?:currently )?(?:available|offered)|unavailable|"
+    r"(?:currently )?on hold|no longer (?:available|bookable|offered|provided|distributed)|"
+    r"can no longer be booked|coming soon|"
+    r"no (?:esta|está) (?:actualmente )?(?:disponible|ofrecid[ao]s?)|"
+    r"(?:actualmente )?en pausa|indisponible|"
+    r"ya no (?:esta|está) disponible|ya no se (?:ofrece|proporciona|distribuye)|"
+    r"proximamente|próximamente)\b",
+    re.I,
+)
+_POSITIVE_PROVISION_PATTERN = re.compile(
+    r"\b(?:offers?|provides?|distributes?|supplies?|"
+    r"ofrece(?:n)?|proporciona(?:n)?|distribuye(?:n)?|suministra(?:n)?)\b",
+    re.I,
+)
+_INFORMATION_ABOUT_SERVICE_PATTERN = re.compile(
+    r"\b(?:offers?|provides?)\s+(?:information|details?|guidance)\s+(?:about|on)|"
+    r"\b(?:ofrece(?:n)?|proporciona(?:n)?)\s+(?:informacion|información|detalles?)\s+"
+    r"(?:acerca de|sobre)",
+    re.I,
+)
+_STATUS_TOPIC_IGNORED_TERMS = {
+    "access", "available", "availability", "class", "classes", "coming", "current",
+    "currently", "device", "devices",
+    "digital", "distribute", "distributed", "distributes", "distributing",
+    "distribution", "equity", "fortune", "free", "help", "hold", "offer", "offered",
+    "offering", "offers", "program", "programs", "provide", "provided", "provides",
+    "providing", "service", "services", "society", "soon", "supplied", "supplies",
+    "supply", "supplying", "support", "tools", "training", "trainings", "website",
+    "workshop", "workshops",
+}
 
 _ENTITY_PATTERN = re.compile(
     r"\b[A-ZÁÉÍÓÚÜÑ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'’-]*"
@@ -2691,7 +2734,20 @@ def _claim_numbers(value):
 
 
 def _claim_number_unit_pairs(value):
-    words = tokens(value, keep_stopwords=True)
+    # One-to-one labels describe the format of support, not a count. Without
+    # removing the label first, wording such as "1-on-1 tutoring sessions" is
+    # misread as a claim that exactly one session is offered.
+    value = _ONE_TO_ONE_LABEL_PATTERN.sub("individual", str(value or ""))
+    # Clock times are separately checked by _claim_numbers. Removing the whole
+    # time here prevents the minute value in "3:30 PM ... sessions" from being
+    # misread as a claim about 30 sessions.
+    value_without_times = re.sub(
+        r"\b\d{1,2}:\d{2}(?:\s*[ap]\.?m\.?)?\b",
+        " ",
+        fold_text(value),
+        flags=re.I,
+    )
+    words = tokens(value_without_times, keep_stopwords=True)
     pairs = set()
     barriers = {"and", "by", "for", "in", "of", "or", "through", "to", "with"}
     for index, word in enumerate(words):
@@ -2718,10 +2774,15 @@ def _qualifier_polarities(value, group):
     for index, word in enumerate(words):
         if word not in group:
             continue
-        prior = set(words[max(0, index - 3):index])
+        prior_start = max(0, index - 3)
+        negative_positions = {
+            position
+            for position in range(prior_start, index)
+            if words[position] in negatives
+        }
         if leading_response_no:
-            prior.discard("no")
-        polarities.add("negative" if prior.intersection(negatives) else "positive")
+            negative_positions.discard(0)
+        polarities.add("negative" if negative_positions else "positive")
     return polarities
 
 
@@ -2742,12 +2803,76 @@ def _source_qualifier_polarities(value, group):
         return polarities
     if re.search(
         r"\b(?:office hours?|support hours?|walk-?in|by appointment|"
-        r"schedule an appointment|currently offered|is offered|are offered|"
+        r"by request(?: only)?|schedule an appointment|currently offered|"
+        r"is offered|are offered|"
         r"offers?|provides?|provided)\b",
         folded,
     ):
         return {"positive"}
     return set()
+
+
+def _answer_conflicts_with_negative_status(answer, source_claim_text):
+    """Reject a current provision claim that reverses a source status."""
+
+    ignored_terms = _expanded_grounding_terms(
+        " ".join(_STATUS_TOPIC_IGNORED_TERMS)
+    )
+    source_lines = [
+        line.strip()
+        for line in str(source_claim_text or "").splitlines()
+        if tokens(line, keep_stopwords=True)
+    ]
+    negative_contexts = []
+    for index, line in enumerate(source_lines):
+        if not _NEGATIVE_STATUS_PATTERN.search(line):
+            continue
+        context = " ".join(source_lines[max(0, index - 1):index + 1])
+        terms = _expanded_grounding_terms(context).difference(ignored_terms)
+        if terms:
+            negative_contexts.append(terms)
+    if not negative_contexts:
+        return False
+
+    answer_sentences = re.split(r"(?<=[.!?])\s+|\n+", str(answer or ""))
+    for sentence in answer_sentences:
+        if (
+            not _POSITIVE_PROVISION_PATTERN.search(sentence)
+            or _NEGATIVE_STATUS_PATTERN.search(sentence)
+            or _INFORMATION_ABOUT_SERVICE_PATTERN.search(sentence)
+        ):
+            continue
+        provision_terms = _expanded_grounding_terms(sentence).difference(ignored_terms)
+        if any(len(provision_terms.intersection(context)) >= 2 for context in negative_contexts):
+            return True
+    return False
+
+
+def _negative_status_sentence_first(answer, source_claim_text):
+    """Keep a model's source-backed status caveat inside the concise word cap."""
+
+    if not _NEGATIVE_STATUS_PATTERN.search(str(source_claim_text or "")):
+        return str(answer or "")
+    sentences = [
+        sentence.strip()
+        for sentence in re.findall(r"[^.!?]+(?:[.!?]+|$)", str(answer or ""))
+        if sentence.strip()
+    ]
+    status_index = next(
+        (
+            index
+            for index, sentence in enumerate(sentences)
+            if _NEGATIVE_STATUS_PATTERN.search(sentence)
+        ),
+        -1,
+    )
+    if status_index <= 0:
+        return str(answer or "")
+    return " ".join(
+        [sentences[status_index]]
+        + sentences[:status_index]
+        + sentences[status_index + 1:]
+    )
 
 
 def _named_entities_are_supported(answer, source_text):
@@ -2819,6 +2944,14 @@ def answers_near_duplicate(answer, prior_answer):
 def question_requests_prior_detail(question, prior_answer):
     """Allow a grounded confirmation when the user asks about an earlier detail."""
 
+    value = fold_text(semantic_question(question))
+    if prior_answer and re.search(
+        r"\b(?:what|which) (?:does|do|did|will|would) "
+        r"(?:(?:that|this|the) (?:class|course|workshop|program|service|page|option)|it|they) "
+        r"(?:cover|include|teach|offer|mean|say)\b",
+        value,
+    ):
+        return True
     question_terms = expanded_query_terms(question).difference({
         "answer", "detail", "details", "kind", "page", "tell",
     })
@@ -2858,6 +2991,8 @@ def model_answer_is_grounded(answer, source, question=""):
     for pattern in _UNIVERSAL_CLAIM_PATTERNS:
         if pattern.search(answer) and not any(row.search(source_text) for row in _UNIVERSAL_CLAIM_PATTERNS):
             return False
+    if _answer_conflicts_with_negative_status(answer, source_claim_text):
+        return False
     for group in _RISKY_QUALIFIER_GROUPS:
         answer_polarities = _qualifier_polarities(answer, group)
         if answer_polarities and not answer_polarities.issubset(
@@ -2925,8 +3060,46 @@ def parse_model_selection(
             interaction,
             routing_question,
         )
-    message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
     grounding_question = routing_question or question
+    source_claim_text = (
+        source_excerpt(
+            selected,
+            grounding_question,
+            limit=MAX_MODEL_EXCERPT_CHARS,
+        )
+        or searchable_text(selected)
+    )
+    answer_text = parsed["answer"]
+    if _answer_conflicts_with_negative_status(answer_text, source_claim_text):
+        grounded_status = next(
+            (
+                sentence.strip()
+                for sentence in re.findall(
+                    r"[^.!?]+(?:[.!?]+|$)",
+                    str(answer_text or ""),
+                )
+                if _NEGATIVE_STATUS_PATTERN.search(sentence)
+                and model_answer_is_grounded(
+                    sentence.strip(),
+                    selected,
+                    grounding_question,
+                )
+            ),
+            "",
+        )
+        if not grounded_status:
+            return selector_clarification_response(
+                question,
+                retrieved,
+                retrieval_scope,
+                interaction,
+                routing_question,
+            )
+        answer_text = grounded_status
+    message = clip_words(
+        _negative_status_sentence_first(answer_text, source_claim_text),
+        MAX_MESSAGE_WORDS,
+    )
     if not model_answer_is_grounded(message, selected, grounding_question):
         return selector_clarification_response(
             question,
@@ -2982,8 +3155,21 @@ def model_selection_retry_reason(
     if parsed["pick"] == SELECTOR_ASK:
         return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
-    message = clip_words(parsed["answer"], MAX_MESSAGE_WORDS)
     grounding_question = routing_question or question
+    source_claim_text = (
+        source_excerpt(
+            selected,
+            grounding_question,
+            limit=MAX_MODEL_EXCERPT_CHARS,
+        )
+        or searchable_text(selected)
+    )
+    if _answer_conflicts_with_negative_status(parsed["answer"], source_claim_text):
+        return "status contradiction"
+    message = clip_words(
+        _negative_status_sentence_first(parsed["answer"], source_claim_text),
+        MAX_MESSAGE_WORDS,
+    )
     if not model_answer_is_grounded(message, selected, grounding_question):
         return (
             "resolved source can answer"
@@ -3414,6 +3600,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 question,
                 routing_question,
             )
+            model_attempts = 1
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
                 retry_messages = [
                     {
@@ -3425,17 +3612,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     messages[1],
                 ]
                 raw = self._ollama(retry_messages)
+                model_attempts = 2
+            final_validation_reason = model_selection_retry_reason(
+                raw,
+                model_sources,
+                interaction,
+                prior_answer,
+                question,
+                routing_question,
+            )
+            response = parse_model_selection(
+                raw,
+                question,
+                model_sources,
+                retrieval_scope,
+                interaction,
+                routing_question=routing_question,
+                prior_answer=prior_answer,
+            )
+            self._log_model_validation(
+                attempts=model_attempts,
+                first_reason=retry_reason or "accepted",
+                final_reason=final_validation_reason or "accepted",
+                response_kind=response.get("kind") or "unknown",
+            )
             self._chat_json(
                 200,
-                parse_model_selection(
-                    raw,
-                    question,
-                    model_sources,
-                    retrieval_scope,
-                    interaction,
-                    routing_question=routing_question,
-                    prior_answer=prior_answer,
-                ),
+                response,
                 turn,
                 question,
                 started_at,
@@ -3866,6 +4069,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "keep_alive": MODEL_KEEP_ALIVE,
             "options": {
                 "temperature": 0,
+                "seed": MODEL_SEED,
             },
         })
         MODEL_WARMUP.mark_ready()
@@ -3879,6 +4083,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.client_address[0]
         except (AttributeError, IndexError, TypeError):
             return "unknown"
+
+    def _log_model_validation(self, *, attempts, first_reason, final_reason, response_kind):
+        """Log bounded validator outcomes without question or response content."""
+
+        request_id = getattr(self, "_request_id", "")
+        if not request_id:
+            return
+        print(json.dumps({
+            "event": "model_validation",
+            "request_id": request_id,
+            "attempts": int(attempts),
+            "first_reason": str(first_reason)[:80],
+            "final_reason": str(final_reason)[:80],
+            "response_kind": str(response_kind)[:24],
+        }, separators=(",", ":")), flush=True)
 
     def _cors_headers(self, origin=None):
         origin = (origin or self.headers.get("Origin", "")).rstrip("/")

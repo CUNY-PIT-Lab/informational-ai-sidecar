@@ -278,6 +278,178 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             ["continuity: answer repeats prior evidence instead of advancing"],
         )
 
+    def test_advancement_grader_accepts_a_repeated_caveat_with_new_evidence(self):
+        caveat = "This service is currently not available, so contact for more information."
+        history = [
+            {"role": "user", "content": "What does the introductory class cover?"},
+            {
+                "role": "assistant",
+                "content": (
+                    f"{caveat} The introductory class covers entering, editing, "
+                    "selecting, moving, and copying information."
+                ),
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": (
+                f"{caveat} The formatting class covers titles, numbers, dates, "
+                "currency, borders, and cell styles."
+            ),
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            [],
+        )
+
+    def test_advancement_grader_accepts_new_evidence_in_an_expanded_sentence(self):
+        history = [
+            {"role": "user", "content": "What does the formatting class cover?"},
+            {
+                "role": "assistant",
+                "content": (
+                    "It covers titles, headers, text, numbers, dates, currency, "
+                    "percentages, alignment, borders, cell styles, and the format painter."
+                ),
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": (
+                "It covers titles, headers, text, numbers, dates, times, currency, "
+                "and percentages, plus alignment, wrapping, merging, fills, borders, "
+                "cell styles, the format painter, paste options, resetting formatting, "
+                "and automatic highlighting of important values."
+            ),
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            [],
+        )
+
+    def test_advancement_grader_rejects_a_compressed_subset(self):
+        history = [
+            {"role": "user", "content": "What does the formatting class cover?"},
+            {
+                "role": "assistant",
+                "content": (
+                    "The class covers titles, headers, text, numbers, dates, currency, "
+                    "percentages, alignment, borders, cell styles, and the format painter."
+                ),
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": "It covers dates, currency, alignment, borders, and cell styles.",
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            ["continuity: answer repeats prior evidence instead of advancing"],
+        )
+
+    def test_advancement_grader_allows_requested_prior_qualification_detail(self):
+        history = [
+            {"role": "user", "content": "Can I get a refurbished laptop?"},
+            {
+                "role": "assistant",
+                "content": (
+                    "You must be an active or previous attendee of at least five "
+                    "Digital Equity workshops to qualify for a refurbished laptop."
+                ),
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": (
+                "You must be an active or previous attendee of at least five "
+                "Digital Equity workshops to qualify."
+            ),
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+                question="How would I qualify for that?",
+            ),
+            [],
+        )
+
+    def test_advancement_grader_allows_requested_prior_class_detail(self):
+        prior = "The class covers formatting titles, alignment, wrapping, and borders."
+        history = [
+            {"role": "user", "content": "Tell me about the formatting class."},
+            {"role": "assistant", "content": prior},
+        ]
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response={"kind": "answer", "message": prior},
+                history=history,
+                question="What formatting techniques does that class cover?",
+            ),
+            [],
+        )
+
+    def test_advancement_grader_does_not_exempt_open_ended_follow_ups(self):
+        prior = "One-to-one tutoring is available online or in person by appointment."
+        history = [
+            {"role": "user", "content": "Can I get support?"},
+            {"role": "assistant", "content": prior},
+        ]
+        for question in ("What else?", "Tell me more.", "What next?"):
+            with self.subTest(question=question):
+                self.assertEqual(
+                    run_website_guide_multiturn_eval.advancement_failures(
+                        response={"kind": "answer", "message": prior},
+                        history=history,
+                        question=question,
+                    ),
+                    ["continuity: answer repeats prior evidence instead of advancing"],
+                )
+
+    def test_advancement_grader_requires_the_requested_detail_in_prior_answer(self):
+        prior = "Refurbished laptop supply is limited, and there may be a wait."
+        history = [
+            {"role": "user", "content": "Can I get a refurbished laptop?"},
+            {"role": "assistant", "content": prior},
+        ]
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response={"kind": "answer", "message": prior},
+                history=history,
+                question="How would I qualify for that?",
+            ),
+            ["continuity: answer repeats prior evidence instead of advancing"],
+        )
+
+    def test_advancement_grader_rejects_a_paraphrase_without_new_evidence(self):
+        history = [
+            {"role": "user", "content": "Can I get support?"},
+            {
+                "role": "assistant",
+                "content": "One-to-one tutoring is available online or in person by appointment.",
+            },
+        ]
+        response = {
+            "kind": "answer",
+            "message": "Tutoring is available by appointment, either online or in person.",
+        }
+        self.assertEqual(
+            run_website_guide_multiturn_eval.advancement_failures(
+                response=response,
+                history=history,
+            ),
+            ["continuity: answer repeats prior evidence instead of advancing"],
+        )
+
     def test_evidence_cleanup_removes_form_and_image_scaffolding(self):
         fragments = [
             "QRCode for Pre-Computer Safety Survey",

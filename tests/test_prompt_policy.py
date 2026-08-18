@@ -47,6 +47,13 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn("plain, respectful, nonjudgmental language", source_selector.SYSTEM_PROMPT)
         self.assertIn("avoid unexplained jargon, blame, or assumptions", source_selector.SYSTEM_PROMPT)
         self.assertIn("asks to confirm, restate, or explain", source_selector.SYSTEM_PROMPT)
+        self.assertIn("preserve that status", source_selector.SYSTEM_PROMPT)
+        self.assertIn("do not rewrite the service as currently offered or available", source_selector.SYSTEM_PROMPT)
+        self.assertIn("status contradiction", prompt_policy.RETRY_INSTRUCTIONS)
+        self.assertIn(
+            "State the affected service's negative status first",
+            prompt_policy.RETRY_INSTRUCTIONS["status contradiction"],
+        )
         self.assertNotIn("conversation logs are recorded", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("988", source_selector.SYSTEM_PROMPT)
         self.assertNotIn("laptop", source_selector.SYSTEM_PROMPT.lower())
