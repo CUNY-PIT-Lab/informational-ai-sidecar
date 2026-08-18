@@ -76,6 +76,15 @@ MAX_MESSAGE_WORDS = 35
 MAX_REASON_WORDS = 18
 MAX_EVIDENCE_WORDS = 40
 MAX_EVIDENCE_SENTENCES = 2
+MODEL_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "pick": {"type": "string"},
+        "answer": {"type": "string"},
+    },
+    "required": ["pick", "answer"],
+    "additionalProperties": False,
+}
 
 def bounded_env_int(name, default, minimum, maximum):
     try:
@@ -3853,7 +3862,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "messages": messages,
             "stream": False,
             "think": False,
-            "format": "json",
+            "format": MODEL_OUTPUT_SCHEMA,
             "keep_alive": MODEL_KEEP_ALIVE,
             "options": {
                 "temperature": 0,

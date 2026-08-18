@@ -1779,6 +1779,12 @@ class FrontendAndDeploymentTests(unittest.TestCase):
             server.ollama_request = original_request
         options = payloads[0]["options"]
         self.assertEqual(options, {"temperature": 0})
+        self.assertEqual(payloads[0]["format"], server.MODEL_OUTPUT_SCHEMA)
+        self.assertFalse(payloads[0]["format"]["additionalProperties"])
+        self.assertEqual(
+            payloads[0]["format"]["required"],
+            ["pick", "answer"],
+        )
 
     def test_warmup_endpoint_requires_an_allowed_origin(self):
         handler = server.Handler.__new__(server.Handler)
