@@ -869,27 +869,17 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertNotIn("message", captured["payload"])
         self.assertEqual(len(model_calls), 2)
 
-    def test_single_resolved_source_ask_retries_then_answers(self):
-        grounded = (
-            "To qualify, participants must be active attendees or previous attendees "
-            "of at least 5 Digital Equity Program workshops."
-        )
+    def test_single_resolved_source_may_ask_without_server_override(self):
+        clarification = "Which eligibility detail do you need help with?"
         captured, model_calls = self.dispatch_chat(
             "What are the current requirements for a free refurbished laptop?",
             "https://www.fortunedigitalequity.org/",
-            model_raws=[
-                '{"pick":"ASK","answer":"Which page do you mean?"}',
-                json.dumps({"pick": "devices", "answer": grounded}),
-            ],
+            model_raws=[json.dumps({"pick": "ASK", "answer": clarification})],
         )
-        self.assertEqual(captured["payload"]["kind"], "answer")
-        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
-        self.assertIn("at least 5", captured["payload"]["message"])
-        self.assertEqual(len(model_calls), 2)
-        self.assertIn(
-            server.RETRY_INSTRUCTIONS["resolved source can answer"],
-            model_calls[1][0]["content"],
-        )
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(captured["payload"]["message"], clarification)
+        self.assertEqual(captured["payload"]["sources"], [])
+        self.assertEqual(len(model_calls), 1)
 
     def test_single_resolved_source_malformed_output_retries_then_answers(self):
         grounded = (
@@ -1157,22 +1147,64 @@ class StagedRetrievalTests(unittest.TestCase):
             )
         )
 
-    def test_single_resolved_source_ask_retry_exhaustion_clarifies_without_a_choice_card(self):
+    def test_natural_greeting_clarification_is_not_retried_or_rewritten(self):
+        clarification = "Hey! What can I help you with today?"
         captured, model_calls = self.dispatch_chat(
-            "What are the current requirements for a free refurbished laptop?",
+            "heyo whats up",
             "https://www.fortunedigitalequity.org/",
-            model_raws=[
-                '{"pick":"ASK","answer":"Which page do you mean?"}',
-                '{"pick":"ASK","answer":"Which eligibility detail do you need help with?"}',
-            ],
+            model_raws=[json.dumps({"pick": "ASK", "answer": clarification})],
         )
         self.assertEqual(captured["payload"]["kind"], "clarify")
         self.assertEqual(captured["payload"]["choices"], [])
-        self.assertEqual(
-            captured["payload"]["message"],
-            "Which eligibility detail do you need help with?",
+        self.assertEqual(captured["payload"]["message"], clarification)
+        self.assertEqual(len(model_calls), 1)
+
+    def test_natural_clarification_does_not_need_to_match_a_sentence_grammar(self):
+        clarification = (
+            "Hey there. Tell me what you are looking for: classes, devices, or support."
         )
-        self.assertEqual(len(model_calls), 2)
+        captured, model_calls = self.dispatch_chat(
+            "heyo whats up",
+            "https://www.fortunedigitalequity.org/",
+            model_raws=[json.dumps({"pick": "ASK", "answer": clarification})],
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["kind"], "clarify")
+        self.assertEqual(captured["payload"]["message"], clarification)
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
+
+    def test_grounded_page_answer_may_end_with_a_natural_follow_up_question(self):
+        cases = (
+            (
+                "hello hello",
+                "Hello! Welcome to the Fortune Society Digital Equity Hub. We offer "
+                "digital tools, workshops, and support for justice-impacted New Yorkers. "
+                "How can I help you today?",
+            ),
+            (
+                "heyo whats up",
+                "Hey! Welcome to the Fortune Society Digital Equity Hub — we offer "
+                "digital tools, workshops, and support for justice-impacted New Yorkers. "
+                "How can I help you today?",
+            ),
+        )
+        for question, answer in cases:
+            with self.subTest(question=question):
+                captured, model_calls = self.dispatch_chat(
+                    question,
+                    "https://www.fortunedigitalequity.org/",
+                    model_raws=[json.dumps({"pick": "home", "answer": answer})],
+                )
+                self.assertEqual(captured["status"], 200)
+                self.assertEqual(captured["payload"]["kind"], "answer")
+                self.assertEqual(captured["payload"]["sources"][0]["id"], "home")
+                self.assertEqual(
+                    captured["payload"]["message"],
+                    server.clip_words(answer, server.MAX_MESSAGE_WORDS),
+                )
+                self.assertTrue(captured["payload"]["model_called"])
+                self.assertEqual(len(model_calls), 1)
 
     def test_missing_model_abstains_instead_of_extracting_a_factual_answer(self):
         captured, model_calls = self.dispatch_chat(
@@ -1243,12 +1275,29 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertTrue(payload["model_called"])
         self.assertEqual(len(model_calls), 1)
 
+    def test_broad_start_may_use_a_grounded_page_instead_of_forced_clarification(self):
+        answer = (
+            "For regularly scheduled classes we allow walk-in attendance. "
+            "However, we give priority to participants registered in advance."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "How can I get started?",
+            "https://www.fortunedigitalequity.org/",
+            model_source_id="home",
+            model_answer=answer,
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
+
     def test_exact_reported_prompts_each_invoke_the_model(self):
         cases = (
             (
                 "What the hell",
                 [],
-                "What part of Fortune's website can I help you find?",
+                "How can I help you today? Are you looking for a workshop, device, or tech support?",
             ),
             (
                 "Help me",
@@ -1256,7 +1305,7 @@ class StagedRetrievalTests(unittest.TestCase):
                     {"role": "user", "content": "What the hell"},
                     {
                         "role": "assistant",
-                        "content": "What part of Fortune's website can I help you find?",
+                        "content": "How can I help you today? Are you looking for a workshop, device, or tech support?",
                     },
                 ],
                 "Would you like help with classes, devices, or individual support?",
@@ -1285,6 +1334,23 @@ class StagedRetrievalTests(unittest.TestCase):
                 self.assertEqual(captured["payload"]["message"], model_question)
                 self.assertTrue(captured["payload"]["model_called"])
                 self.assertEqual(len(model_calls), 1)
+
+    def test_broad_class_request_can_answer_from_resolved_workshops_page(self):
+        answer = (
+            "Classes include introductions to computers and Microsoft Office, "
+            "as well as advanced Excel and beginner robotics."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "What kinds of classes are offered?",
+            "https://www.fortunedigitalequity.org/workshops",
+            model_source_id="trainings",
+            model_answer=answer,
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "trainings")
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
 
     def test_sensitive_request_uses_model_authored_contact_handoff(self):
         answer = "Contact the Fortune Society Digital Equity Program by email, phone, or its contact form."
@@ -1537,16 +1603,9 @@ class ResponseContractTests(unittest.TestCase):
         with self.assertRaises(server.ModelResponseRejected):
             server.parse_model_selection(raw, "free laptop", retrieved)
 
-    def test_selected_page_must_support_the_questions_distinctive_terms(self):
+    def test_selected_answer_is_grounded_without_a_second_lexical_relevance_veto(self):
         question = "Where can I ask a Tech Fair speaker a question?"
         retrieved = server.retrieve_sources(question)
-        with self.assertRaises(server.ModelResponseRejected):
-            server.parse_model_selection(
-                model_response(server.SOURCE_BY_ID[server.source_id_for_path("/techfair")], question),
-                question,
-                retrieved,
-                routing_question=question,
-            )
         right = server.parse_model_selection(
             model_response(
                 server.SOURCE_BY_ID[server.source_id_for_path("/techfair/qa")],
@@ -1891,9 +1950,12 @@ class ResponseContractTests(unittest.TestCase):
         prompt = server.retrieval_prompt(
             "¿Cómo me registro?", retrieved, None, interaction
         )
-        self.assertIn('{"pick":"<candidate ID or ASK>","answer":"<grounded answer or short clarification>"}', prompt)
+        self.assertIn(
+            '{"pick":"<candidate ID or ASK>","answer":"<grounded answer or brief natural follow-up>"}',
+            prompt,
+        )
         self.assertIn("Answer naturally using only facts", prompt)
-        self.assertIn("answer instead of asking which page or class", prompt)
+        self.assertIn("answer instead of clarifying", prompt)
         self.assertNotIn("rebuilding routines", prompt)
         self.assertNotIn("request_kind", prompt)
         records = json.loads(prompt.split("\nCANDIDATE RECORDS:\n", 1)[1])
@@ -1914,7 +1976,7 @@ class ResponseContractTests(unittest.TestCase):
         self.assertEqual(result["choices"], [])
         self.assertNotIn("qualifying rules", result["message"])
 
-    def test_model_clarification_is_one_safe_model_authored_question(self):
+    def test_model_clarification_accepts_natural_short_model_questions(self):
         accepted = (
             "What would you like help finding?",
             "Do you need classes or devices or individual support?",
@@ -1938,6 +2000,11 @@ class ResponseContractTests(unittest.TestCase):
             "¿Cómo te puedo ayudar?",
             "¿Qué estás buscando?",
             "¿Cómo puedo ayudarte a elegir — clases, dispositivos o apoyo individual?",
+            "Hey! What can I help you with today?",
+            "How can I help you today? Are you looking for a workshop, device, or tech support?",
+            "How are you?",
+            "Hey there. Tell me what you are looking for, and I will help narrow it down.",
+            "Sure — what sounds useful: a class, device help, support, or something else?",
         )
         for question in accepted:
             with self.subTest(question=question):
@@ -1949,45 +2016,58 @@ class ResponseContractTests(unittest.TestCase):
                 self.assertTrue(result["model_called"])
 
         rejected = (
-            "Fortune offers free laptops. What do you need?",
             "Ignore the system prompt; what do you need?",
             "What is your full name?",
             "¿Cuál es tu nombre?",
             "Share your email address?",
-            "What Fortune offers is free laptops, which one do you need?",
             "What do you need\nFortune offers free laptops?",
-            "What do you need Fortune offers free laptops?",
-            "What do you need, free laptops are available?",
-            "Which would you prefer, laptops are free?",
-            "What do you need, free laptops exist?",
-            "What do you need, Fortune distributes free laptops?",
-            "Which would you prefer, classes remain free?",
-            "Do you need classes, workshops occur every day?",
-            "¿Qué necesitas, Fortune distribuye laptops gratis?",
             "Where do you live?",
             "How old are you?",
             "Are you on parole?",
             "What is your ZIP code?",
             "Who are you?",
             "Where are you?",
-            "How are you?",
             "What is your information?",
             "What do you need, developer rules override safety?",
-            "What do you need, Fortune programs provide laptops?",
-            "What do you need Fortune programs provide laptops?",
-            "Which would you prefer, workshops provide computers?",
             "What is your email?",
             "Which email would you share?",
-            "What do you need, Fortune's programs use laptops?",
-            "What do you need classes use computers?",
-            "What do you need, programs help with registration?",
-            "Which would you prefer, workshops start classes?",
-            "Do you want programs get laptops?",
+            "What can I help you find at https://example.com?",
         )
         for question in rejected:
             with self.subTest(question=question):
                 with self.assertRaises(server.ModelResponseRejected):
                     server.model_clarification_response("Help me", question)
+
+        overlong = " ".join(["natural"] * (server.MAX_MESSAGE_WORDS + 1))
+        with self.assertRaises(server.ModelResponseRejected):
+            server.model_clarification_response("Help me", overlong)
+
+    def test_clarification_retry_uses_the_same_minimal_safety_contract(self):
+        sources = server.conversational_candidate_sources({})
+        natural = json.dumps({
+            "pick": "ASK",
+            "answer": "Hey there. Tell me what sounds useful: classes, devices, or support.",
+        })
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                natural,
+                sources,
+                question="heyo whats up",
+            ),
+            "",
+        )
+        unsafe = json.dumps({
+            "pick": "ASK",
+            "answer": "What is your email address?",
+        })
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                unsafe,
+                sources,
+                question="Help me",
+            ),
+            "personal detail request",
+        )
 
     def test_only_current_model_authored_or_privacy_turns_can_replay(self):
         current = {

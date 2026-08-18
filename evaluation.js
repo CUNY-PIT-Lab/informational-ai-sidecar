@@ -115,15 +115,15 @@
     scope: "shared",
     shared: true,
     deployed: {
-      version: "2026-08-18-v17",
-      behavior_release: "model-authored-every-safe-turn",
+      version: "2026-08-18-v19",
+      behavior_release: "model-authored-natural-clarification",
       editable: false,
     },
     editable_modules: [
-      { key: "style", label: "Tone and concision", current_variant: "plain_respectful_conversational", current_value: "Use plain, respectful, nonjudgmental language. Start with the useful action or answer, and avoid unexplained jargon, blame, or assumptions about the participant.", maximum_length: 500 },
-      { key: "clarification", label: "Clarification style", current_variant: "one_short_question", current_value: "When clarification is needed, ask one short question without unsupported facts.", maximum_length: 500 },
-      { key: "follow_up", label: "Follow-up advancement", current_variant: "advance_with_supported_detail", current_value: "Answer follow-ups with a different supported detail instead of repeating the prior answer.", maximum_length: 500 },
-      { key: "page_awareness", label: "Page awareness and flow", current_variant: "explicit_reference_only", current_value: "Treat the current page as a hint only when the visitor explicitly refers to it.", maximum_length: 500 },
+      { key: "style", label: "Tone and concision", current_variant: "plain_respectful_conversational", current_value: "Answer directly and conversationally, usually in one sentence and about 30 words or fewer. Use plain, respectful, nonjudgmental language. Start with the useful action or answer, and avoid unexplained jargon, blame, or assumptions about the participant. Use a second sentence only for a necessary status, eligibility, safety, or uncertainty caveat. When asked for options, name the supported options. Paraphrase promotional language.", maximum_length: 500 },
+      { key: "clarification", label: "Clarification style", current_variant: "brief_natural_follow_up", current_value: "When you pick ASK, ask a brief, natural follow-up that responds to the participant's words and resolves only the ambiguity blocking a useful answer. Do not force a clarification when one relevant approved page supports the request.", maximum_length: 500 },
+      { key: "follow_up", label: "Follow-up advancement", current_variant: "confirm_or_advance", current_value: "For a follow-up, answer only the new part and do not repeat the previous guide answer unless the participant asks to confirm, restate, or explain a detail already mentioned. Then answer that detail directly.", maximum_length: 500 },
+      { key: "page_awareness", label: "Page awareness and flow", current_variant: "explicit_reference_only", current_value: "The current page is only a hint when the question explicitly refers to that page.", maximum_length: 500 },
     ],
     code_controlled: [
       "Grounding and no-guessing rules",

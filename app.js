@@ -472,6 +472,7 @@
     if (!response.ok || data.error) {
       const error = new Error(data.error || "The live model could not answer.");
       error.payload = data;
+      error.status = response.status;
       throw error;
     }
     if (data.kind !== "privacy" && (
@@ -481,6 +482,7 @@
     )) {
       const error = new Error("The guide returned an invalid response.");
       error.payload = data;
+      error.status = response.status;
       throw error;
     }
     return data;
@@ -521,6 +523,24 @@
 
   function showUnavailable(message = "Guide unavailable. Try again.") {
     setEditStatus(message);
+  }
+
+  function requestFailureMessage(error, editing = false) {
+    const status = Number(error?.status || 0);
+    if (status === 409 && error?.payload?.idempotency_complete === false) {
+      return editing ? "Still working. Try again or cancel." : "Still working. Try again.";
+    }
+    if (error?.payload?.idempotency_complete === true) {
+      return editing ? "Try again or cancel." : "Try again.";
+    }
+    if (status === 429) {
+      return editing ? "Guide busy. Try again shortly or cancel." : "Guide busy. Try again shortly.";
+    }
+    if (status === 502) {
+      return editing ? "Try rephrasing or cancel." : "Try rephrasing.";
+    }
+    if (editing && status && status !== 503) return "Couldn’t update. Try again or cancel.";
+    return editing ? "Guide unavailable. Try again or cancel." : "Guide unavailable. Try again.";
   }
 
   async function ask(question, options = {}) {
@@ -586,22 +606,22 @@
     } catch (error) {
       questionField.value = value;
       resizeQuestionField();
-      if (error?.payload) {
+      const retryInProgress = Number(error?.status || 0) === 409
+        && error?.payload?.idempotency_complete === false;
+      if (error?.payload && !retryInProgress) {
         pendingClientEventId = "";
         pendingQuestion = "";
       }
-      apiReady = false;
-      modelReady = false;
-      modelStatus.textContent = "Unavailable";
-      modelStatus.classList.remove("model-ready");
+      if (![409, 429, 502].includes(Number(error?.status || 0))) {
+        apiReady = false;
+        modelReady = false;
+        modelStatus.textContent = "Unavailable";
+        modelStatus.classList.remove("model-ready");
+      }
       if (editing) {
-        setEditStatus(error?.payload?.idempotency_complete
-          ? "Try again or cancel."
-          : "Couldn’t update. Try again or cancel.");
+        setEditStatus(requestFailureMessage(error, true));
       } else {
-        showUnavailable(error?.payload?.idempotency_complete
-          ? "Try again."
-          : undefined);
+        showUnavailable(requestFailureMessage(error));
       }
     } finally {
       setBusy(false);

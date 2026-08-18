@@ -15,6 +15,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import conversation_store
+import evaluation_store
 import prompt_policy
 import server
 import source_selector
@@ -22,6 +23,11 @@ import source_selector
 
 class PromptPolicyTests(unittest.TestCase):
     def test_runtime_and_capture_use_one_policy_id(self):
+        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v19")
+        self.assertEqual(
+            prompt_policy.PROMPT_BEHAVIOR_RELEASE,
+            "model-authored-natural-clarification",
+        )
         self.assertEqual(server.PROMPT_POLICY_VERSION, prompt_policy.PROMPT_POLICY_VERSION)
         self.assertEqual(
             server.CONVERSATION_RECORDER.prompt_version,
@@ -37,10 +43,11 @@ class PromptPolicyTests(unittest.TestCase):
 
     def test_selector_uses_compiled_reviewed_policy(self):
         self.assertEqual(source_selector.SYSTEM_PROMPT, prompt_policy.SYSTEM_PROMPT)
-        self.assertIn("single page", source_selector.SYSTEM_PROMPT)
+        self.assertIn("one relevant approved page", source_selector.SYSTEM_PROMPT)
         self.assertIn("never combine pages", source_selector.SYSTEM_PROMPT)
-        self.assertIn("Pick ASK only", source_selector.SYSTEM_PROMPT)
-        self.assertIn("answer instead of asking which page or class", source_selector.SYSTEM_PROMPT)
+        self.assertIn("brief, natural follow-up", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Do not force a clarification", source_selector.SYSTEM_PROMPT)
+        self.assertNotIn("one or two", source_selector.SYSTEM_PROMPT)
         self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
         self.assertIn("automated Fortune Society Website Guide", source_selector.SYSTEM_PROMPT)
         self.assertIn("not a Fortune staff member", source_selector.SYSTEM_PROMPT)
@@ -70,6 +77,44 @@ class PromptPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prompt_policy.compile_system_prompt({"style": "free text"})
 
+    def test_visible_prompts_catalog_uses_current_clarification_variant(self):
+        catalog = {
+            module["key"]: module
+            for module in evaluation_store.EvaluationStore._prompt_module_catalog()
+        }
+        clarification = catalog["clarification"]
+        self.assertEqual(
+            clarification["current_variant"],
+            "brief_natural_follow_up",
+        )
+        self.assertEqual(
+            clarification["current_value"],
+            prompt_policy.TEAM_TUNABLE_PROMPT_MODULES["clarification"]
+            ["brief_natural_follow_up"],
+        )
+        self.assertIn("brief, natural follow-up", clarification["current_value"])
+        self.assertNotIn("one or two", clarification["current_value"])
+
+    def test_visible_prompts_preview_matches_current_policy_registry(self):
+        javascript = (ROOT / "evaluation.js").read_text(encoding="utf-8")
+        self.assertIn(
+            f'version: "{prompt_policy.PROMPT_POLICY_VERSION}"',
+            javascript,
+        )
+        self.assertIn(
+            f'behavior_release: "{prompt_policy.PROMPT_BEHAVIOR_RELEASE}"',
+            javascript,
+        )
+        for module in evaluation_store.EvaluationStore._prompt_module_catalog():
+            self.assertIn(
+                f'current_variant: "{module["current_variant"]}"',
+                javascript,
+            )
+            self.assertIn(
+                f'current_value: "{module["current_value"]}"',
+                javascript,
+            )
+
     def test_retry_text_is_allowlisted_and_versioned(self):
         base = prompt_policy.SYSTEM_PROMPT + "\nCANDIDATE RECORDS:\n[]"
         retry = prompt_policy.build_retry_prompt(base, "unsupported factual wording")
@@ -80,6 +125,10 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertEqual(
             prompt_policy.build_retry_prompt(base, "participant supplied text"),
             base,
+        )
+        self.assertNotIn(
+            "one or two",
+            " ".join(prompt_policy.RETRY_INSTRUCTIONS.values()),
         )
 
     def test_manifest_artifact_hashes_and_current_prompt_hash(self):
@@ -117,6 +166,28 @@ class PromptPolicyTests(unittest.TestCase):
                 self.assertTrue(entry.get("source_commit"), entry["policy_id"])
             else:
                 self.assertTrue(entry.get("source_state"), entry["policy_id"])
+
+    def test_v18_artifacts_remain_byte_exact_after_v19(self):
+        manifest = json.loads(
+            (ROOT / "prompts" / "manifest.json").read_text(encoding="utf-8")
+        )
+        v18 = next(
+            entry
+            for entry in manifest["versions"]
+            if entry["policy_id"] == "2026-08-18-v18"
+        )
+        self.assertEqual(
+            v18["artifact_sha256"],
+            "d52ed256c4322240ec45936eb67e3d2166fd976961aa1cfce15e080ac5150770",
+        )
+        self.assertEqual(
+            v18["compiled_prompt_artifact"],
+            "versions/2026-08-18-v18-compiled.md",
+        )
+        self.assertEqual(
+            v18["compiled_prompt_artifact_sha256"],
+            "56fdc98e5678c87863dbacfa68a524e92823970667ab0b251a02ad716c660d8f",
+        )
 
 
 if __name__ == "__main__":
