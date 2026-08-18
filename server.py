@@ -87,6 +87,10 @@ MODEL_OUTPUT_SCHEMA = {
     "additionalProperties": False,
 }
 
+
+class ModelResponseRejected(RuntimeError):
+    """The provider replied, but no safe participant-facing answer survived validation."""
+
 def bounded_env_int(name, default, minimum, maximum):
     try:
         value = int(os.environ.get(name, str(default)))
@@ -431,30 +435,10 @@ PARTICIPANT_COPY = {
     "en": {
         "privacy_message": "Remove personal information and try again.",
         "privacy_reason": "Use Contact for personal help.",
-        "sensitive_message": "This needs staff help. Don’t include personal information.",
-        "sensitive_reason": "Use Contact.",
-        "missing_message": "I couldn’t confirm that on Fortune’s public pages.",
-        "missing_reason": "The guide won’t guess.",
-        "model_missing_message": "Live answers are unavailable.",
-        "model_missing_reason": "Use the page or Contact.",
-        "usage_message": "Live answers are paused. Try again later.",
-        "usage_reason": "Shared limit reached.",
-        "model_error_message": "Live answer unavailable. Try again.",
-        "model_error_reason": "Use the page or Contact.",
     },
     "es": {
         "privacy_message": "Quita los datos personales e inténtalo de nuevo.",
         "privacy_reason": "Usa Contacto para ayuda personal.",
-        "sensitive_message": "Esto necesita ayuda del personal. No incluyas datos personales.",
-        "sensitive_reason": "Usa Contacto.",
-        "missing_message": "No pude confirmarlo en las páginas públicas de Fortune.",
-        "missing_reason": "La guía no adivina.",
-        "model_missing_message": "Las respuestas en vivo no están disponibles.",
-        "model_missing_reason": "Usa la página o Contacto.",
-        "usage_message": "Las respuestas en vivo están pausadas. Inténtalo más tarde.",
-        "usage_reason": "Se alcanzó el límite compartido.",
-        "model_error_message": "La respuesta en vivo no está disponible. Inténtalo de nuevo.",
-        "model_error_reason": "Usa la página o Contacto.",
     },
 }
 
@@ -755,7 +739,7 @@ def request_kind(question):
         return "privacy"
     if needs_human_handoff(question):
         return "sensitive"
-    if ambiguity_response(question, detect_language(question)):
+    if question_needs_model_clarification(question, detect_language(question)):
         return "clarification"
     if re.search(r"\b(?:how do i|how can i|steps?|apply|register|sign up|what do i need|como|pasos?|solicitar|registrarme|inscribirme|que necesito)\b", value):
         return "procedure"
@@ -1728,156 +1712,6 @@ def source_supports_query(source, query):
     )
 
 
-def named_items_under_heading(source, heading):
-    """Extract short proper names from a labeled source section without inventing any."""
-
-    if source_has_template_content(source):
-        return []
-    blocks = [clean_evidence_fragment(value) for value in source.get("blocks", [])]
-    headings = {
-        fold_text(clean_evidence_fragment(value))
-        for value in source.get("headings", [])
-    }
-    target = fold_text(heading)
-    names = []
-    active = False
-    role_words = {
-        "coordinator", "director", "founder", "instructor", "lead", "manager",
-        "navigator", "officer", "specialist", "team",
-    }
-    for block in blocks:
-        folded = fold_text(block)
-        if folded == target:
-            active = True
-            continue
-        if not active:
-            continue
-        if folded in headings:
-            break
-        if folded.startswith("profile photo"):
-            continue
-        words = block.split()
-        if not 2 <= len(words) <= 4:
-            continue
-        if set(tokens(block, keep_stopwords=True)).intersection(role_words):
-            continue
-        if not all(re.match(r"^[A-Z][A-Za-z'’.-]*$", word) for word in words):
-            continue
-        if block not in names:
-            names.append(block)
-    return names
-
-
-def logo_items_under_heading(source, heading):
-    """Extract organization names from a labeled logo list in a source record."""
-
-    blocks = [clean_evidence_fragment(value) for value in source.get("blocks", [])]
-    headings = {
-        fold_text(clean_evidence_fragment(value))
-        for value in source.get("headings", [])
-    }
-    target = fold_text(heading)
-    names = []
-    active = False
-    for block in blocks:
-        folded = fold_text(block)
-        if folded == target:
-            active = True
-            continue
-        if not active:
-            continue
-        if folded in headings:
-            break
-        if not re.search(r"\sLogo$", block, flags=re.I):
-            continue
-        name = re.sub(r"\s+Logo$", "", block, flags=re.I).strip()
-        if name and name not in names:
-            names.append(name)
-    return names
-
-
-def format_name_list(names):
-    if len(names) == 1:
-        return names[0]
-    if len(names) == 2:
-        return " and ".join(names)
-    return ", ".join(names[:-1]) + ", and " + names[-1]
-
-
-def grounded_answer_message(
-    question,
-    sources,
-    retrieval_scope,
-    *,
-    language_code="en",
-    chat_stage="opening",
-    routing_question=None,
-    require_evidence_overlap=False,
-    prior_answer=None,
-):
-    """Build the visible factual answer from source text, never model prose."""
-    if not sources:
-        return participant_copy("missing_message", language_code)
-    source = sources[0]
-    title = re.sub(r"\s*[|·]\s*FS Digital Equity\s*$", "", source.get("title", "Digital Equity"), flags=re.I)
-    evidence = ""
-    question_words = set(tokens(question, keep_stopwords=True))
-    partner_names = (
-        logo_items_under_heading(source, "Partners")
-        if question_words.intersection({"partner", "partners"})
-        else []
-    )
-    team_names = (
-        named_items_under_heading(source, "Meet the Team")
-        if question_words.intersection({"staff", "team"})
-        else []
-    )
-    if partner_names:
-        evidence = f"The page lists {format_name_list(partner_names)} as partners."
-    elif team_names:
-        evidence = f"The page names {format_name_list(team_names)}."
-    elif (
-        source.get("id") == CANVA_DESIGN_TOOLS_ID
-        and question_words.intersection({"background", "experience", "need", "prior"})
-    ):
-        evidence = grounded_evidence_sentences(
-            source,
-            "design background needed",
-            max_sentences=1,
-            require_overlap=True,
-        )
-    if not evidence:
-        if routing_question and question_needs_history_context(question):
-            contextual_terms = " ".join(sorted(distinctive_query_terms(routing_question)))
-            evidence_query = f"{question} {title} {contextual_terms}".strip()
-        else:
-            evidence_query = routing_question or question
-        if not routing_question and question_needs_history_context(question):
-            evidence_query = f"{evidence_query} {title}"
-        device_support = device_use_support_intent(evidence_query)
-        detail_requested = content_detail_intent(question)
-        evidence = grounded_evidence_sentences(
-            source,
-            evidence_query,
-            limit=48 if detail_requested else 40 if device_support else MAX_EVIDENCE_WORDS,
-            max_sentences=(
-                2
-                if detail_requested
-                else 1 if chat_stage == "follow_up"
-                else 2 if device_support else MAX_EVIDENCE_SENTENCES
-            ),
-            require_overlap=require_evidence_overlap or chat_stage == "follow_up",
-            focus_query=question if routing_question else None,
-            prior_answer=prior_answer if chat_stage == "follow_up" else None,
-        )
-    if not evidence:
-        return participant_copy("missing_message", language_code)
-    message = evidence.rstrip()
-    if message and message[-1] not in ".!?":
-        message += "."
-    return message
-
-
 def source_payload(sources):
     seen = set()
     result = []
@@ -2202,6 +2036,29 @@ def retrieval_plan(question, page_context=None):
     return "staff", []
 
 
+def conversational_candidate_sources(page_context=None):
+    """Provide a bounded approved site map when lexical retrieval has no hit.
+
+    These records give the model enough current site context to ask a useful
+    question. They are evidence candidates, not server-authored answers.
+    """
+
+    candidates = []
+    current = approved_current_page_source(page_context)
+    if current:
+        candidates.append(current)
+    for source_id in CORE_IDS:
+        source = SOURCE_BY_ID.get(source_id)
+        if (
+            source
+            and source.get("authority") == "answer"
+            and source.get("status", 200) == 200
+            and all(row["url"] != source["url"] for row in candidates)
+        ):
+            candidates.append(source)
+    return candidates[:6]
+
+
 def deterministic_answer_sources(question, retrieved, retrieval_scope):
     """Use the local source index when its top route is unambiguous."""
 
@@ -2262,7 +2119,14 @@ def related_links(question, sources, limit=3):
     return [record for record in result if record]
 
 
-def ambiguity_response(question, language_code=None, page_context=None):
+def question_needs_model_clarification(question, language_code=None, page_context=None):
+    """Classify vague requests for telemetry without authoring a reply.
+
+    Clarification wording belongs to the model. This predicate is deliberately
+    response-free so an allowed participant message can never be answered by a
+    server-side menu or stock sentence.
+    """
+
     question = semantic_question(question)
     lowered = fold_text(question).strip(" ?.!")
     words = set(tokens(lowered, keep_stopwords=True))
@@ -2273,29 +2137,12 @@ def ambiguity_response(question, language_code=None, page_context=None):
         or device_distribution_intent(question)
         or (current and question_refers_to_current_page(question))
     ):
-        return None
-    cases = []
+        return False
     if language_code == "es":
         if lowered in {"ayuda", "necesito ayuda", "apoyo", "que puedes hacer"}:
-            cases.append((
-                "¿Qué necesitas: aprender algo, resolver un problema con un dispositivo o hablar con el personal?",
-                [
-                    ("Aprender", "Quiero aprender una habilidad digital."),
-                    ("Resolver un problema", "Necesito ayuda con un dispositivo."),
-                    ("Hablar con el personal", "Quiero contactar al personal de Digital Equity."),
-                ],
-                ["home"],
-            ))
+            return True
         elif words.intersection({"dispositivo", "computadora", "telefono"}) and len(words) <= 5:
-            cases.append((
-                "¿Necesitas un dispositivo, aprender a usarlo o resolver un problema?",
-                [
-                    ("Necesito un dispositivo", "Quiero información sobre los programas de dispositivos."),
-                    ("Aprender a usarlo", "Quiero una clase para aprender a usar mi dispositivo."),
-                    ("Resolver un problema", "Necesito ayuda individual con un dispositivo."),
-                ],
-                ["devices", "individual"],
-            ))
+            return True
         elif (
             words.intersection({"clase", "clases", "curso", "taller"})
             and len(words) <= 6
@@ -2306,25 +2153,9 @@ def ambiguity_response(question, language_code=None, page_context=None):
                 "inscribirme",
             })
         ):
-            cases.append((
-                "¿Qué necesitas?",
-                [
-                    ("Temas", "Temas"),
-                    ("Fechas y lugares", "Fechas y lugares"),
-                    ("Inscribirme", "Inscribirme"),
-                ],
-                [],
-            ))
+            return True
         elif words.intersection({"internet", "wifi"}) and len(words) <= 6:
-            cases.append((
-                "¿Necesitas servicio de internet, conectar un dispositivo o aprender a usar internet?",
-                [
-                    ("Servicio de internet", "Necesito información para obtener servicio de internet."),
-                    ("Conectar un dispositivo", "Necesito ayuda para conectar un dispositivo a internet."),
-                    ("Aprender internet", "Quiero aprender a usar internet."),
-                ],
-                ["individual", "trainings"],
-            ))
+            return True
     specific_request_terms = {
         "device", "computer", "phone", "laptop", "class", "classes", "workshop", "workshops",
         "training", "trainings", "course", "courses", "register", "registration", "calendar",
@@ -2362,25 +2193,9 @@ def ambiguity_response(question, language_code=None, page_context=None):
         )
     )
     if broad_start_or_help:
-        cases.append((
-            "What do you want to start with?",
-            [
-                ("Take a class", "Classes"),
-                ("Get a device", "I need information about getting a device."),
-                ("Talk to staff", "I want to contact Digital Equity staff."),
-            ],
-            ["home"],
-        ))
+        return True
     elif words.intersection({"device", "computer", "phone", "laptop"}) and len(words) <= 5 and not words.intersection({"free", "eligible", "eligibility", "class", "learn", "fix", "broken", "keep", "repair", "buy", "program", "programs", "distribution", "list", "listed"}):
-        cases.append((
-            "Do you need a device, help learning to use one, or help with a problem?",
-            [
-                ("I need a device", "I want to learn about the device distribution programs."),
-                ("Learn to use it", "I want a class about using my device."),
-                ("Fix a problem", "I need individual help with a device problem."),
-            ],
-            ["devices", "individual"],
-        ))
+        return True
     elif (
         lowered == "i want to find a digital skills class"
         or (
@@ -2389,42 +2204,10 @@ def ambiguity_response(question, language_code=None, page_context=None):
             and not words.intersection({"device", "email", "computer", "laptop", "phone", "excel", "word", "resume", "job", "safety", "robotics", "canva", "ai", "beginner", "advanced", "when", "where", "hours", "schedule", "calendar", "assessment", "assessments", "certification", "certifications", "practice", "chart", "charts"})
         )
     ):
-        cases.append((
-            "What do you need?",
-            [
-                ("Class topics", "Class topics"),
-                ("Dates & locations", "Dates & locations"),
-                ("Register", "Register"),
-            ],
-            [],
-        ))
+        return True
     elif words.intersection({"internet", "online", "wifi"}) and len(words) <= 6 and not words.intersection({"connect", "service", "class", "learn", "safety", "browser", "browsing", "scam", "scams", "fraud", "phishing"}):
-        cases.append((
-            "Do you need internet service, help connecting a device, or help using the internet?",
-            [
-                ("Internet service", "I need information about getting internet service."),
-                ("Connect a device", "I need help connecting a device to the internet."),
-                ("Learn internet skills", "I want to learn how to use the internet."),
-            ],
-            ["individual", "trainings"],
-        ))
-    if not cases:
-        return None
-    message, choice_rows, source_ids = cases[0]
-    sources = [SOURCE_BY_ID[source_id] for source_id in source_ids if source_id in SOURCE_BY_ID]
-    return response_contract(
-        kind="clarify",
-        message=message,
-        reason=(
-            "Un detalle ayudará a encontrar una ruta útil."
-            if language_code == "es"
-            else "One detail will help the guide choose a useful route."
-        ),
-        sources=sources,
-        question=question,
-        choices=[{"label": label, "prompt": prompt} for label, prompt in choice_rows],
-        model_called=False,
-    )
+        return True
+    return False
 
 
 def response_contract(
@@ -2462,17 +2245,6 @@ def privacy_response(question="", language_code="en"):
         reason=participant_copy("privacy_reason", language_code),
         sources=[SOURCE_BY_ID["contact"]],
         question=question or "contact Digital Equity staff",
-        model_called=False,
-    )
-
-
-def human_handoff_response(question="", language_code="en"):
-    return response_contract(
-        kind="handoff",
-        message=participant_copy("sensitive_message", language_code),
-        reason=participant_copy("sensitive_reason", language_code),
-        sources=[SOURCE_BY_ID["contact"]],
-        question=question or "contact Fortune staff",
         model_called=False,
     )
 
@@ -2518,77 +2290,73 @@ def clean_source_title(source):
     ).strip()
 
 
-def selector_clarification_response(
+def model_clarification_response(
     question,
-    retrieved,
+    model_question,
     retrieval_scope="site",
-    interaction=None,
-    routing_question=None,
-    model_question="",
 ):
-    interaction = dict(interaction or {})
-    language_code = interaction.get("request_language") or "en"
-    retrieved = list(retrieved or [])
-    support_query = (
-        question
-        if distinctive_query_terms(question)
-        else (routing_question or question)
+    """Return only a model-authored clarification; never synthesize stock copy."""
+
+    message = clip_words(model_question, MAX_MESSAGE_WORDS).strip()
+    folded = fold_text(message).lstrip("¿").strip()
+    interrogative = re.compile(
+        r"^(?:what|which|where|when|how|who|do|does|did|are|is|would|could|can|will|"
+        r"que|cual|cuales|como|donde|cuando|quien|necesitas|quieres|buscas|prefieres|"
+        r"puedo|puedes|podrias|te gustaria)\b"
     )
-    supported = [
-        source for source in retrieved
-        if source_supports_query(source, support_query)
-    ]
-    candidates = (supported or retrieved)[:3]
-    class_candidates = bool(candidates) and all(
-        "/service-page/" in source.get("url", "") for source in candidates[:2]
-    )
-    if language_code == "es":
-        message = "¿Qué clase quieres?" if class_candidates else "¿Qué página necesitas?"
-        prompt_template = "Información sobre {title}"
-        reason = "Elige una opción."
-    else:
-        message = "Which class do you mean?" if class_candidates else "Which page do you mean?"
-        prompt_template = "Tell me about {title}."
-        reason = "Choose one option."
-    model_question = clip_words(model_question, 24).strip()
     if (
-        model_question.endswith("?")
-        and not re.search(r"https?://|www\.", model_question, flags=re.I)
+        not message.endswith("?")
+        or message.count("?") != 1
+        or re.search(r"[.!;]", message[:-1])
+        or not interrogative.match(folded)
+        or re.search(r"https?://|www\.", message, flags=re.I)
+        or re.search(
+            r"\b(?:system|developer|hidden) (?:prompt|message|instruction)|"
+            r"\b(?:ignore|reveal) (?:the )?(?:prompt|instructions|rules)\b",
+            folded,
+        )
+        or model_requests_personal_details(message)
     ):
-        message = model_question
-    choices = []
-    if len(candidates) > 1:
-        for source in candidates:
-            title = clean_source_title(source)
-            choices.append({
-                "label": clip_words(title, 6),
-                "prompt": prompt_template.format(title=title),
-            })
-    elif candidates and not model_question:
-        title = clip_words(clean_source_title(candidates[0]), 6)
-        message = (
-            f"¿Qué necesitas saber sobre {title}?"
-            if language_code == "es"
-            else f"What do you need to know about {title}?"
-        )
-    if len(candidates) <= 1:
-        reason = (
-            "Un detalle ayudará."
-            if language_code == "es"
-            else "One detail will help."
-        )
+        raise ModelResponseRejected("The model did not return a safe clarification")
     response = response_contract(
         kind="clarify",
         message=message,
-        reason=reason,
+        reason="",
         sources=[],
         question=question,
         model_called=True,
-        choices=choices,
+        choices=[],
         retrieval_scope=retrieval_scope,
     )
     response["related"] = []
     return response
+
+
+def model_requests_personal_details(text):
+    """Reject model copy that asks the participant to disclose private data."""
+
+    value = fold_text(text)
+    request = (
+        r"(?:what(?:'s| is)|share|provide|enter|send|give|tell me|write|"
+        r"cual es|comparte|proporciona|ingresa|envia|dime|escribe|dame)"
+    )
+    detail = (
+        r"(?:full name|name|phone number|telephone number|email address|e-mail address|"
+        r"street address|home address|date of birth|birthday|fortune id|case number|"
+        r"member id|social security number|ssn|nombre completo|nombre|numero de telefono|"
+        r"correo electronico|direccion|fecha de nacimiento|id de fortune|numero de caso|"
+        r"seguro social)"
+    )
+    possessive_detail = (
+        r"\b(?:your|tu|su) (?:full name|name|phone number|email address|e-mail address|"
+        r"street address|home address|date of birth|birthday|fortune id|case number|"
+        r"member id|ssn|nombre completo|nombre|numero de telefono|correo electronico|"
+        r"direccion|fecha de nacimiento|id de fortune|numero de caso|seguro social)\b"
+    )
+    return bool(
+        re.search(rf"\b{request}\b.{{0,48}}\b{detail}\b", value)
+        or re.search(possessive_detail, value)
+    )
 
 
 _GROUNDING_EQUIVALENT_GROUPS = (
@@ -3019,6 +2787,8 @@ def parse_model_selection(
     interaction=None,
     routing_question=None,
     prior_answer=None,
+    require_clarification=False,
+    require_answer=False,
 ):
     retrieved = list(retrieved or retrieve_sources(question))
     interaction = dict(interaction or {})
@@ -3026,22 +2796,17 @@ def parse_model_selection(
     allowed = {source["id"]: source for source in retrieved}
     parsed = parse_selector_response(raw, allowed)
     if not parsed:
-        return selector_clarification_response(
-            question,
-            retrieved,
-            retrieval_scope,
-            interaction,
-            routing_question,
-        )
+        raise ModelResponseRejected("The model returned an invalid response")
     selected_id = parsed["pick"]
+    if require_clarification and selected_id != SELECTOR_ASK:
+        raise ModelResponseRejected("The model answered a turn that requires clarification")
     if selected_id == SELECTOR_ASK:
-        return selector_clarification_response(
+        if require_answer:
+            raise ModelResponseRejected("The model asked instead of providing a safe handoff")
+        return model_clarification_response(
             question,
-            retrieved,
-            retrieval_scope,
-            interaction,
-            routing_question,
             parsed["answer"],
+            retrieval_scope,
         )
     selected = allowed[selected_id]
     support_query = (
@@ -3053,13 +2818,7 @@ def parse_model_selection(
     # intent router or current-page gate. Reapplying the lexical site-search
     # filter here rejects natural wording such as "help using a device."
     if len(retrieved) > 1 and not source_supports_query(selected, support_query):
-        return selector_clarification_response(
-            question,
-            retrieved,
-            retrieval_scope,
-            interaction,
-            routing_question,
-        )
+        raise ModelResponseRejected("The selected source does not support the question")
     grounding_question = routing_question or question
     source_claim_text = (
         source_excerpt(
@@ -3070,6 +2829,8 @@ def parse_model_selection(
         or searchable_text(selected)
     )
     answer_text = parsed["answer"]
+    if answer_text.endswith("?") or model_requests_personal_details(answer_text):
+        raise ModelResponseRejected("The model asked for participant information")
     if _answer_conflicts_with_negative_status(answer_text, source_claim_text):
         grounded_status = next(
             (
@@ -3088,39 +2849,21 @@ def parse_model_selection(
             "",
         )
         if not grounded_status:
-            return selector_clarification_response(
-                question,
-                retrieved,
-                retrieval_scope,
-                interaction,
-                routing_question,
-            )
+            raise ModelResponseRejected("The answer contradicted the source status")
         answer_text = grounded_status
     message = clip_words(
         _negative_status_sentence_first(answer_text, source_claim_text),
         MAX_MESSAGE_WORDS,
     )
     if not model_answer_is_grounded(message, selected, grounding_question):
-        return selector_clarification_response(
-            question,
-            retrieved,
-            retrieval_scope,
-            interaction,
-            routing_question,
-        )
+        raise ModelResponseRejected("The answer was not grounded in the selected source")
     if (
         interaction.get("chat_stage") == "follow_up"
         and prior_answer
         and answers_near_duplicate(message, prior_answer)
         and not question_requests_prior_detail(question, prior_answer)
     ):
-        return selector_clarification_response(
-            question,
-            retrieved,
-            retrieval_scope,
-            interaction,
-            routing_question,
-        )
+        raise ModelResponseRejected("The answer repeated the prior response")
     reason = (
         "La respuesta viene de una página aprobada."
         if language_code == "es"
@@ -3144,6 +2887,8 @@ def model_selection_retry_reason(
     prior_answer="",
     question="",
     routing_question="",
+    require_clarification=False,
+    require_answer=False,
 ):
     """Return the one recoverable validation failure that merits a model retry."""
 
@@ -3151,10 +2896,29 @@ def model_selection_retry_reason(
     allowed = {source["id"]: source for source in retrieved}
     parsed = parse_selector_response(raw, allowed)
     if not parsed:
-        return "resolved source can answer" if len(retrieved) == 1 else ""
+        return "invalid response"
+    if require_clarification:
+        if parsed["pick"] != SELECTOR_ASK:
+            return "clarification required"
+        try:
+            model_clarification_response(question, parsed["answer"])
+        except ModelResponseRejected:
+            return "personal detail request"
+        return ""
     if parsed["pick"] == SELECTOR_ASK:
+        if require_answer:
+            return "resolved source can answer"
         return "resolved source can answer" if len(retrieved) == 1 else ""
     selected = allowed[parsed["pick"]]
+    if parsed["answer"].endswith("?") or model_requests_personal_details(parsed["answer"]):
+        return "personal detail request"
+    support_query = (
+        question
+        if distinctive_query_terms(question)
+        else (routing_question or question)
+    )
+    if len(retrieved) > 1 and not source_supports_query(selected, support_query):
+        return "unsupported selection"
     grounding_question = routing_question or question
     source_claim_text = (
         source_excerpt(
@@ -3416,6 +3180,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             "prompt_policy_version": PROMPT_POLICY_VERSION,
         }
         started_at = time.monotonic()
+        model_attempted = False
+        model_attempts = 0
+        retrieval_scope = "staff"
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > MAX_BODY:
@@ -3458,6 +3225,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     duplicate = dict(turn.duplicate_response)
                     duplicate["conversation_token"] = token
                     self._json(200, duplicate)
+                elif turn.duplicate_response.get("error"):
+                    self._json(409, {
+                        "error": turn.duplicate_response["error"],
+                        "idempotency_complete": True,
+                        "conversation_id": turn.conversation_id,
+                        "conversation_token": token,
+                        "turn_id": turn.turn_id,
+                        "client_event_id": turn.client_event_id,
+                    })
                 else:
                     self._json(409, {
                         "error": "This turn completed, but its answer text was not retained in this capture mode.",
@@ -3492,60 +3268,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     interaction=interaction,
                 )
                 return
-            if needs_human_handoff(question):
-                self._chat_json(
-                    200,
-                    human_handoff_response(question, interaction["request_language"]),
-                    turn,
-                    question,
-                    started_at,
-                    privacy_state="sensitive_handoff",
-                    interaction=interaction,
+            sensitive_request = needs_human_handoff(question)
+            staff_confirmation = needs_staff_confirmation(question)
+            used_conversational_fallback = False
+            if sensitive_request or staff_confirmation:
+                retrieval_scope = "staff"
+                retrieved = [SOURCE_BY_ID["contact"]]
+            else:
+                retrieval_scope, retrieved = retrieval_plan(routing_question, page_context)
+                if not retrieved:
+                    retrieval_scope = "site"
+                    retrieved = conversational_candidate_sources(page_context)
+                    used_conversational_fallback = True
+            deterministic = (
+                []
+                if used_conversational_fallback
+                else deterministic_answer_sources(
+                    routing_question, retrieved, retrieval_scope
                 )
-                return
-            if needs_staff_confirmation(question):
-                self._chat_json(
-                    200,
-                    response_contract(
-                        kind="handoff",
-                        message="Fortune staff can confirm the instructor and contact details.",
-                        reason="Use Contact.",
-                        sources=[SOURCE_BY_ID["contact"]],
-                        question=routing_question,
-                        model_called=False,
-                        retrieval_scope="staff",
-                    ),
-                    turn,
-                    question,
-                    started_at,
-                    interaction=interaction,
-                )
-                return
-            ambiguous = ambiguity_response(
-                routing_question,
-                interaction["request_language"],
-                page_context,
             )
-            if ambiguous:
-                self._chat_json(
-                    200, ambiguous, turn, question, started_at,
-                    interaction=interaction,
+            require_model_answer = sensitive_request or staff_confirmation
+            require_model_clarification = not require_model_answer and (
+                used_conversational_fallback
+                or question_needs_model_clarification(
+                    routing_question,
+                    interaction["request_language"],
+                    page_context,
                 )
-                return
-            retrieval_scope, retrieved = retrieval_plan(routing_question, page_context)
-            if retrieval_scope == "staff":
-                self._chat_json(200, response_contract(
-                    kind="handoff",
-                    message=participant_copy("missing_message", interaction["request_language"]),
-                    reason=participant_copy("missing_reason", interaction["request_language"]),
-                    sources=[SOURCE_BY_ID["contact"]],
-                    question=question,
-                    model_called=False,
-                    retrieval_scope="staff",
-                ), turn, question, started_at, interaction=interaction)
-                return
-            deterministic = deterministic_answer_sources(
-                routing_question, retrieved, retrieval_scope
             )
             prior_answer = next(
                 (
@@ -3556,27 +3305,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "",
             )
             if not KEY:
-                self._chat_json(200, response_contract(
-                    kind="handoff",
-                    message=participant_copy("model_missing_message", interaction["request_language"]),
-                    reason=participant_copy("model_missing_reason", interaction["request_language"]),
-                    sources=retrieved,
-                    question=question,
-                    model_called=False,
+                self._chat_failure(
+                    503,
+                    "Guide unavailable. Try again.",
+                    turn,
+                    started_at,
+                    error_code="model_disabled",
+                    interaction=interaction,
                     retrieval_scope=retrieval_scope,
-                ), turn, question, started_at, interaction=interaction)
+                    model_called=False,
+                    privacy_state=("sensitive_handoff" if sensitive_request else "clear"),
+                )
                 return
             client_identifier = self._client_identifier()
             if not MODEL_CALL_BUDGET.claim(client_identifier):
-                self._chat_json(200, response_contract(
-                    kind="handoff",
-                    message=participant_copy("usage_message", interaction["request_language"]),
-                    reason=participant_copy("usage_reason", interaction["request_language"]),
-                    sources=retrieved,
-                    question=question,
-                    model_called=False,
+                self._chat_failure(
+                    429,
+                    "Guide busy. Try again shortly.",
+                    turn,
+                    started_at,
+                    error_code="usage_limit",
+                    interaction=interaction,
                     retrieval_scope=retrieval_scope,
-                ), turn, question, started_at, error_code="usage_limit", interaction=interaction)
+                    model_called=False,
+                    privacy_state=("sensitive_handoff" if sensitive_request else "clear"),
+                    headers={"Retry-After": "60"},
+                )
                 return
             model_sources = deterministic or retrieved
             messages = [{"role": "system", "content": retrieval_prompt(
@@ -3586,11 +3340,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 interaction,
                 previous_answer=prior_answer,
             )}]
-            model_question = semantic_question(question) or routing_question
+            model_question = semantic_question(question) or (
+                "Ask one short question about what the participant needs from "
+                "Fortune's website."
+            )
             messages.append({
                 "role": "user",
                 "content": model_question[:MAX_QUESTION_CHARS],
             })
+            model_attempted = True
+            model_attempts = 1
             raw = self._ollama(messages)
             retry_reason = model_selection_retry_reason(
                 raw,
@@ -3599,8 +3358,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 prior_answer,
                 question,
                 routing_question,
+                require_model_clarification,
+                require_model_answer,
             )
-            model_attempts = 1
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
                 retry_messages = [
                     {
@@ -3620,6 +3380,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 prior_answer,
                 question,
                 routing_question,
+                require_model_clarification,
+                require_model_answer,
             )
             response = parse_model_selection(
                 raw,
@@ -3629,7 +3391,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 interaction,
                 routing_question=routing_question,
                 prior_answer=prior_answer,
+                require_clarification=require_model_clarification,
+                require_answer=require_model_answer,
             )
+            if sensitive_request or staff_confirmation:
+                response["kind"] = "handoff"
+                response["retrieval_scope"] = "staff"
             self._log_model_validation(
                 attempts=model_attempts,
                 first_reason=retry_reason or "accepted",
@@ -3642,7 +3409,34 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 turn,
                 question,
                 started_at,
+                privacy_state=("sensitive_handoff" if sensitive_request else "clear"),
                 interaction=interaction,
+            )
+        except ModelResponseRejected:
+            self._log_model_validation(
+                attempts=model_attempts,
+                first_reason=retry_reason if "retry_reason" in locals() else "rejected",
+                final_reason=(
+                    final_validation_reason
+                    if "final_validation_reason" in locals()
+                    else "rejected"
+                ),
+                response_kind="error",
+            )
+            self._chat_failure(
+                502,
+                "Guide unavailable. Try again.",
+                turn,
+                started_at,
+                error_code="model_response_rejected",
+                interaction=interaction,
+                retrieval_scope=retrieval_scope,
+                model_called=model_attempted,
+                privacy_state=(
+                    "sensitive_handoff"
+                    if "sensitive_request" in locals() and sensitive_request
+                    else "clear"
+                ),
             )
         except (ValueError, json.JSONDecodeError):
             self._json(400, {"error": "The request could not be read."})
@@ -3659,32 +3453,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "error": "This conversation reached its turn limit. Start again from the current page."
             })
         except Exception:
-            response = response_contract(
-                kind="handoff",
-                message=participant_copy("model_error_message", interaction["request_language"]),
-                reason=participant_copy("model_error_reason", interaction["request_language"]),
-                sources=[SOURCE_BY_ID["contact"]],
-                question="Digital Equity help",
-                model_called=False,
-                retrieval_scope="staff",
+            self._chat_failure(
+                503,
+                "Guide unavailable. Try again.",
+                turn,
+                started_at,
+                error_code="model_unavailable",
+                interaction=interaction,
+                retrieval_scope=retrieval_scope,
+                model_called=model_attempted,
+                privacy_state=(
+                    "sensitive_handoff"
+                    if "sensitive_request" in locals() and sensitive_request
+                    else "clear"
+                ),
             )
-            if turn is None:
-                self._json(200, response)
-            else:
-                try:
-                    self._chat_json(
-                        200,
-                        response,
-                        turn,
-                        question,
-                        started_at,
-                        error_code="model_unavailable",
-                        interaction=interaction,
-                    )
-                except CaptureUnavailable:
-                    self._json(503, {
-                        "error": "The guide could not safely record this question. Please try again shortly."
-                    })
 
     def do_PUT(self):
         path = urllib.parse.urlsplit(self.path).path
@@ -4058,6 +3841,52 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             error_code=error_code,
         )
         self._json(status, enriched)
+
+    def _chat_failure(
+        self,
+        status,
+        message,
+        turn,
+        started_at,
+        *,
+        error_code,
+        interaction=None,
+        retrieval_scope="staff",
+        model_called=False,
+        privacy_state="clear",
+        headers=None,
+    ):
+        """Return an operational error without fabricating an assistant turn."""
+
+        if turn is not None:
+            try:
+                CONVERSATION_RECORDER.fail_turn(
+                    turn,
+                    latency_ms=round((time.monotonic() - started_at) * 1000),
+                    error_code=error_code,
+                    model=MODEL,
+                    model_called=model_called,
+                    retrieval_scope=retrieval_scope,
+                    privacy_state=privacy_state,
+                    interaction_context=dict(interaction or {}),
+                )
+            except CaptureUnavailable:
+                self._json(
+                    503,
+                    {
+                        "error": "The guide could not safely record this question. Please try again shortly.",
+                        "model_called": bool(model_called),
+                    },
+                )
+                return
+        self._json(
+            status,
+            {
+                "error": message,
+                "model_called": bool(model_called),
+            },
+            headers=headers,
+        )
 
     def _ollama(self, messages):
         data = ollama_request({

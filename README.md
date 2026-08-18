@@ -30,10 +30,10 @@ After a question:
 1. The browser starts a credential-free warm-up request while the visitor reads the page. The backend sends Ollama's documented empty preload request and keeps the model loaded for the configured period.
 2. The browser sends the question, a short in-memory history, and the canonical current-page URL, path, and title.
 3. The privacy gate holds likely personal information before retrieval or model use. A standalone six-digit value is treated as a possible Fortune ID.
-4. Known vague requests such as **help**, **device**, **class**, and **internet** receive one short clarifying question.
+4. Vague requests such as **help**, **device**, **class**, and **internet** still invoke the model and receive one short model-authored clarifying question.
 5. The server checks the approved record for the current page first. A strong local match narrows the model to that record instead of emitting a fixed sentence.
-6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 90 answer-authority records are addressable by public title. When no page has matching evidence, the model is not called and the guide sends the visitor to staff.
-7. Answerable requests reach GLM-5.2 with the resolved question, the preceding guide answer when relevant, and bounded approved page excerpts—not raw participant history. The model returns one allowed page ID plus a concise answer, or `ASK`. The server rejects unknown IDs, invented numbers, links, unsupported selections, and answers without source overlap. Valid prose is shown so the same grounded material can be answered naturally rather than through a prepackaged sentence.
+6. When the current page cannot answer, retrieval ranks up to ten usable answer-authority pages from the wider public index. All 90 answer-authority records are addressable by public title. With no lexical match, the model receives a bounded set of approved current pages and must ask one useful question rather than receiving a server-written fallback.
+7. Every valid, non-private new request reaches GLM-5.2 with the resolved question, the preceding guide answer when relevant, and bounded approved page excerpts—not raw participant history. The model returns one allowed page ID plus a concise answer, or `ASK`. The server rejects unknown IDs, invented numbers, links, unsupported selections, privacy-seeking questions, and answers without source overlap. Provider, quota, or twice-rejected outputs are operational errors and never become fabricated Guide turns.
 8. Every answer adds another useful page, the staff route, and a way to continue asking questions. The browser never receives `OLLAMA_API_KEY`.
 
 The latest completed user question includes **Edit**. The original question and answer stay visible while the visitor edits. **Update** branches from the preceding bounded context without reusing the old server conversation, and replaces the visible pair only after the revised request succeeds. **Start over** clears the tab's local conversation, continuation token, and saved session state without deleting any transcript already retained by an authorized evaluation deployment. The Wix element follows the same behavior.
@@ -76,7 +76,7 @@ Run the key-free tests and check that the index can produce all route shells:
 python3 scripts/build_pages.py --check-index
 ```
 
-The test launcher runs the Python unit suite across retrieval, API contracts, privacy, source authority, grounding, conversation persistence, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 16 browser-core and bridge tests plus 13 snapshot-capture safety tests.
+The test launcher runs the Python unit suite across retrieval, API contracts, privacy, source authority, grounding, conversation persistence, the crawler, the Pages builder, production limits, warm-up behavior, responsive answer expansion, member access, styling safeguards, and Wix secret handling. It then runs 23 browser-core and bridge tests plus 13 snapshot-capture safety tests.
 
 The [Website Guide evaluation suite](evals/website-guide/README.md) adds a fixed 41-case synthetic benchmark across broad and specific intent, typos, multilingual requests, privacy, adversarial input, page awareness, follow-up context, and input boundaries. Its executable gates are stricter than the unit tests and produce a versioned run record for staff review.
 

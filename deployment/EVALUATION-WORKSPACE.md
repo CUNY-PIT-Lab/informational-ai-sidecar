@@ -91,5 +91,5 @@ Prompts never edits the compiled system prompt and has no activation or publishi
 5. Confirm `/evaluation` shows the login surface and no reviewer data without a session.
 6. Claim the admin account, create one editor link from **Account**, and verify first-use registration signs the editor in without exposing the token in an HTTP request path or server log.
 7. Save a bucket placement, note, and annotation as one evaluator; sign in as another evaluator and confirm the same state is visible. Make a second change and confirm the first evaluator sees it after reload.
-8. Create, revise, and comment on one Prompt Lab proposal as an editor; confirm another evaluator sees it, confirm an editor cannot change its status, and confirm the administrator can mark it ready without activating it.
+8. Create, revise, and comment on one Prompts proposal as an editor; confirm another evaluator sees it, confirm an editor cannot change its status, and confirm the administrator can mark it ready without activating it.
 9. Confirm the same invitation cannot be claimed twice, then leave the remaining invitation fields null until Fortune names the recipients.

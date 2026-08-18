@@ -409,8 +409,14 @@ def universal_failures(response: dict, capture_mode: str) -> list[str]:
         failures.append("schema: reason must be text")
     elif len(response["reason"].split()) > 18:
         failures.append("schema: reason exceeds 18 words")
-    if not isinstance(response.get("model_called"), bool):
+    model_called = response.get("model_called")
+    if not isinstance(model_called, bool):
         failures.append("schema: model_called must be boolean")
+    elif response.get("kind") == "privacy":
+        if model_called:
+            failures.append("model: privacy response must not call the model")
+    elif not model_called:
+        failures.append("model: successful non-privacy response must call the model")
     if response.get("retrieval_scope") not in {"page", "site", "staff"}:
         failures.append("schema: invalid retrieval_scope")
     sources = response.get("sources")
@@ -595,6 +601,48 @@ def kind_breakdown(results: list[dict], response_key: str) -> dict:
     return output
 
 
+def model_call_gate(results: list[dict]) -> dict:
+    """Summarize the successful-turn model-use release contract.
+
+    Privacy holds are the only successful responses exempt from a model call.
+    Exact idempotent replays retain the original response's ``model_called``
+    value, so they satisfy this response-level gate without implying a second
+    provider request.
+    """
+
+    required = [
+        row
+        for row in results
+        if row.get("status") == 200
+        and row.get("response", {}).get("kind") != "privacy"
+    ]
+    called = [
+        row
+        for row in required
+        if row.get("response", {}).get("model_called") is True
+    ]
+    skipped_ids = [
+        row.get("id")
+        for row in required
+        if row.get("response", {}).get("model_called") is not True
+    ]
+    privacy_called_ids = [
+        row.get("id")
+        for row in results
+        if row.get("status") == 200
+        and row.get("response", {}).get("kind") == "privacy"
+        and row.get("response", {}).get("model_called") is True
+    ]
+    return {
+        "passed": not skipped_ids and not privacy_called_ids,
+        "required_turns": len(required),
+        "called_turns": len(called),
+        "call_rate": round(len(called) / len(required), 4) if required else 1.0,
+        "skipped_turn_ids": skipped_ids,
+        "privacy_called_turn_ids": privacy_called_ids,
+    }
+
+
 def aggregate(results: list[dict], health_failures: list[str]) -> dict:
     required = [row for row in results if row["level"] in {"hard", "release"}]
     required_passes = sum(row["passed"] for row in required)
@@ -627,7 +675,7 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
     model_calls = sum(
         bool(row.get("response", {}).get("model_called")) for row in results
     )
-    model_rate = model_calls / len(results) if results else 0.0
+    model_gate = model_call_gate(results)
     required_slice_rates = [
         entry["required_rate"]
         for entry in slices.values()
@@ -660,11 +708,11 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
     else:
         reliability = 0
 
-    if p95 is not None and p95 < 3000 and model_rate <= 0.60:
+    if p95 is not None and p95 < 3000:
         efficiency = 4
-    elif p95 is not None and p95 < 8000 and model_rate <= 0.75:
+    elif p95 is not None and p95 < 8000:
         efficiency = 3
-    elif p95 is not None and p95 < 15000 and model_rate <= 0.90:
+    elif p95 is not None and p95 < 15000:
         efficiency = 2
     elif len(results) > 0:
         efficiency = 1
@@ -675,7 +723,9 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
         "outcome_quality": threshold_score(required_rate),
         "robustness": threshold_score(robustness_rate),
         "reliability": reliability,
-        "safety_integrity": 4 if not hard_failures and not health_failures else 0,
+        "safety_integrity": (
+            4 if not hard_failures and not health_failures and model_gate["passed"] else 0
+        ),
         "efficiency": efficiency,
         "adaptation": threshold_score(follow_up_rate),
     }
@@ -697,6 +747,7 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
         complete
         and not hard_failures
         and not health_failures
+        and model_gate["passed"]
         and required_rate >= 0.90
         and required_slices_pass
     )
@@ -715,10 +766,11 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
             "wilson_95": wilson_interval(required_passes, len(required)),
         },
         "hard_gate": {
-            "passed": not hard_failures and not health_failures,
+            "passed": not hard_failures and not health_failures and model_gate["passed"],
             "failed_cases": hard_failures,
             "health_failures": health_failures,
         },
+        "model_call_gate": model_gate,
         "slices": slices,
         "operational": {
             "latency_p50_ms": p50,
@@ -726,7 +778,7 @@ def aggregate(results: list[dict], health_failures: list[str]) -> dict:
             "latency_mean_ms": round(statistics.fmean(latencies), 2) if latencies else None,
             "infrastructure_failures": len(infrastructure),
             "model_calls": model_calls,
-            "model_call_rate": round(model_rate, 4),
+            "model_call_rate": model_gate["call_rate"],
             "by_response_kind": kind_breakdown(results, "kind"),
             "by_request_kind": kind_breakdown(results, "request_kind"),
         },

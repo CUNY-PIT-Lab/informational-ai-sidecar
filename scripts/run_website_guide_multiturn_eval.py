@@ -254,6 +254,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
         if turn.get("transport_error") or turn.get("status") == 429 or turn.get("status", 0) >= 500
     ]
     model_calls = sum(bool(turn.get("response", {}).get("model_called")) for turn in turns)
+    model_gate = core.model_call_gate(turns)
     slices: dict[str, dict] = {}
     for episode in episodes:
         row = slices.setdefault(episode["slice"], {"episodes": 0, "passed": 0})
@@ -270,6 +271,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
         and not health_failures
         and not hard_failures
         and not infrastructure
+        and model_gate["passed"]
         and required_rate >= 0.90
         and contextual_rate >= 0.85
         and required_slices_pass
@@ -295,10 +297,11 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
             "contextual_rate": round(contextual_rate, 4),
         },
         "hard_gate": {
-            "passed": not hard_failures and not health_failures,
+            "passed": not hard_failures and not health_failures and model_gate["passed"],
             "failed_episodes": hard_failures,
             "health_failures": health_failures,
         },
+        "model_call_gate": model_gate,
         "slices": slices,
         "operational": {
             "latency_p50_ms": percentile(successful_latencies, 0.50),
@@ -310,7 +313,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
             ),
             "infrastructure_failures": len(infrastructure),
             "model_calls": model_calls,
-            "model_call_rate": round(model_calls / len(turns), 4) if turns else 0.0,
+            "model_call_rate": model_gate["call_rate"],
         },
     }
 

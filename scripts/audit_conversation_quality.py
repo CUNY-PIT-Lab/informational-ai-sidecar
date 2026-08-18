@@ -69,7 +69,8 @@ def run_audit(database_url: str) -> dict:
                     WHERE t.created_at > NOW() + INTERVAL '5 minutes'
                 )::INTEGER AS future_turns,
                 COUNT(*) FILTER (
-                    WHERE t.prompt_policy_version <> 'legacy'
+                    WHERE t.status = 'complete'
+                      AND t.prompt_policy_version <> 'legacy'
                       AND (
                         t.chat_stage = 'unknown'
                         OR t.request_kind = 'unknown'

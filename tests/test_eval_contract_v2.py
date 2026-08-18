@@ -365,7 +365,7 @@ class EvaluationContractV2Tests(unittest.TestCase):
                 capture_mode,
             )
             single_passes += not failures
-        self.assertEqual(single_passes, 28)
+        self.assertEqual(single_passes, 22)
 
         multi_suite = single.apply_grader_overrides(
             self.load("multiturn-cases-2026-08-17.json"),
@@ -412,7 +412,7 @@ class EvaluationContractV2Tests(unittest.TestCase):
                 passed_turns += not failures
                 episode_passed = episode_passed and not failures
             passed_episodes += episode_passed
-        self.assertEqual((passed_turns, passed_episodes), (37, 4))
+        self.assertEqual((passed_turns, passed_episodes), (33, 3))
 
 
 if __name__ == "__main__":

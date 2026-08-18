@@ -85,7 +85,7 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             support_history,
         )
         self.assertIn("one-to-one", support_routed)
-        self.assertIsNone(server.ambiguity_response(support_routed))
+        self.assertFalse(server.question_needs_model_clarification(support_routed))
         _, support_sources = server.retrieval_plan(support_routed, HOME)
         self.assertEqual(support_sources[0]["id"], "individual")
 
@@ -98,8 +98,8 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             calendar_history,
         )
         self.assertIn("current schedule", calendar_routed)
-        self.assertIsNone(
-            server.ambiguity_response(
+        self.assertFalse(
+            server.question_needs_model_clarification(
                 calendar_routed,
                 page_context={"url": server.CALENDAR_URL},
             )
@@ -120,14 +120,12 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         catalog_question = "What kinds of classes are offered?"
         catalog_routed = server.contextual_routing_question(catalog_question, history)
         self.assertEqual(catalog_routed, server.semantic_question(catalog_question))
-        catalog_clarification = server.ambiguity_response(catalog_routed)
-        self.assertIsNotNone(catalog_clarification)
-        self.assertNotIn("device", catalog_clarification["message"].lower())
+        self.assertTrue(server.question_needs_model_clarification(catalog_routed))
 
         schedule_question = "What are the regular class hours?"
         schedule_routed = server.contextual_routing_question(schedule_question, history)
         self.assertEqual(schedule_routed, server.semantic_question(schedule_question))
-        self.assertIsNone(server.ambiguity_response(schedule_routed))
+        self.assertFalse(server.question_needs_model_clarification(schedule_routed))
         scope, schedule_sources = server.retrieval_plan(schedule_routed, HOME)
         self.assertEqual(scope, "site")
         self.assertEqual(schedule_sources[0]["id"], "calendar")
@@ -145,8 +143,10 @@ class MultiTurnRetrievalTests(unittest.TestCase):
         ]
         for question in questions:
             with self.subTest(question=question):
-                self.assertIsNone(
-                    server.ambiguity_response(question, server.detect_language(question))
+                self.assertFalse(
+                    server.question_needs_model_clarification(
+                        question, server.detect_language(question)
+                    )
                 )
 
     def test_specific_class_questions_prefer_specific_pages(self):
@@ -195,34 +195,29 @@ class MultiTurnRetrievalTests(unittest.TestCase):
 
     def test_follow_up_evidence_uses_the_selected_source_title(self):
         source = server.SOURCE_BY_ID[server.INTRO_CANVA_ID]
-        message = server.grounded_answer_message(
-            "What would I learn there?",
-            [source],
-            "site",
-            chat_stage="follow_up",
-            routing_question="Does Fortune have a beginner Canva class? What would I learn there?",
+        evidence = server.source_excerpt(
+            source,
+            "Does Fortune have a beginner Canva class? What would I learn there?",
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
         )
         self.assertTrue(
             {"canva", "template", "design", "interface"}.intersection(
-                server.tokens(message, keep_stopwords=True)
+                server.tokens(evidence, keep_stopwords=True)
             )
         )
 
     def test_email_curriculum_follow_up_advances_beyond_the_opening_summary(self):
         source = server.SOURCE_BY_ID[server.INTRO_EMAIL_ID]
-        message = server.grounded_answer_message(
-            "What would I learn there?",
-            [source],
-            "site",
-            chat_stage="follow_up",
-            routing_question=(
+        evidence = server.source_excerpt(
+            source,
+            (
                 "I want to learn email from the beginning. What class fits? "
                 "What would I learn there?"
             ),
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
         )
-        self.assertIn("creating or accessing an email account", message)
-        self.assertNotIn("Email is part of everything", message)
-        self.assertFalse(message.endswith("?"))
+        self.assertIn("creating or accessing an email account", evidence)
+        self.assertIn("adding and opening attachments", evidence)
 
     def test_follow_up_excludes_evidence_used_anywhere_in_recent_history(self):
         source = server.SOURCE_BY_ID["individual"]
@@ -230,33 +225,30 @@ class MultiTurnRetrievalTests(unittest.TestCase):
             "One-to-one tutoring is available online or in person by appointment. "
             "Technical support is listed at Long Island City Tuesday and Thursday."
         )
-        message = server.grounded_answer_message(
+        evidence = server.grounded_evidence_sentences(
+            source,
             "Can staff repair a broken phone?",
-            [source],
-            "site",
-            chat_stage="follow_up",
-            routing_question="Can staff repair a broken phone?",
+            require_overlap=True,
+            focus_query="Can staff repair a broken phone?",
             prior_answer=prior,
         )
         self.assertNotIn(
             "One-to-one tutoring is available online or in person by appointment.",
-            message,
+            evidence,
         )
         self.assertNotIn(
             "Technical support is listed at Long Island City Tuesday and Thursday.",
-            message,
+            evidence,
         )
 
     def test_schedule_follow_up_prefers_live_calendar_evidence(self):
         source = server.SOURCE_BY_ID["calendar"]
-        message = server.grounded_answer_message(
-            "When is it offered?",
-            [source],
-            "site",
-            chat_stage="follow_up",
-            routing_question="Intro to Smartphones. Follow-up: When is it offered?",
+        evidence = server.source_excerpt(
+            source,
+            "Intro to Smartphones. Follow-up: When is it offered?",
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
         )
-        self.assertIn("available classes", message.lower())
+        self.assertIn("available classes", evidence.lower())
 
     def test_advancement_grader_rejects_a_reused_source_sentence(self):
         history = [
@@ -479,16 +471,14 @@ class MultiTurnRetrievalTests(unittest.TestCase):
 
     def test_device_eligibility_follow_up_advances_past_availability(self):
         source = server.SOURCE_BY_ID["devices"]
-        message = server.grounded_answer_message(
-            "How do I confirm whether I qualify?",
-            [source],
-            "site",
-            chat_stage="follow_up",
-            routing_question="Can I get a free laptop? How do I confirm whether I qualify?",
+        evidence = server.source_excerpt(
+            source,
+            "Can I get a free laptop? How do I confirm whether I qualify?",
+            limit=server.MAX_MODEL_EXCERPT_CHARS,
         )
-        self.assertIn("at least 5", message)
-        self.assertIn("workshops", message)
-        self.assertNotIn("currently on hold", message)
+        self.assertIn("at least 5", evidence)
+        self.assertIn("workshops", evidence)
+        self.assertNotIn("currently on hold", evidence)
 
     def test_continuity_grader_accepts_stable_follow_up(self):
         response = {"chat_stage": "follow_up", "conversation_id": "same"}

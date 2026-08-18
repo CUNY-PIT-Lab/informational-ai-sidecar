@@ -1,5 +1,36 @@
 # Website Guide — next steps
 
+## Model-authored response contract — 2026-08-18
+
+- [x] Remove the fixed conversational fallbacks that answered vague, frustrated,
+  unsupported, or staff-routed requests without calling the model.
+- [x] Require every successful non-private new turn to report
+  `model_called: true`; keep the pre-model privacy hold as the sole successful
+  zero-call exception.
+- [x] Make vague requests use a model-authored clarifying question and make
+  staff-bound requests use model-authored wording grounded in the current
+  Contact record.
+- [x] Reject malformed, unsupported, privacy-seeking, or twice-invalid model
+  output as an operational error instead of fabricating a Guide message in the
+  server, Pages client, or Wix element.
+- [x] Preserve `model_called` in browser session state and mark rendered Guide
+  turns with response provenance for Pages and Wix parity tests.
+- [x] Move automated runs to the evaluator-hidden `benchmark` surface and make
+  both release runners fail when any successful non-private turn skips the
+  model.
+- [x] Register the dedicated v17 prompt and preserve the compiled v16 artifact
+  for review history.
+- [x] Pass the complete local release suite: 277 Python, 23 browser-core, and 13
+  snapshot tests.
+- [ ] Deploy the exact v17 commit to Railway staging and replay the reported
+  `What the hell` → `Help me` conversation with `model_called: true` on both
+  turns.
+- [ ] Verify the staging browser, hidden benchmark capture, prompt provenance,
+  aggregate privacy/integrity gate, and terminal deployment stability before
+  promotion.
+- [ ] Merge through GitHub, verify Pages, then deploy the exact merged tree to
+  Railway production with capture `none`, no database, and evaluation disabled.
+
 ## Meeting 4 release — 2026-08-17
 
 - [x] Review Sasha's forwarded Meeting 4 summary and record bot, source,
@@ -9,7 +40,7 @@
   routes, 90 answer-authority pages, current `/workshops`, `/support`, device
   guidance, class descriptions, and the four current homepage/contact FAQs.
 - [x] Archive the meaningful historical prompt releases, compile a dedicated
-  current prompt, and add a bounded shared Prompt Lab whose proposals cannot
+  current prompt, and add a bounded shared Prompts workspace whose proposals cannot
   activate runtime behavior.
 - [x] Preserve the existing shared staging evaluator, timestamps, newest-first
   ordering, pagination, notes, annotations, buckets, and transcript integrity.

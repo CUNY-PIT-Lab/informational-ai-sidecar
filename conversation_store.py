@@ -528,6 +528,21 @@ class ConversationRecorder:
                                     client_surface=str(existing["client_surface"]),
                                     persisted=True,
                                 )
+                        if existing["status"] == "failed":
+                            return TurnReservation(
+                                conversation_id=existing_conversation_id,
+                                turn_id=str(existing["id"]),
+                                client_event_id=reservation.client_event_id,
+                                user_message_id=str(existing["user_message_id"]),
+                                assistant_message_id=str(existing["assistant_message_id"]),
+                                lease_id=str(existing["lease_id"]),
+                                capture_mode=str(existing["capture_mode"]),
+                                client_surface=str(existing["client_surface"]),
+                                persisted=True,
+                                duplicate_response={
+                                    "error": "This turn already failed. Send it again as a new turn."
+                                },
+                            )
                         return TurnReservation(
                             conversation_id=existing_conversation_id,
                             turn_id=str(existing["id"]),
@@ -730,3 +745,80 @@ class ConversationRecorder:
             raise
         except Exception as error:
             raise CaptureUnavailable("The conversation turn could not be stored") from error
+
+    def fail_turn(
+        self,
+        reservation: TurnReservation,
+        *,
+        latency_ms: int,
+        error_code: str,
+        model: str,
+        model_called: bool,
+        retrieval_scope: str,
+        privacy_state: str = "clear",
+        interaction_context: dict | None = None,
+    ) -> bool:
+        """Close a failed request without storing user or assistant message text."""
+
+        if not reservation.persisted:
+            return False
+        if not self.enabled:
+            raise CaptureUnavailable("Required conversation capture is not ready")
+        context = dict(interaction_context or {})
+        try:
+            with self._pool.connection() as connection:
+                with connection.transaction():
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            """
+                            UPDATE conversation_turns SET
+                                status = 'failed',
+                                privacy_state = %s,
+                                review_state = 'excluded',
+                                response_kind = NULL,
+                                retrieval_scope = %s,
+                                source_ids = '[]'::jsonb,
+                                model = %s,
+                                model_called = %s,
+                                latency_ms = %s,
+                                error_code = %s,
+                                chat_stage = %s,
+                                request_kind = %s,
+                                request_language = %s,
+                                response_language = 'und',
+                                prompt_policy_version = %s,
+                                response_json = NULL,
+                                completed_at = NOW()
+                            WHERE id = %s AND status = 'pending' AND lease_id = %s
+                            """,
+                            (
+                                (
+                                    privacy_state
+                                    if privacy_state in {"clear", "sensitive_handoff"}
+                                    else "clear"
+                                ),
+                                retrieval_scope if retrieval_scope in {"page", "site", "staff"} else "staff",
+                                str(model or "")[:120],
+                                bool(model_called),
+                                max(0, int(latency_ms)),
+                                str(error_code or "model_error")[:80],
+                                context.get("chat_stage") or "unknown",
+                                context.get("request_kind") or "unknown",
+                                context.get("request_language") or "und",
+                                str(context.get("prompt_policy_version") or self.prompt_version)[:80],
+                                reservation.turn_id,
+                                reservation.lease_id,
+                            ),
+                        )
+                        if cursor.rowcount != 1:
+                            raise CaptureUnavailable("The failed conversation turn was not closed")
+                        cursor.execute(
+                            "UPDATE conversations SET last_seen_at = NOW(), last_turn_at = NOW() "
+                            "WHERE id = %s",
+                            (reservation.conversation_id,),
+                        )
+            return True
+        except CaptureUnavailable:
+            raise
+        except Exception as error:
+            raise CaptureUnavailable("The failed conversation turn could not be stored") from error
