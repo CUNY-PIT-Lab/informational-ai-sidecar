@@ -1174,6 +1174,24 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertTrue(captured["payload"]["model_called"])
         self.assertEqual(len(model_calls), 1)
 
+    def test_grounded_page_answer_may_end_with_a_natural_follow_up_question(self):
+        answer = (
+            "Hello! Welcome to the Fortune Society Digital Equity Hub. We offer "
+            "digital tools, workshops, and support for justice-impacted New Yorkers. "
+            "How can I help you today?"
+        )
+        captured, model_calls = self.dispatch_chat(
+            "hello hello",
+            "https://www.fortunedigitalequity.org/",
+            model_raws=[json.dumps({"pick": "home", "answer": answer})],
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "home")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
+
     def test_missing_model_abstains_instead_of_extracting_a_factual_answer(self):
         captured, model_calls = self.dispatch_chat(
             "Can I get a free laptop?",

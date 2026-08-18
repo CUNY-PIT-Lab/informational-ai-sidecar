@@ -2852,7 +2852,7 @@ def parse_model_selection(
         or searchable_text(selected)
     )
     answer_text = parsed["answer"]
-    if answer_text.endswith("?") or model_requests_personal_details(answer_text):
+    if model_requests_personal_details(answer_text):
         raise ModelResponseRejected("The model asked for participant information")
     if _answer_conflicts_with_negative_status(answer_text, source_claim_text):
         grounded_status = next(
@@ -2939,7 +2939,7 @@ def model_selection_retry_reason(
             return "invalid response"
         return ""
     selected = allowed[parsed["pick"]]
-    if parsed["answer"].endswith("?") or model_requests_personal_details(parsed["answer"]):
+    if model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
     support_query = (
         question
