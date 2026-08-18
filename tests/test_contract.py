@@ -548,6 +548,25 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
         self.assertEqual(len(model_calls), 1)
 
+    def test_support_page_accepts_grounded_one_to_one_session_wording(self):
+        question = "Can I walk in for the help described here?"
+        answer = (
+            "Yes, you can stop by the Support Desk for quick technical help, or "
+            "visit during office hours. For 1-on-1 tutoring, sessions are offered "
+            "by appointment, so you'd need to schedule those in advance."
+        )
+        captured, model_calls = self.dispatch_chat(
+            question,
+            "https://www.fortunedigitalequity.org/support",
+            model_source_id="individual",
+            model_answer=answer,
+        )
+
+        self.assertEqual(captured["payload"]["kind"], "answer")
+        self.assertEqual(captured["payload"]["message"], answer)
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "individual")
+        self.assertEqual(len(model_calls), 1)
+
     def test_named_acp_enrollment_question_retrieves_current_device_status(self):
         question = "Can Fortune enroll me in the old $30 Affordable Connectivity Program discount today?"
         self.assertIsNone(server.ambiguity_response(question))
@@ -1541,6 +1560,41 @@ class ResponseContractTests(unittest.TestCase):
         timed["blocks"] = [timed["description"]]
         self.assertTrue(server.model_answer_is_grounded("The workshop lasts 2 months.", timed))
         self.assertFalse(server.model_answer_is_grounded("The workshop lasts 2 days.", timed))
+
+    def test_one_to_one_labels_are_not_misread_as_session_counts(self):
+        support = server.SOURCE_BY_ID["individual"]
+        for label in ("1-on-1", "1:1", "one-on-one"):
+            answer = f"{label} tutoring sessions are offered by appointment."
+            with self.subTest(label=label):
+                self.assertNotIn(
+                    ("1", "session"),
+                    server._claim_number_unit_pairs(answer),
+                )
+                self.assertTrue(
+                    server.model_answer_is_grounded(
+                        answer,
+                        support,
+                        "Can I walk in for the help described here?",
+                    )
+                )
+
+        counted = copy.deepcopy(support)
+        counted["description"] = (
+            "Two tutoring sessions are offered by appointment. "
+            "One participant attends at a time."
+        )
+        counted["facts"] = []
+        counted["blocks"] = [counted["description"]]
+        self.assertEqual(
+            server._claim_number_unit_pairs("One tutoring session is offered by appointment."),
+            {("1", "session")},
+        )
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                "One tutoring session is offered by appointment.",
+                counted,
+            )
+        )
 
     def test_grounded_limitation_may_repeat_a_user_named_item_without_licensing_it(self):
         calendar = server.SOURCE_BY_ID["calendar"]

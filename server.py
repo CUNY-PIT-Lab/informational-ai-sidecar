@@ -2645,6 +2645,16 @@ _NUMBER_WORDS = {
     "doce": "12",
 }
 
+_ONE_TO_ONE_LABEL_PATTERN = re.compile(
+    r"\b(?:"
+    r"(?:1|one)\s*-\s*(?:on|to)\s*-\s*(?:1|one)|"
+    r"1\s*[:/]\s*1|"
+    r"1\s+(?:on|to)\s+1|"
+    r"one\s+(?:on|to)\s+one"
+    r")\b",
+    re.I,
+)
+
 _CLAIM_UNITS = {
     "class": "class", "classes": "class", "clase": "class", "clases": "class",
     "day": "day", "days": "day", "dia": "day", "dias": "day",
@@ -2724,6 +2734,10 @@ def _claim_numbers(value):
 
 
 def _claim_number_unit_pairs(value):
+    # One-to-one labels describe the format of support, not a count. Without
+    # removing the label first, wording such as "1-on-1 tutoring sessions" is
+    # misread as a claim that exactly one session is offered.
+    value = _ONE_TO_ONE_LABEL_PATTERN.sub("individual", str(value or ""))
     # Clock times are separately checked by _claim_numbers. Removing the whole
     # time here prevents the minute value in "3:30 PM ... sessions" from being
     # misread as a claim about 30 sessions.
