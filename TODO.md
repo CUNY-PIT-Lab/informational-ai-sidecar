@@ -35,7 +35,7 @@
 - [x] Qualify the exact v16 commit on Railway staging: 41/41 scattershot cases,
   12/12 conversations, 50/50 turns, and 28/28 context-dependent turns, with
   every factual answer model-generated from an approved Fortune source.
-- [ ] Push the v16 branch, merge its release PR, verify the GitHub Pages workflow
+- [x] Push the v16 branch, merge its release PR, verify the GitHub Pages workflow
   and public browser, then deploy that exact merged tree to Railway production
   with capture `none`, no database, and evaluation disabled.
 - [x] Do not deploy or evaluate this guide on the CUNY PIT Lab website. PIT Lab
@@ -57,7 +57,7 @@
   grounding rejection, browser reset, persistence after navigation, and the
   shared evaluator boundary; the formal quality gate found a release-blocking
   clarification defect now addressed by v12.
-- [ ] Promote only after the staging evidence is green; keep public production capture disabled.
+- [x] Promote only after the staging evidence is green; keep public production capture disabled.
 
 ## Superseded bounded source-selector baseline — 2026-08-12
 
