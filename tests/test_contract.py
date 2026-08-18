@@ -2,6 +2,7 @@
 """Key-free contract tests for the context-aware Digital Equity guide."""
 
 import copy
+import contextlib
 import io
 import inspect
 import json
@@ -1922,6 +1923,29 @@ class ResponseContractTests(unittest.TestCase):
 
 
 class FrontendAndDeploymentTests(unittest.TestCase):
+    def test_model_validation_log_contains_only_bounded_outcomes(self):
+        handler = server.Handler.__new__(server.Handler)
+        handler._request_id = "request-id"
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            handler._log_model_validation(
+                attempts=2,
+                first_reason="resolved source can answer",
+                final_reason="accepted",
+                response_kind="answer",
+            )
+        event = json.loads(output.getvalue())
+        self.assertEqual(event, {
+            "event": "model_validation",
+            "request_id": "request-id",
+            "attempts": 2,
+            "first_reason": "resolved source can answer",
+            "final_reason": "accepted",
+            "response_kind": "answer",
+        })
+        self.assertNotIn("question", event)
+        self.assertNotIn("response", event)
+
     def test_browser_origin_policy_allows_same_origin_and_rejects_unknown_origins(self):
         self.assertTrue(server.origin_is_allowed("", "127.0.0.1:8790"))
         self.assertTrue(server.origin_is_allowed("http://127.0.0.1:8790", "127.0.0.1:8790"))

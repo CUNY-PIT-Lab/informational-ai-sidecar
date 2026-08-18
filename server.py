@@ -3575,6 +3575,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 question,
                 routing_question,
             )
+            model_attempts = 1
             if retry_reason and MODEL_CALL_BUDGET.claim(client_identifier):
                 retry_messages = [
                     {
@@ -3586,17 +3587,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     messages[1],
                 ]
                 raw = self._ollama(retry_messages)
+                model_attempts = 2
+            final_validation_reason = model_selection_retry_reason(
+                raw,
+                model_sources,
+                interaction,
+                prior_answer,
+                question,
+                routing_question,
+            )
+            response = parse_model_selection(
+                raw,
+                question,
+                model_sources,
+                retrieval_scope,
+                interaction,
+                routing_question=routing_question,
+                prior_answer=prior_answer,
+            )
+            self._log_model_validation(
+                attempts=model_attempts,
+                first_reason=retry_reason or "accepted",
+                final_reason=final_validation_reason or "accepted",
+                response_kind=response.get("kind") or "unknown",
+            )
             self._chat_json(
                 200,
-                parse_model_selection(
-                    raw,
-                    question,
-                    model_sources,
-                    retrieval_scope,
-                    interaction,
-                    routing_question=routing_question,
-                    prior_answer=prior_answer,
-                ),
+                response,
                 turn,
                 question,
                 started_at,
@@ -4040,6 +4057,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.client_address[0]
         except (AttributeError, IndexError, TypeError):
             return "unknown"
+
+    def _log_model_validation(self, *, attempts, first_reason, final_reason, response_kind):
+        """Log bounded validator outcomes without question or response content."""
+
+        request_id = getattr(self, "_request_id", "")
+        if not request_id:
+            return
+        print(json.dumps({
+            "event": "model_validation",
+            "request_id": request_id,
+            "attempts": int(attempts),
+            "first_reason": str(first_reason)[:80],
+            "final_reason": str(final_reason)[:80],
+            "response_kind": str(response_kind)[:24],
+        }, separators=(",", ":")), flush=True)
 
     def _cors_headers(self, origin=None):
         origin = (origin or self.headers.get("Origin", "")).rstrip("/")

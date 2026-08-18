@@ -114,10 +114,62 @@ def continuity_failures(
     return failures
 
 
+def explicit_prior_detail_request(question: str, prior_answer: str) -> bool:
+    """Recognize a bounded request to repeat a detail already in the latest answer."""
+
+    value = str(question or "").casefold().replace("’", "'").strip()
+    prior = str(prior_answer or "").casefold().replace("’", "'").strip()
+    if not value or not prior or re.search(
+        r"\b(?:what else|anything else|tell me more|what next|what more|"
+        r"more details?|go on|continue)\b",
+        value,
+    ):
+        return False
+
+    if re.search(
+        r"\b(?:how (?:do|can|could|would|will) (?:i|we) qualify|"
+        r"what (?:do|would) (?:i|we) need to (?:do )?(?:qualify|be eligible)|"
+        r"(?:am i|are we) eligible)\b",
+        value,
+    ):
+        return bool(re.search(r"\b(?:qualif\w*|eligib\w*|requirements?)\b", prior))
+
+    if re.search(
+        r"\b(?:what|which)(?: [a-z0-9'-]+){0,3} (?:does|do|did|will|would) "
+        r"(?:(?:that|this|the) (?:class|course|workshop|program|service|page|option)|"
+        r"it|they) (?:cover|include|teach|offer|mean|say)\b",
+        value,
+    ):
+        if not re.search(
+            r"\b(?:cover\w*|includ\w*|teach\w*|learn\w*|practic\w*|show\w*|"
+            r"topics?|skills?)\b",
+            prior,
+        ):
+            return False
+        generic = {
+            "what", "which", "does", "do", "did", "will", "would", "that",
+            "this", "the", "class", "course", "workshop", "program", "service",
+            "page", "option", "it", "they", "cover", "include", "teach", "offer",
+            "mean", "say", "technique", "techniques", "topic", "topics", "detail",
+            "details",
+        }
+        requested = set(re.findall(r"[a-z0-9]+", value)).difference(generic)
+        return not requested or bool(requested.intersection(re.findall(r"[a-z0-9]+", prior)))
+
+    if re.search(
+        r"\b(?:can|could|would) you (?:repeat|restate) (?:that|this|it)\b|"
+        r"\b(?:is that (?:right|correct)|did you say\b)",
+        value,
+    ):
+        return True
+    return False
+
+
 def advancement_failures(
     *,
     response: dict,
     history: list[dict],
+    question: str = "",
     required: bool = True,
 ) -> list[str]:
     """Reject a factual follow-up only when all substantive evidence is reused."""
@@ -147,16 +199,27 @@ def advancement_failures(
     current_sentences = sentence_terms(current)
     if not current_sentences or not prior_sentences:
         return []
+    prior_answer = next(
+        (
+            str(item.get("content") or "")
+            for item in reversed(history)
+            if item.get("role") == "assistant"
+        ),
+        "",
+    )
 
     def repeats_prior(current_terms: set[str]) -> bool:
         return any(
             len(current_terms.intersection(prior_terms))
-            / min(len(current_terms), len(prior_terms))
+            / len(current_terms)
             >= 0.85
             for prior_terms in prior_sentences
         )
 
-    if all(repeats_prior(sentence) for sentence in current_sentences):
+    if (
+        all(repeats_prior(sentence) for sentence in current_sentences)
+        and not explicit_prior_detail_request(question, prior_answer)
+    ):
         return ["continuity: answer repeats prior evidence instead of advancing"]
     return []
 
@@ -352,6 +415,7 @@ def run(args: argparse.Namespace) -> int:
                         advancement_failures(
                             response=response,
                             history=history,
+                            question=turn["message"],
                             required=turn.get("expect", {}).get(
                                 "advancement_required", True
                             ),
