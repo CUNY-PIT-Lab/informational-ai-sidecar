@@ -200,6 +200,10 @@ RETRY_INSTRUCTIONS = {
         "The prior draft used wording that was not explicitly supported. "
         "Answer with a supported detail from one record or pick ASK."
     ),
+    "response too long": (
+        "The prior draft was too long. Return one complete direct answer within "
+        "the response limit. Do not cut off a sentence and do not add filler."
+    ),
     "unsupported selection": (
         "The selected page did not support the participant's request. Pick a page "
         "that does, or pick ASK and ask a brief, natural follow-up."

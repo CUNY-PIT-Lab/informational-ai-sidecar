@@ -28,7 +28,7 @@
   **Prompts**, with v21 shown as the current immutable runtime policy.
 - [x] Add a guarded staging transcript reset that preserves evaluator accounts,
   sessions, buckets, invitations, and all Prompts proposals/history.
-- [x] Pass the complete local release suite: 296 Python, 28 browser-core, and 13
+- [x] Pass the complete local release suite: 297 Python, 28 browser-core, and 13
   snapshot tests.
 - [ ] Deploy the exact v21 commit to Railway staging and replay ordinary,
   frustrated, broad, specific, Spanish, and multi-turn requests with

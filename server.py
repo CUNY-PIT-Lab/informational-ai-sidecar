@@ -2770,6 +2770,8 @@ def parse_model_selection(
         if not grounded_status:
             raise ModelResponseRejected("The answer contradicted the source status")
         answer_text = grounded_status
+    if len(answer_text.split()) > MAX_MESSAGE_WORDS:
+        raise ModelResponseRejected("The model answer exceeded the response limit")
     message = clip_words(
         _negative_status_sentence_first(answer_text, source_claim_text),
         MAX_MESSAGE_WORDS,
@@ -2830,6 +2832,8 @@ def model_selection_retry_reason(
     selected = allowed[parsed["pick"]]
     if model_requests_personal_details(parsed["answer"]):
         return "personal detail request"
+    if len(parsed["answer"].split()) > MAX_MESSAGE_WORDS:
+        return "response too long"
     grounding_question = routing_question or question
     grounded_source = grounded_candidate_for_answer(
         parsed["answer"],

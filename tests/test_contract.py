@@ -1032,6 +1032,32 @@ class StagedRetrievalTests(unittest.TestCase):
             model_calls[1][0]["content"],
         )
 
+    def test_overlong_model_draft_retries_instead_of_being_cut_off(self):
+        source_id = "devices"
+        long_answer = " ".join([
+            "Free refurbished laptops are available through Computers 4 People,"
+        ] * 10)
+        complete_answer = (
+            "Free refurbished laptops are available through Computers 4 People. "
+            "Participants need at least 5 Digital Equity Program workshops, and "
+            "supply is limited."
+        )
+        captured, model_calls = self.dispatch_chat(
+            "How can I qualify for a refurbished laptop?",
+            server.ROOT_URL,
+            model_source_id=source_id,
+            model_answers=[long_answer, complete_answer],
+        )
+
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["message"], complete_answer)
+        self.assertFalse(captured["payload"]["message"].endswith("…"))
+        self.assertEqual(len(model_calls), 2)
+        self.assertIn(
+            server.RETRY_INSTRUCTIONS["response too long"],
+            model_calls[1][0]["content"],
+        )
+
     def test_negative_source_status_cannot_be_rewritten_as_a_current_offering(self):
         question = "I want to learn about the device distribution programs."
         source = server.SOURCE_BY_ID["devices"]
@@ -2222,9 +2248,19 @@ class ResponseContractTests(unittest.TestCase):
         retrieved = server.retrieve_sources("computer class")
         grounded = server.source_excerpt(retrieved[0], "computer class").splitlines()[0]
         raw = model_response(retrieved[0], "computer class", " ".join([grounded] * 4))
-        result = server.parse_model_selection(raw, "computer class", retrieved)
-        self.assertLessEqual(len(result["message"].split()), server.MAX_MESSAGE_WORDS)
-        self.assertLessEqual(len(result["reason"].split()), server.MAX_REASON_WORDS)
+        self.assertEqual(
+            server.model_selection_retry_reason(
+                raw,
+                retrieved,
+                {"chat_stage": "initial", "request_language": "en"},
+                "",
+                "computer class",
+                "computer class",
+            ),
+            "response too long",
+        )
+        with self.assertRaises(server.ModelResponseRejected):
+            server.parse_model_selection(raw, "computer class", retrieved)
 
     def test_long_answers_prefer_a_complete_sentence_boundary(self):
         text = ("A useful first sentence has enough words to carry a complete participant-facing instruction clearly. "
