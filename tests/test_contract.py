@@ -1679,6 +1679,20 @@ class ResponseContractTests(unittest.TestCase):
             )
         )
 
+    def test_sentence_initial_one_to_one_is_not_misread_as_an_entity(self):
+        support = server.SOURCE_BY_ID["individual"]
+        answer = (
+            "One-on-one tutoring is available by appointment, while quick "
+            "questions can be handled during office hours or at the Support Desk."
+        )
+        self.assertTrue(
+            server.model_answer_is_grounded(
+                answer,
+                support,
+                "Can I walk in for one-on-one help?",
+            )
+        )
+
     def test_grounded_limitation_may_repeat_a_user_named_item_without_licensing_it(self):
         calendar = server.SOURCE_BY_ID["calendar"]
         question = "Is there an Intro to Email class tomorrow?"

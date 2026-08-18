@@ -2531,6 +2531,12 @@ def _negative_status_sentence_first(answer, source_claim_text):
 def _named_entities_are_supported(answer, source_text):
     source_terms = _expanded_grounding_terms(source_text)
     for match in _ENTITY_PATTERN.finditer(answer):
+        # "One-on-one" is a service format label, not a proper name.
+        if re.fullmatch(
+            r"(?:one|1)[- ]on[- ](?:one|1)",
+            fold_text(match.group(0)),
+        ):
+            continue
         entity_terms = _expanded_grounding_terms(match.group(0)).difference({
             "and", "de", "del", "of", "the", "to", "y",
         })
