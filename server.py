@@ -2166,12 +2166,13 @@ def retrieval_plan(question, page_context=None):
         return "site", guided
 
     current = approved_current_page_source(page_context)
-    if (
-        current
-        and ". follow-up:" not in fold_text(question)
-        and question_refers_to_current_page(question)
-    ):
-        return "page", [current]
+    if current and question_refers_to_current_page(question):
+        contextual_parts = re.split(r"\.\s*Follow-up:\s*", question, maxsplit=1, flags=re.I)
+        if len(contextual_parts) == 1:
+            return "page", [current]
+        topic_sources = retrieve_sources(contextual_parts[0])
+        if not topic_sources or topic_sources[0]["url"] == current["url"]:
+            return "page", [current]
     faq = current_faq_sources(question)
     if faq:
         return "site", faq
@@ -2731,7 +2732,8 @@ def _source_qualifier_polarities(value, group):
         return polarities
     if re.search(
         r"\b(?:office hours?|support hours?|walk-?in|by appointment|"
-        r"schedule an appointment|currently offered|is offered|are offered)\b",
+        r"schedule an appointment|currently offered|is offered|are offered|"
+        r"offers?|provides?|provided)\b",
         folded,
     ):
         return {"positive"}

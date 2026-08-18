@@ -355,6 +355,18 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(context["url"], "https://www.fortunedigitalequity.org/workshops")
         self.assertEqual(contextual[0]["id"], "trainings")
 
+    def test_contextual_follow_up_keeps_a_matching_current_page(self):
+        question = (
+            "What does this page offer. Follow-up: "
+            "Can I walk in for any of that"
+        )
+        scope, sources = server.retrieval_plan(
+            question,
+            {"url": "https://www.fortunedigitalequity.org/support"},
+        )
+        self.assertEqual(scope, "page")
+        self.assertEqual([source["id"] for source in sources], ["individual"])
+
     def test_external_page_context_is_not_trusted(self):
         context = server.sanitize_page_context({"url": "https://example.com/fake", "title": "Fake"})
         self.assertEqual(context["url"], "")
@@ -1258,6 +1270,14 @@ class ResponseContractTests(unittest.TestCase):
                 "Can I get a phone?",
                 "No, free smartphones are not currently available. Distribution "
                 "is on hold after the loss of federal ACP funding.",
+            ),
+            (
+                "devices",
+                "What about a refurbished laptop instead?",
+                "Free refurbished laptops are available through a partnership "
+                "with Computers 4 People. You must have attended at least 5 "
+                "Digital Equity Program workshops; stop by the office to check "
+                "eligibility.",
             ),
         )
         for source_id, question, answer in cases:
