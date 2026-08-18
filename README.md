@@ -133,7 +133,7 @@ The demonstration has a dedicated public repository at [zmuhls/fortune-digital-e
 ## Suggested meeting path
 
 1. Open a route with `?open=1` and press one page-specific starter.
-2. Open a second mock route and show that the sidecar title, prompts, and context counter reset with the page.
+2. Open a second mock route and show that its page context changes while the conversation remains available in the same tab.
 3. Ask a page-specific question and follow the related route to another mock page.
 4. Enter `device` to show one clarifying question.
 5. Ask about an Excel topic to show retrieval of a specific class page.
