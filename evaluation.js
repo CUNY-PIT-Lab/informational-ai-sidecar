@@ -115,15 +115,15 @@
     scope: "shared",
     shared: true,
     deployed: {
-      version: "2026-08-18-v21",
-      behavior_release: "infobot-priority-grounded-guide",
+      version: "2026-08-18-v22",
+      behavior_release: "infobot-sitewide-evidence-guide",
       editable: false,
     },
     editable_modules: [
       { key: "style", label: "Tone and concision", current_variant: "direct_adaptive_conversational", current_value: "Answer directly and conversationally, usually in one sentence and about 30 words or fewer, written for a phone screen. Use plain, warm, respectful, nonjudgmental language. Start with the useful action or answer. Adapt to relevant non-private constraints in the participant's latest message. Avoid jargon, blame, assumptions, and scripted filler. Use a second sentence only for a necessary status, eligibility, safety, or uncertainty caveat. When asked how to do a digital task, give short practical steps supported by the selected page. Paraphrase promotional language.", maximum_length: 500 },
       { key: "clarification", label: "Clarification style", current_variant: "blocking_ambiguity_only", current_value: "Pick ASK only when ambiguity actually prevents a supported answer. Ask one brief, natural follow-up about that missing detail. Do not ask the participant to choose a page, do not append a fake invitation question to an answered request, and do not clarify when one approved page supports a useful answer.", maximum_length: 500 },
       { key: "follow_up", label: "Follow-up advancement", current_variant: "latest_request_and_correction", current_value: "For a follow-up, answer the latest request and use earlier turns only when they help resolve it. Do not repeat the previous answer unless the participant asks to confirm, restate, or explain it. If the participant points out a mistake or failed step, acknowledge it briefly, correct it from the approved source, and continue without groveling.", maximum_length: 500 },
-      { key: "page_awareness", label: "Page awareness and flow", current_variant: "sitewide_with_page_hint", current_value: "The current page is a useful hint, not a boundary. Use relevant candidate pages from across the approved site; prioritize the current page only when the participant refers to it or it directly supports the request.", maximum_length: 500 },
+      { key: "page_awareness", label: "Page awareness and flow", current_variant: "sitewide_evidence_first", current_value: "The active page is navigation context, not the scope of your knowledge. Unless the participant explicitly refers to this page, here, or there, choose the best supporting candidate from anywhere in the supplied Fortune site evidence. If the active page does not answer the request, move to another candidate without announcing a page limitation.", maximum_length: 500 },
     ],
     code_controlled: [
       "Grounding and no-guessing rules",

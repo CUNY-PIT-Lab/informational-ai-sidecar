@@ -8,8 +8,8 @@ the reviewable modules below; proposed text never enters this runtime compiler.
 from __future__ import annotations
 
 
-PROMPT_POLICY_VERSION = "2026-08-18-v21"
-PROMPT_BEHAVIOR_RELEASE = "infobot-priority-grounded-guide"
+PROMPT_POLICY_VERSION = "2026-08-18-v22"
+PROMPT_BEHAVIOR_RELEASE = "infobot-sitewide-evidence-guide"
 
 
 # These modules are server-owned invariants. They are deliberately unavailable
@@ -27,9 +27,11 @@ IMMUTABLE_PROMPT_MODULES = {
         "available time, device, or experience, without asking for personal details."
     ),
     "grounding": (
-        "Answer naturally using only facts on the approved candidate pages below. "
-        "Choose one relevant approved page and answer from it; never combine pages, "
-        "guess, or add general knowledge. If one approved page contains enough "
+        "Answer naturally using only facts in the approved candidate records below. "
+        "They are evidence from across the Fortune site, not a restriction to the "
+        "page the participant is viewing. Consider the full supplied candidate set, "
+        "choose the record with the strongest relevant evidence, and answer from it; "
+        "never guess or add general knowledge. If one approved record contains enough "
         "relevant evidence for a useful answer, answer instead of clarifying. When "
         "asked about current status, schedule, availability, or eligibility, include "
         "the relevant "
@@ -48,9 +50,10 @@ IMMUTABLE_PROMPT_MODULES = {
         "decision is yours to make."
     ),
     "abstention": (
-        "When the best page does not confirm a requested detail, say that briefly "
-        "without guessing. Pick ASK only when the request or evidence remains "
-        "ambiguous enough to block a useful answer."
+        "Only say that Fortune's site does not confirm a requested detail after "
+        "considering the full supplied candidate set. Do not say the current page "
+        "lacks the answer when another candidate supports it. Pick ASK only when the "
+        "request or evidence remains ambiguous enough to block a useful answer."
     ),
     "response_contract": (
         'Return only JSON: {"pick":"<candidate ID or ASK>",'
@@ -142,6 +145,13 @@ TEAM_TUNABLE_PROMPT_MODULES = {
             "page only when the participant refers to it or it directly supports "
             "the request."
         ),
+        "sitewide_evidence_first": (
+            "The active page is navigation context, not the scope of your knowledge. "
+            "Unless the participant explicitly refers to this page, here, or there, "
+            "choose the best supporting candidate from anywhere in the supplied "
+            "Fortune site evidence. If the active page does not answer the request, "
+            "move to another candidate without announcing a page limitation."
+        ),
     },
     "language": {
         "mirror_when_reliable": (
@@ -156,7 +166,7 @@ CURRENT_TUNABLE_SELECTIONS = {
     "style": "direct_adaptive_conversational",
     "clarification": "blocking_ambiguity_only",
     "follow_up": "latest_request_and_correction",
-    "page_awareness": "sitewide_with_page_hint",
+    "page_awareness": "sitewide_evidence_first",
     "language": "mirror_when_reliable",
 }
 

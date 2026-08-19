@@ -421,6 +421,31 @@ class StagedRetrievalTests(unittest.TestCase):
         self.assertTrue(captured["payload"]["model_called"])
         self.assertEqual(len(model_calls), 1)
 
+    def test_unrelated_active_page_does_not_constrain_sitewide_answer(self):
+        captured, model_calls = self.dispatch_chat(
+            "Can I get a free refurbished laptop?",
+            "https://www.fortunedigitalequity.org/support",
+            model_source_id="devices",
+            model_answer=(
+                "Free refurbished laptops are available through Computers 4 People "
+                "for active or previous attendees after at least 5 workshops."
+            ),
+        )
+        self.assertEqual(captured["status"], 200)
+        self.assertEqual(captured["payload"]["retrieval_scope"], "site")
+        self.assertEqual(captured["payload"]["sources"][0]["id"], "devices")
+        self.assertNotEqual(captured["payload"]["sources"][0]["id"], "individual")
+        self.assertTrue(captured["payload"]["model_called"])
+        self.assertEqual(len(model_calls), 1)
+        self.assertIn(
+            "active page is navigation context",
+            model_calls[0][0]["content"],
+        )
+        self.assertIn(
+            "from anywhere in the supplied Fortune site evidence",
+            model_calls[0][0]["content"],
+        )
+
     def test_follow_up_uses_context_for_retrieval_but_original_question_for_answering(self):
         question = "Where are they held?"
         captured, model_calls = self.dispatch_chat(
