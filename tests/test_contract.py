@@ -1028,6 +1028,24 @@ class StagedRetrievalTests(unittest.TestCase):
             )
         )
 
+    def test_source_full_name_supports_its_natural_acronym(self):
+        question = "What kinds of computer classes are available?"
+        source = server.SOURCE_BY_ID["trainings"]
+        answer = (
+            "Classes include computer skills, email, digital safety, Excel, Word, "
+            "PowerPoint, Google Workspace, AI, and robotics."
+        )
+
+        self.assertIn("Artificial Intelligence", server.searchable_text(source))
+        self.assertTrue(server.model_answer_is_grounded(answer, source, question))
+        self.assertFalse(
+            server.model_answer_is_grounded(
+                answer.replace("AI", "XR"),
+                source,
+                question,
+            )
+        )
+
     def test_current_canva_status_recovers_from_an_unsupported_first_draft(self):
         canva_id = "service-service-page-canva-design-tools-61911b2b"
         captured, model_calls = self.dispatch_chat(
