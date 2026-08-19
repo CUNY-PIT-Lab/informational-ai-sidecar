@@ -2534,6 +2534,7 @@ def _negative_status_sentence_first(answer, source_claim_text):
 
 def _named_entities_are_supported(answer, source_text):
     source_terms = _expanded_grounding_terms(source_text)
+    source_words = re.findall(r"\b[A-Za-z][A-Za-z0-9]*\b", str(source_text or ""))
     for match in _ENTITY_PATTERN.finditer(answer):
         # "One-on-one" is a service format label, not a proper name.
         if re.fullmatch(
@@ -2559,6 +2560,19 @@ def _named_entities_are_supported(answer, source_text):
         initialism = "".join(word[0] for word in entity_words if word)
         if len(initialism) >= 2 and initialism in source_terms:
             continue
+        # The inverse is equally natural: a source may spell out a name such
+        # as "Artificial Intelligence" while the model uses "AI". Accept a
+        # short all-caps acronym only when a title-cased expansion with the
+        # same initials appears in this exact source record.
+        raw_entity = re.sub(r"[^A-Za-z]", "", match.group(0))
+        if re.fullmatch(r"[A-Z]{2,6}", raw_entity):
+            if any(
+                "".join(word[0] for word in source_words[index:index + len(raw_entity)]).upper()
+                == raw_entity
+                and all(word[:1].isupper() for word in source_words[index:index + len(raw_entity)])
+                for index in range(0, len(source_words) - len(raw_entity) + 1)
+            ):
+                continue
         if any(term not in source_terms for term in entity_terms):
             return False
     return True

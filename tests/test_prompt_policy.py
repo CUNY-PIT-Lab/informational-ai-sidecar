@@ -23,10 +23,10 @@ import source_selector
 
 class PromptPolicyTests(unittest.TestCase):
     def test_runtime_and_capture_use_one_policy_id(self):
-        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v21")
+        self.assertEqual(prompt_policy.PROMPT_POLICY_VERSION, "2026-08-18-v22")
         self.assertEqual(
             prompt_policy.PROMPT_BEHAVIOR_RELEASE,
-            "infobot-priority-grounded-guide",
+            "infobot-sitewide-evidence-guide",
         )
         self.assertEqual(server.PROMPT_POLICY_VERSION, prompt_policy.PROMPT_POLICY_VERSION)
         self.assertEqual(
@@ -43,15 +43,20 @@ class PromptPolicyTests(unittest.TestCase):
 
     def test_selector_uses_compiled_reviewed_policy(self):
         self.assertEqual(source_selector.SYSTEM_PROMPT, prompt_policy.SYSTEM_PROMPT)
-        self.assertIn("one relevant approved page", source_selector.SYSTEM_PROMPT)
-        self.assertIn("never combine pages", source_selector.SYSTEM_PROMPT)
+        self.assertIn("full supplied candidate set", source_selector.SYSTEM_PROMPT)
+        self.assertIn("strongest relevant evidence", source_selector.SYSTEM_PROMPT)
+        self.assertIn("entirely in that chosen record", source_selector.SYSTEM_PROMPT)
+        self.assertIn("rather than blending facts", source_selector.SYSTEM_PROMPT)
         self.assertIn("brief, natural follow-up", source_selector.SYSTEM_PROMPT)
         self.assertIn("Pick ASK only when ambiguity actually prevents", source_selector.SYSTEM_PROMPT)
         self.assertIn("do not append a fake invitation question", source_selector.SYSTEM_PROMPT)
         self.assertIn("protect privacy and source fidelity", source_selector.SYSTEM_PROMPT)
         self.assertIn("answer the participant's latest request directly", source_selector.SYSTEM_PROMPT)
-        self.assertIn("current page is a useful hint, not a boundary", source_selector.SYSTEM_PROMPT)
-        self.assertIn("candidate pages from across the approved site", source_selector.SYSTEM_PROMPT)
+        self.assertIn("active page is navigation context", source_selector.SYSTEM_PROMPT)
+        self.assertIn("not the scope of your knowledge", source_selector.SYSTEM_PROMPT)
+        self.assertIn("from anywhere in the supplied Fortune site evidence", source_selector.SYSTEM_PROMPT)
+        self.assertIn("without announcing a page limitation", source_selector.SYSTEM_PROMPT)
+        self.assertIn("Do not say the current page lacks the answer", source_selector.SYSTEM_PROMPT)
         self.assertIn("never imply fresher knowledge", source_selector.SYSTEM_PROMPT)
         self.assertIn("continue without groveling", source_selector.SYSTEM_PROMPT)
         self.assertIn("Ignore without acknowledging", source_selector.SYSTEM_PROMPT)
@@ -69,6 +74,10 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn(
             "State the affected service's negative status first",
             prompt_policy.RETRY_INSTRUCTIONS["status contradiction"],
+        )
+        self.assertIn(
+            "Do not blend facts from multiple candidates",
+            prompt_policy.RETRY_INSTRUCTIONS["unsupported factual wording"],
         )
         self.assertNotIn("conversation logs are recorded", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("988", source_selector.SYSTEM_PROMPT)
@@ -103,6 +112,18 @@ class PromptPolicyTests(unittest.TestCase):
         )
         self.assertIn("ambiguity actually prevents", clarification["current_value"])
         self.assertIn("fake invitation question", clarification["current_value"])
+
+        page_awareness = catalog["page_awareness"]
+        self.assertEqual(
+            page_awareness["current_variant"],
+            "sitewide_evidence_first",
+        )
+        self.assertEqual(
+            page_awareness["current_value"],
+            prompt_policy.TEAM_TUNABLE_PROMPT_MODULES["page_awareness"]
+            ["sitewide_evidence_first"],
+        )
+        self.assertIn("navigation context", page_awareness["current_value"])
 
     def test_visible_prompts_preview_matches_current_policy_registry(self):
         javascript = (ROOT / "evaluation.js").read_text(encoding="utf-8")
