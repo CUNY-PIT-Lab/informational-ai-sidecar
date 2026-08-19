@@ -31,7 +31,7 @@ The browser sends the visitor's question, up to six recent in-memory messages, a
 }
 ```
 
-The backend resolves `page_context` against the approved site index and never treats browser-supplied text as a factual source. It sanitizes `history`, checks the current page first, and searches the broader approved index only when that page lacks the required information. A reusable selector may see the resolved question and bounded approved candidates, but it can return only one allowed source ID or `ASK`; raw history and participant-facing answer prose stay outside that contract. If neither scope contains evidence, the backend skips the model call and returns a staff route.
+The canonical backend resolves `page_context` against the approved site index and never treats browser-supplied text as a factual source. It sanitizes `history`, checks the current page first, and searches the broader approved index only when that page lacks the required information. Every successful non-private new request reaches the model with a bounded set of approved current records. The model writes the concise participant-facing answer or one clarifying question; the server validates its selected source, claims, privacy, and response shape. When lexical retrieval has no match, the model receives a bounded navigation set and must clarify rather than receiving a server-authored fallback.
 
 ## Optional Copilot Studio evaluation
 
@@ -43,8 +43,8 @@ This bridge does not run the source-first retrieval ladder or privacy hold imple
 
 1. Create a private app with the current unified Wix CLI and generate an embedded-script extension. Keep the generated extension ID and manifest files from Wix; this scaffold does not invent them.
 2. Configure the extension to load at `BODY_END`, package the custom-element file with the extension, and adapt `embedded.html.example` to the asset reference produced by the generated project.
-3. Add `OLLAMA_API_KEY` to Wix Secrets Manager. Retrieve it only in backend code. Do not place it in HTML, element attributes, dynamic parameters, client JavaScript, logs, or GitHub settings.
-4. Expose a backend web method or HTTP endpoint for chat. Wrap `backend/ollama-proxy.example.mjs` with the imports and permission declarations generated for the current Wix project.
+3. Store the canonical Website Guide API URL in Wix configuration. Keep the provider key only in the canonical Railway backend; do not place it in Wix HTML, element attributes, dynamic parameters, client JavaScript, logs, or GitHub settings.
+4. Expose a narrow backend web method or HTTP relay for chat. Wrap `backend/ollama-proxy.example.mjs` with the imports and permission declarations generated for the current Wix project; the relay must not run a second model or author responses.
 5. Connect the endpoint to the approved site index and link graph. Allow retrieval only from canonical Fortune public URLs and reviewed knowledge entries.
 6. Give the element a public API base URL. If the web method is same-origin, use that route. If an external backend is used, allow only the Fortune production and approved preview origins.
 7. Install the private app on a Wix test site, activate the embedded script, and verify it across representative desktop and mobile pages before installing it on the production site.
@@ -52,15 +52,15 @@ This bridge does not run the source-first retrieval ladder or privacy hold imple
 ## Required backend behavior
 
 - Hold messages containing likely personal information before the model call and guide the visitor toward staff.
-- Detect known ambiguous phrases before retrieval. Ask one short clarifying question with two or three concrete choices.
+- Route vague or ambiguous requests to the model with bounded approved navigation records and require one short clarifying question.
 - Treat the current page as an isolated first retrieval scope. Search the broader approved index only after the current page fails to supply usable evidence.
-- Skip the model call when neither retrieval scope contains approved evidence. Return a staff handoff and a working contact route instead.
+- Require `model_called: true` for every successful non-private new turn. The pre-model privacy hold is the only successful zero-call path.
 - Validate every source and related-link ID against the index after the model responds.
 - Add a safe related route when the response lacks one. Use a page-specific continuation when available and the Digital Equity contact page for unresolved questions.
-- Return staff handoff for low-confidence, eligibility, enrollment, schedule, and case-specific questions.
+- Ground low-confidence, eligibility, enrollment, schedule, and staff-bound wording in approved sources; reject unsupported output instead of substituting fixed participant copy.
 - Avoid query logging by default. If Fortune later approves evaluation logging, document purpose, fields, retention, access, and deletion before enabling it.
 - Return the shared answer fields plus server-issued conversation, turn, event, and message IDs, the signed continuation token, and capture status described in [`../CONVERSATION-CAPTURE.md`](../CONVERSATION-CAPTURE.md).
-- Use `model_called` for status. A response can name the configured `model` while reporting that no model call occurred.
+- Preserve `model_called` in the client transcript metadata. A successful non-private new turn is invalid unless it is `true`.
 
 ## No-dead-end interface checks
 
@@ -102,7 +102,7 @@ If Fortune continues, establish a named content owner, a technical owner, key ro
 - Opening the guide does not change the page zoom or move keyboard focus unexpectedly.
 - The guide reports the current page to the backend, searches that page first, and expands to another approved page only when needed.
 - Each evidence-backed answer includes a working source; every response includes another useful page or staff route and an available chat input.
-- Known ambiguous requests receive one focused clarification before an answer.
+- Known ambiguous requests receive one focused, model-authored clarification before an answer.
 - Personal-information tests never reach Ollama Cloud.
 - The browser, source bundle, GitHub repository, and network responses contain no API key.
 - Disabling the Wix extension removes the guide without changing page content.

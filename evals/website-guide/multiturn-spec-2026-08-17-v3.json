@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "name": "Fortune Website Guide refreshed-corpus multi-turn evaluation",
+    "version": "2026-08-17.3",
+    "mode": "gym-grader-overlay",
+    "owner": "Fortune Website Guide maintainers"
+  },
+  "charter": {
+    "decision": "Regrade the frozen August 17 conversations after correcting two demonstrated confirmation-turn artifacts.",
+    "unitUnderTest": "The same 12 episodes and 50 turns used by versions 2026-08-17.1 and 2026-08-17.2.",
+    "hardConstraints": [
+      "Do not change a turn, episode level, slice, grounding rule, topic-shift rule, source allowlist, no-guessing gate, or participant message.",
+      "Clarification authority is graded from offered choice labels and prompts because response.sources is intentionally empty for kind=clarify.",
+      "Advancement remains required except for the two declared turns whose questions explicitly request facts already required from the preceding answer."
+    ],
+    "nonGoals": [
+      "Change runtime routing, retrieval, prompts, source records, or production behavior.",
+      "Waive repetition for any other turn.",
+      "Convert substantive context loss, generic clarification, incomplete retrieval, or stale-status failures into passes.",
+      "Overwrite the version 1 or version 2 spec, frozen cases, or prior raw runs."
+    ]
+  },
+  "lineage": {
+    "parent_spec": "multiturn-spec-2026-08-17-v2.json",
+    "parent_spec_sha256": "55ce15995df320e52621aa1f927356a00b53f7a7344361538625f15afedb0f08",
+    "frozen_cases": "multiturn-cases-2026-08-17.json",
+    "frozen_cases_sha256": "8db87973a168d3562ac6e5259b14128de5f16220cb7ce69e40c57c6e29570a15",
+    "evidence_run": "results/2026-08-17-v15-staging-multiturn.json"
+  },
+  "grader_contract": {
+    "clarification_authority": "For kind=clarify, source_match_any and source_excludes inspect choice labels and prompts in addition to response.sources.",
+    "advancement_exception": "A turn may set advancement_required=false only through this bounded overlay when its expected answer is a direct confirmation of evidence the preceding turn was already required to state."
+  },
+  "grader_overrides": {
+    "clarification_authority": "sources_or_choice_targets",
+    "turn_expectations": {
+      "current_faq_conversation/full-attendance-exception": {
+        "source_match_any": [
+          "home",
+          "contact",
+          "trainings"
+        ],
+        "advancement_required": false
+      },
+      "stale_fact_negatives/phone-availability-follow-up": {
+        "advancement_required": false
+      }
+    }
+  },
+  "adjudication": {
+    "expected_delta_on_v15_raw_result": "The source-grounded phone-status confirmation moves the v15 run from 49/50 turns and 11/12 episodes to 50/50 and 12/12. No model response, source requirement, stale-positive exclusion, or frozen participant message changes.",
+    "immutable_raw_evidence": true
+  }
+}

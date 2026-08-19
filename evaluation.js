@@ -3,6 +3,11 @@
 
   const accessView = document.querySelector("#access-view");
   const workspace = document.querySelector("#workspace");
+  const workspaceTitle = document.querySelector("#workspace-title");
+  const conversationsTab = document.querySelector("#conversations-tab");
+  const promptLabTab = document.querySelector("#prompt-lab-tab");
+  const conversationsPanel = document.querySelector("#conversations-panel");
+  const promptLabPanel = document.querySelector("#prompt-lab-panel");
   const loginForm = document.querySelector("#login-form");
   const claimForm = document.querySelector("#claim-form");
   const claimCancel = document.querySelector("#claim-cancel");
@@ -32,12 +37,27 @@
   const reviewNote = document.querySelector("#review-note");
   const reviewNoteStatus = document.querySelector("#review-note-status");
   const moveStatus = document.querySelector("#move-status");
+  const deployedPromptVersion = document.querySelector("#deployed-prompt-version");
+  const currentPromptModules = document.querySelector("#current-prompt-modules");
+  const codeControlledNote = document.querySelector("#code-controlled-note");
+  const proposalCount = document.querySelector("#proposal-count");
+  const promptProposalList = document.querySelector("#prompt-proposal-list");
+  const promptProposalEmpty = document.querySelector("#prompt-proposal-empty");
+  const newProposalButton = document.querySelector("#new-proposal-button");
+  const promptProposalDialog = document.querySelector("#prompt-proposal-dialog");
+  const promptProposalForm = document.querySelector("#prompt-proposal-form");
+  const promptProposalDialogTitle = document.querySelector("#prompt-proposal-title");
+  const promptProposalClose = document.querySelector("#prompt-proposal-close");
+  const promptProposalName = document.querySelector("#prompt-proposal-name");
+  const promptModuleFields = document.querySelector("#prompt-module-fields");
+  const promptProposalStatus = document.querySelector("#prompt-proposal-status");
 
   const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname)
     && new URLSearchParams(location.search).get("preview") === "1";
-  const previewKey = "fortune-evaluation-preview-v3";
+  const previewKey = "fortune-evaluation-preview-v5";
   const viewKeyPrefix = "fortune-evaluation-view-v2";
   const defaultView = { visibility: "all", sort: "default", layout: "compact" };
+  const UNREVIEWED_PAGE_SIZE = 8;
   const state = {
     session: null,
     csrf: "",
@@ -45,6 +65,9 @@
     conversations: [],
     selectedId: "",
     openConversation: null,
+    promptLab: null,
+    editingProposalId: "",
+    unreviewedPage: 1,
     view: { ...defaultView },
   };
 
@@ -59,22 +82,102 @@
   const previewBuckets = [
     { id: "success", label: "Success", color_key: "sky", standard_key: "success" },
     { id: "needs", label: "Needs work", color_key: "coral", standard_key: "needs" },
-    { id: "handoff", label: "Handoff", color_key: "blue", standard_key: "handoff" },
   ];
   const previewConversations = [
     ["7b8d3e", "Digital Literacy Workshops", 6, null],
     ["4c6e8f", "Internet Access Support", 7, null],
     ["9f2a1c", "Device Distribution", 8, "success"],
     ["6e7f9g", "Legal Help Referrals", 6, "needs"],
-    ["3h6j8k", "Benefits Assistance", 5, "handoff"],
-    ["5k9l0m", "Theory of Change", 4, "handoff"],
+    ["3h6j8k", "Benefits Assistance", 5, null],
+    ["5k9l0m", "Theory of Change", 4, null],
+    ["1a2b3c", "Computer Basics", 5, null],
+    ["2b3c4d", "Intro to Email", 4, null],
+    ["3c4d5e", "Microsoft Excel", 7, null],
+    ["4d5e6f", "Online Safety", 3, null],
+    ["5e6f7a", "Digital Equity", 6, null],
+    ["6f7a8b", "Community Resources", 4, null],
+    ["7a8b9c", "Technology Training", 8, null],
+    ["8b9c0d", "Individual Support", 5, null],
+    ["9c0d1e", "Mobile Devices", 3, null],
+    ["0d1e2f", "Internet Basics", 6, null],
+    ["1e2f3a", "Job Search Support", 5, null],
+    ["2f3a4b", "Program Calendar", 4, null],
+    ["3a4b5c", "Contact Digital Equity", 3, null],
+    ["4b5c6d", "Workshops", 7, null],
+    ["5c6d7e", "About the Program", 4, null],
+    ["6d7e8f", "Frequently Asked Questions", 5, null],
   ].map(([id, page_title, turn_count, bucket_id]) => ({
     id, page_title, turn_count, bucket_id, transcript_version: turn_count,
     last_turn_at: "2026-08-08T14:30:00Z",
   }));
 
+  const previewPromptLab = {
+    scope: "shared",
+    shared: true,
+    deployed: {
+      version: "2026-08-18-v22",
+      behavior_release: "infobot-sitewide-evidence-guide",
+      editable: false,
+    },
+    editable_modules: [
+      { key: "style", label: "Tone and concision", current_variant: "direct_adaptive_conversational", current_value: "Answer directly and conversationally, usually in one sentence and about 30 words or fewer, written for a phone screen. Use plain, warm, respectful, nonjudgmental language. Start with the useful action or answer. Adapt to relevant non-private constraints in the participant's latest message. Avoid jargon, blame, assumptions, and scripted filler. Use a second sentence only for a necessary status, eligibility, safety, or uncertainty caveat. When asked how to do a digital task, give short practical steps supported by the selected page. Paraphrase promotional language.", maximum_length: 500 },
+      { key: "clarification", label: "Clarification style", current_variant: "blocking_ambiguity_only", current_value: "Pick ASK only when ambiguity actually prevents a supported answer. Ask one brief, natural follow-up about that missing detail. Do not ask the participant to choose a page, do not append a fake invitation question to an answered request, and do not clarify when one approved page supports a useful answer.", maximum_length: 500 },
+      { key: "follow_up", label: "Follow-up advancement", current_variant: "latest_request_and_correction", current_value: "For a follow-up, answer the latest request and use earlier turns only when they help resolve it. Do not repeat the previous answer unless the participant asks to confirm, restate, or explain it. If the participant points out a mistake or failed step, acknowledge it briefly, correct it from the approved source, and continue without groveling.", maximum_length: 500 },
+      { key: "page_awareness", label: "Page awareness and flow", current_variant: "sitewide_evidence_first", current_value: "The active page is navigation context, not the scope of your knowledge. Unless the participant explicitly refers to this page, here, or there, choose the best supporting candidate from anywhere in the supplied Fortune site evidence. If the active page does not answer the request, move to another candidate without announcing a page limitation.", maximum_length: 500 },
+    ],
+    code_controlled: [
+      "Grounding and no-guessing rules",
+      "Approved source access",
+      "Privacy and safety rules",
+      "Response validation and release activation",
+    ],
+    activation: "code_review_and_deploy_only",
+    can_mark_status: false,
+    proposals: [{
+      id: "11111111-1111-4111-8111-111111111111",
+      base_prompt_version: "2026-08-17-v11",
+      title: "Shorter clarification turns",
+      module_values: { clarification: "Ask one plain-language question that gives the visitor two relevant directions to choose from." },
+      status: "draft",
+      version: 1,
+      created_by: "editor-1",
+      updated_by: "editor-1",
+      created_at: "2026-08-17T20:20:00Z",
+      updated_at: "2026-08-17T20:20:00Z",
+      comments: [],
+    }],
+  };
+
   function shortId(value) {
     return `CV-${String(value || "").replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+  }
+
+  function timestampValue(value) {
+    const timestamp = Date.parse(String(value || ""));
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  function readableTimestamp(value) {
+    const timestamp = timestampValue(value);
+    if (!timestamp) return "Time unavailable";
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(timestamp));
+  }
+
+  function newestFirst(items) {
+    return [...items].sort((left, right) => {
+      const recency = timestampValue(right.last_turn_at) - timestampValue(left.last_turn_at);
+      return recency || String(left.id || "").localeCompare(String(right.id || ""));
+    });
+  }
+
+  function timeHtml(value, className) {
+    return `<time class="${className}" datetime="${escapeHtml(value || "")}">${escapeHtml(readableTimestamp(value))}</time>`;
   }
 
   function setStatus(message, error = false) {
@@ -112,29 +215,42 @@
 
   function previewLoad() {
     const saved = JSON.parse(localStorage.getItem(previewKey) || "null");
-    state.session = { slot_key: "editor-1", role: "editor", display_name: "Editor 1" };
+    const previewAdmin = new URLSearchParams(location.search).get("role") === "admin";
+    state.session = previewAdmin
+      ? { slot_key: "admin", role: "admin", display_name: "Administrator" }
+      : { slot_key: "editor-1", role: "editor", display_name: "Editor 1" };
     state.buckets = saved?.buckets || previewBuckets;
     state.conversations = saved?.conversations || previewConversations;
+    state.promptLab = saved?.promptLab || structuredClone(previewPromptLab);
+    state.promptLab.can_mark_status = previewAdmin;
     loadViewPreferences();
     showWorkspace();
     renderBoard();
+    renderPromptLab();
   }
 
   function previewSave() {
-    localStorage.setItem(previewKey, JSON.stringify({ buckets: state.buckets, conversations: state.conversations }));
+    localStorage.setItem(previewKey, JSON.stringify({
+      buckets: state.buckets,
+      conversations: state.conversations,
+      promptLab: state.promptLab,
+    }));
   }
 
   async function loadWorkspace() {
     if (localPreview) return previewLoad();
-    const [bucketPayload, conversationPayload] = await Promise.all([
+    const [bucketPayload, conversationPayload, promptPayload] = await Promise.all([
       api("/api/evaluation/buckets"),
-      api("/api/evaluation/conversations?limit=100"),
+      api("/api/evaluation/conversations?limit=500"),
+      api("/api/evaluation/prompt-lab"),
     ]);
     state.buckets = bucketPayload.buckets || [];
     state.conversations = conversationPayload.conversations || [];
+    state.promptLab = promptPayload.prompt_lab || null;
     loadViewPreferences();
     showWorkspace();
     renderBoard();
+    renderPromptLab();
   }
 
   function bucketColumns() {
@@ -167,10 +283,11 @@
 
   function filteredConversations() {
     const query = search.value.trim().toLowerCase();
-    return state.conversations.filter(item => {
+    const matches = state.conversations.filter(item => {
       if (!query) return true;
       return `${shortId(item.id)} ${item.page_title || ""}`.toLowerCase().includes(query);
     });
+    return newestFirst(matches);
   }
 
   function moveOptions(conversation) {
@@ -189,12 +306,52 @@
   function cardHtml(conversation) {
     const selected = state.selectedId === conversation.id;
     return `
-      <article class="conversation-card${selected ? " is-selected" : ""}" draggable="true" data-conversation-id="${escapeHtml(conversation.id)}" tabindex="0" aria-label="${shortId(conversation.id)}, ${escapeHtml(conversation.page_title || "Unknown page")}">
+      <article class="conversation-card${selected ? " is-selected" : ""}" draggable="true" data-conversation-id="${escapeHtml(conversation.id)}" tabindex="0" aria-label="${shortId(conversation.id)}, ${escapeHtml(conversation.page_title || "Unknown page")}, ${escapeHtml(readableTimestamp(conversation.last_turn_at))}">
         <span class="drag-handle" aria-hidden="true">⠿</span>
         <p class="conversation-id">${shortId(conversation.id)}</p>
         <p class="conversation-page">${escapeHtml(conversation.page_title || "Unknown page")}</p>
+        ${timeHtml(conversation.last_turn_at, "conversation-time")}
         ${selected ? `<div class="card-actions"><button class="open-transcript" type="button">Open transcript</button>${moveOptions(conversation)}</div>` : moveOptions(conversation)}
       </article>`;
+  }
+
+  function pageTokens(currentPage, pageCount) {
+    if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1);
+    const pages = new Set([1, pageCount, currentPage - 1, currentPage, currentPage + 1]);
+    const ordered = [...pages].filter(page => page >= 1 && page <= pageCount).sort((a, b) => a - b);
+    return ordered.reduce((tokens, page, index) => {
+      if (index && page - ordered[index - 1] > 1) tokens.push("ellipsis");
+      tokens.push(page);
+      return tokens;
+    }, []);
+  }
+
+  function paginatedItems(bucket, items) {
+    if (bucket.id !== null || items.length <= UNREVIEWED_PAGE_SIZE) {
+      if (bucket.id === null) state.unreviewedPage = 1;
+      return { items, pagination: "" };
+    }
+    const pageCount = Math.ceil(items.length / UNREVIEWED_PAGE_SIZE);
+    state.unreviewedPage = Math.min(Math.max(state.unreviewedPage, 1), pageCount);
+    const start = (state.unreviewedPage - 1) * UNREVIEWED_PAGE_SIZE;
+    const end = Math.min(start + UNREVIEWED_PAGE_SIZE, items.length);
+    const pages = pageTokens(state.unreviewedPage, pageCount).map(token => {
+      if (token === "ellipsis") return '<span class="pagination-ellipsis" aria-hidden="true">…</span>';
+      const current = token === state.unreviewedPage ? ' aria-current="page"' : "";
+      return `<button class="pagination-button pagination-page" type="button" data-page="${token}" aria-label="Page ${token}"${current}>${token}</button>`;
+    }).join("");
+    return {
+      items: items.slice(start, end),
+      pagination: `
+        <nav class="bucket-pagination" aria-label="Not yet reviewed pages">
+          <p class="pagination-range" aria-live="polite">Showing ${start + 1}–${end} of ${items.length}</p>
+          <div class="pagination-controls">
+            <button class="pagination-button pagination-previous" type="button" data-page="${state.unreviewedPage - 1}" aria-label="Previous page"${state.unreviewedPage === 1 ? " disabled" : ""}>‹</button>
+            <span class="pagination-pages">${pages}</span>
+            <button class="pagination-button pagination-next" type="button" data-page="${state.unreviewedPage + 1}" aria-label="Next page"${state.unreviewedPage === pageCount ? " disabled" : ""}>›</button>
+          </div>
+        </nav>`,
+    };
   }
 
   function renderBoard() {
@@ -211,16 +368,309 @@
     board.dataset.layout = state.view.layout;
     board.innerHTML = columns.map(bucket => {
       const items = conversations.filter(item => (item.bucket_id || null) === bucket.id);
+      const page = paginatedItems(bucket, items);
       return `
         <section class="bucket" data-bucket-id="${escapeHtml(bucket.id || "")}" data-color="${escapeHtml(bucket.color_key || "blue")}" aria-labelledby="bucket-${escapeHtml(bucket.id || "unsorted")}">
           <header class="bucket-header">
             <h2 id="bucket-${escapeHtml(bucket.id || "unsorted")}">${escapeHtml(bucket.label)}</h2>
             <span class="bucket-count" aria-label="${items.length} conversations">${items.length}</span>
           </header>
-          <div class="bucket-cards">${items.map(cardHtml).join("")}</div>
+          <div class="bucket-cards">${page.items.map(cardHtml).join("")}</div>
+          ${page.pagination}
         </section>`;
     }).join("");
     bindBoardEvents();
+  }
+
+  function setWorkspaceView(view) {
+    const promptView = view === "prompt";
+    conversationsPanel.hidden = promptView;
+    promptLabPanel.hidden = !promptView;
+    conversationsTab.setAttribute("aria-selected", String(!promptView));
+    promptLabTab.setAttribute("aria-selected", String(promptView));
+    conversationsTab.tabIndex = promptView ? -1 : 0;
+    promptLabTab.tabIndex = promptView ? 0 : -1;
+    workspaceTitle.textContent = promptView ? "Review prompt proposals" : "Review conversations";
+    if (promptView && !localPreview) refreshPromptLab(true);
+  }
+
+  function promptModule(key) {
+    return (state.promptLab?.editable_modules || []).find(module => module.key === key) || null;
+  }
+
+  function proposalById(proposalId) {
+    return (state.promptLab?.proposals || []).find(proposal => proposal.id === proposalId) || null;
+  }
+
+  function proposalStatusLabel(value) {
+    return { draft: "Draft", ready: "Ready for code review", archived: "Archived" }[value] || value;
+  }
+
+  function proposalModuleHtml(key, value) {
+    const module = promptModule(key);
+    if (!module) return "";
+    return `
+      <div class="module-diff">
+        <h4>${escapeHtml(module.label)}</h4>
+        <div class="module-diff-columns">
+          <div>
+            <p class="diff-label">Current · ${escapeHtml(module.current_variant)}</p>
+            <p>${escapeHtml(module.current_value)}</p>
+          </div>
+          <div>
+            <p class="diff-label">Proposed</p>
+            <p>${escapeHtml(value)}</p>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function proposalHtml(proposal) {
+    const moduleDiffs = Object.entries(proposal.module_values || {})
+      .map(([key, value]) => proposalModuleHtml(key, value))
+      .join("");
+    const comments = (proposal.comments || []).map(comment => `
+      <li>
+        <p>${escapeHtml(comment.body)}</p>
+        <span>${escapeHtml(comment.actor_slot)} · ${escapeHtml(readableTimestamp(comment.created_at))}</span>
+      </li>`).join("");
+    const editable = proposal.status === "draft";
+    const revisions = (proposal.revisions || []).map(revision => {
+      const revisionModules = Object.entries(revision.module_values || {}).map(([key, value]) => {
+        const module = promptModule(key);
+        return `<li><strong>${escapeHtml(module?.label || key)}</strong>: ${escapeHtml(value)}</li>`;
+      }).join("");
+      return `
+        <li>
+          <p><strong>v${Number(revision.proposal_version)}</strong> · ${escapeHtml(proposalStatusLabel(revision.status))} · ${escapeHtml(revision.actor_slot)} ${escapeHtml(readableTimestamp(revision.recorded_at))}</p>
+          <p>${escapeHtml(revision.title)}</p>
+          <ul>${revisionModules}</ul>
+        </li>`;
+    }).join("");
+    const adminControls = state.promptLab?.can_mark_status ? `
+      ${proposal.status === "draft" ? '<button class="secondary-button mark-proposal-ready" type="button">Mark ready</button>' : ""}
+      ${proposal.status !== "archived" ? '<button class="text-button archive-proposal" type="button">Archive</button>' : ""}` : "";
+    return `
+      <article class="prompt-proposal" data-proposal-id="${escapeHtml(proposal.id)}">
+        <header>
+          <div>
+            <p class="proposal-status" data-status="${escapeHtml(proposal.status)}">${escapeHtml(proposalStatusLabel(proposal.status))}</p>
+            <h3>${escapeHtml(proposal.title)}</h3>
+            <p class="proposal-meta">Based on ${escapeHtml(proposal.base_prompt_version)} · v${Number(proposal.version || 1)} · updated by ${escapeHtml(proposal.updated_by)} ${escapeHtml(readableTimestamp(proposal.updated_at))}</p>
+          </div>
+          <div class="proposal-actions">
+            ${editable ? '<button class="secondary-button edit-proposal" type="button">Edit</button>' : ""}
+            ${adminControls}
+          </div>
+        </header>
+        <div class="module-diffs">${moduleDiffs}</div>
+        ${revisions ? `
+          <details class="proposal-history">
+            <summary>Version history (${proposal.revisions.length})</summary>
+            <ol>${revisions}</ol>
+          </details>` : ""}
+        <section class="proposal-comments" aria-label="Proposal comments">
+          <h4>Comments</h4>
+          ${comments ? `<ul>${comments}</ul>` : '<p class="no-comments">No comments yet.</p>'}
+          <form class="proposal-comment-form">
+            <label class="sr-only">Add a comment</label>
+            <div>
+              <input name="comment" maxlength="1000" placeholder="Add a comment" aria-label="Add a comment" required>
+              <button class="secondary-button" type="submit">Comment</button>
+            </div>
+            <span class="save-status proposal-action-status" role="status"></span>
+          </form>
+        </section>
+      </article>`;
+  }
+
+  function renderPromptLab() {
+    const lab = state.promptLab;
+    if (!lab) {
+      promptProposalList.innerHTML = "";
+      promptProposalEmpty.hidden = false;
+      return;
+    }
+    deployedPromptVersion.textContent = `${lab.deployed.version} · ${lab.deployed.behavior_release}`;
+    currentPromptModules.innerHTML = (lab.editable_modules || []).map(module => `
+      <article>
+        <h4>${escapeHtml(module.label)}</h4>
+        <p>${escapeHtml(module.current_value)}</p>
+        <span>${escapeHtml(module.current_variant)}</span>
+      </article>`).join("");
+    codeControlledNote.textContent = `Code-controlled: ${(lab.code_controlled || []).join(", ")}.`;
+    const proposals = [...(lab.proposals || [])].sort((left, right) =>
+      timestampValue(right.updated_at) - timestampValue(left.updated_at)
+      || String(left.id).localeCompare(String(right.id))
+    );
+    proposalCount.textContent = `${proposals.length} shared ${proposals.length === 1 ? "proposal" : "proposals"}`;
+    promptProposalList.innerHTML = proposals.map(proposalHtml).join("");
+    promptProposalEmpty.hidden = proposals.length > 0;
+  }
+
+  function upsertProposal(proposal) {
+    if (!state.promptLab) return;
+    const index = state.promptLab.proposals.findIndex(item => item.id === proposal.id);
+    if (index >= 0) state.promptLab.proposals[index] = proposal;
+    else state.promptLab.proposals.unshift(proposal);
+  }
+
+  async function refreshPromptLab(silent = false) {
+    if (localPreview) return;
+    try {
+      state.promptLab = (await api("/api/evaluation/prompt-lab")).prompt_lab;
+      renderPromptLab();
+    } catch (error) {
+      if (!silent) moveStatus.textContent = `Prompt proposals could not be refreshed. ${error.message}`;
+    }
+  }
+
+  function openPromptProposalDialog(proposalId = "") {
+    const proposal = proposalId ? proposalById(proposalId) : null;
+    state.editingProposalId = proposal?.id || "";
+    promptProposalDialogTitle.textContent = proposal ? "Edit prompt proposal" : "New prompt proposal";
+    promptProposalName.value = proposal?.title || "";
+    promptModuleFields.innerHTML = (state.promptLab?.editable_modules || []).map(module => `
+      <div class="field prompt-module-field">
+        <label for="prompt-module-${escapeHtml(module.key)}">${escapeHtml(module.label)}</label>
+        <p>Current: ${escapeHtml(module.current_value)}</p>
+        <textarea id="prompt-module-${escapeHtml(module.key)}" name="${escapeHtml(module.key)}" maxlength="${Number(module.maximum_length || 500)}" rows="3" placeholder="No change proposed">${escapeHtml(proposal?.module_values?.[module.key] || "")}</textarea>
+      </div>`).join("");
+    promptProposalStatus.textContent = "";
+    promptProposalDialog.showModal();
+  }
+
+  async function savePromptProposal() {
+    const modules = {};
+    (state.promptLab?.editable_modules || []).forEach(module => {
+      const value = promptProposalForm.elements[module.key]?.value.trim();
+      if (value) modules[module.key] = value;
+    });
+    if (!Object.keys(modules).length) {
+      promptProposalStatus.textContent = "Suggest a change to at least one module.";
+      return;
+    }
+    const existing = state.editingProposalId ? proposalById(state.editingProposalId) : null;
+    promptProposalStatus.textContent = "Saving…";
+    try {
+      let proposal;
+      if (localPreview) {
+        const now = new Date().toISOString();
+        proposal = existing ? {
+          ...existing,
+          title: promptProposalName.value.trim(),
+          module_values: modules,
+          version: Number(existing.version || 1) + 1,
+          updated_by: state.session.slot_key,
+          updated_at: now,
+        } : {
+          id: crypto.randomUUID(),
+          base_prompt_version: state.promptLab.deployed.version,
+          title: promptProposalName.value.trim(),
+          module_values: modules,
+          status: "draft",
+          version: 1,
+          created_by: state.session.slot_key,
+          updated_by: state.session.slot_key,
+          created_at: now,
+          updated_at: now,
+          comments: [],
+        };
+      } else if (existing) {
+        proposal = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(existing.id)}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            title: promptProposalName.value,
+            module_values: modules,
+            expected_version: Number(existing.version),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      } else {
+        proposal = (await api("/api/evaluation/prompt-proposals", {
+          method: "POST",
+          body: JSON.stringify({
+            proposal_id: crypto.randomUUID(),
+            title: promptProposalName.value,
+            module_values: modules,
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      }
+      upsertProposal(proposal);
+      if (localPreview) previewSave();
+      renderPromptLab();
+      promptProposalDialog.close();
+      state.editingProposalId = "";
+    } catch (error) {
+      if (error.status === 409) await refreshPromptLab(true);
+      promptProposalStatus.textContent = `Not saved. ${error.message}`;
+    }
+  }
+
+  async function addProposalComment(proposalId, form) {
+    const proposal = proposalById(proposalId);
+    if (!proposal) return;
+    const status = form.querySelector(".proposal-action-status");
+    const input = form.elements.comment;
+    status.textContent = "Saving…";
+    try {
+      let comment;
+      if (localPreview) {
+        comment = {
+          id: crypto.randomUUID(),
+          body: input.value.trim(),
+          actor_slot: state.session.slot_key,
+          proposal_version: proposal.version,
+          created_at: new Date().toISOString(),
+        };
+      } else {
+        comment = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(proposalId)}/comments`, {
+          method: "POST",
+          body: JSON.stringify({ comment: input.value, operation_id: crypto.randomUUID() }),
+        })).comment;
+      }
+      proposal.comments = [...(proposal.comments || []), comment];
+      if (localPreview) previewSave();
+      renderPromptLab();
+    } catch (error) {
+      status.textContent = `Not saved. ${error.message}`;
+    }
+  }
+
+  async function changeProposalStatus(proposalId, statusValue) {
+    const proposal = proposalById(proposalId);
+    if (!proposal) return;
+    try {
+      let updated;
+      if (localPreview) {
+        const now = new Date().toISOString();
+        updated = {
+          ...proposal,
+          status: statusValue,
+          version: Number(proposal.version) + 1,
+          updated_by: state.session.slot_key,
+          updated_at: now,
+          ready_at: statusValue === "ready" ? now : proposal.ready_at,
+          archived_at: statusValue === "archived" ? now : proposal.archived_at,
+        };
+      } else {
+        updated = (await api(`/api/evaluation/prompt-proposals/${encodeURIComponent(proposalId)}/status`, {
+          method: "PUT",
+          body: JSON.stringify({
+            status: statusValue,
+            expected_version: Number(proposal.version),
+            operation_id: crypto.randomUUID(),
+          }),
+        })).proposal;
+      }
+      upsertProposal(updated);
+      if (localPreview) previewSave();
+      renderPromptLab();
+    } catch (error) {
+      if (error.status === 409) await refreshPromptLab(true);
+      moveStatus.textContent = `Proposal status was not changed. ${error.message}`;
+    }
   }
 
   function bindBoardEvents() {
@@ -253,6 +703,14 @@
         event.preventDefault();
         bucket.classList.remove("is-drop-target");
         moveConversation(event.dataTransfer.getData("text/plain"), bucket.dataset.bucketId || null);
+      });
+    });
+
+    board.querySelectorAll(".bucket-pagination [data-page]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.unreviewedPage = Number(button.dataset.page);
+        renderBoard();
+        board.querySelector('.bucket-pagination [aria-current="page"]')?.focus();
       });
     });
   }
@@ -307,8 +765,8 @@
         note: conversation.note || null,
         annotations: conversation.annotations || [],
         messages: [
-          { id: `${conversation.id}-user`, role: "user", content: "Where can I find the current information on this page?" },
-          { id: `${conversation.id}-assistant`, role: "assistant", content: "I found the relevant public page and can point you to it." },
+          { id: `${conversation.id}-user`, role: "user", content: "Where can I find the current information on this page?", created_at: conversation.last_turn_at },
+          { id: `${conversation.id}-assistant`, role: "assistant", content: "I found the relevant public page and can point you to it.", created_at: conversation.last_turn_at },
         ],
       };
     } else {
@@ -316,7 +774,7 @@
     }
     state.openConversation = detail;
     transcriptTitle.textContent = shortId(detail.id);
-    transcriptMeta.textContent = detail.page_title || "Conversation";
+    transcriptMeta.textContent = `${detail.page_title || "Conversation"} · ${readableTimestamp(detail.last_turn_at)}`;
     reviewNote.value = detail.note || "";
     reviewNoteStatus.textContent = "";
     renderTranscriptMessages();
@@ -341,7 +799,10 @@
       : "Annotate";
     return `
       <article class="message ${message.role === "assistant" ? "assistant" : "user"}" data-message-id="${escapeHtml(message.id)}">
-        <p class="message-role">${message.role === "assistant" ? "Website Guide" : "Visitor"}</p>
+        <div class="message-heading">
+          <p class="message-role">${message.role === "assistant" ? "Website Guide" : "Visitor"}</p>
+          ${timeHtml(message.created_at, "message-time")}
+        </div>
         <p class="message-content">${escapeHtml(message.content)}</p>
         <button class="annotation-toggle" type="button" aria-expanded="false">${escapeHtml(buttonLabel)}</button>
         <form class="annotation-form" hidden>
@@ -465,6 +926,49 @@
     }
   }
 
+  conversationsTab.addEventListener("click", () => setWorkspaceView("conversations"));
+  promptLabTab.addEventListener("click", () => setWorkspaceView("prompt"));
+  [conversationsTab, promptLabTab].forEach((tab, index, tabs) => {
+    tab.addEventListener("keydown", event => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabs.length - 1;
+      if (nextIndex === null) return;
+      event.preventDefault();
+      const nextTab = tabs[nextIndex];
+      setWorkspaceView(nextTab === promptLabTab ? "prompt" : "conversations");
+      nextTab.focus();
+    });
+  });
+  newProposalButton.addEventListener("click", () => openPromptProposalDialog());
+  promptProposalClose.addEventListener("click", () => {
+    promptProposalDialog.close();
+    state.editingProposalId = "";
+  });
+  promptProposalForm.addEventListener("submit", event => {
+    event.preventDefault();
+    savePromptProposal();
+  });
+  promptProposalList.addEventListener("click", event => {
+    const proposal = event.target.closest(".prompt-proposal");
+    if (!proposal) return;
+    if (event.target.closest(".edit-proposal")) {
+      openPromptProposalDialog(proposal.dataset.proposalId);
+    } else if (event.target.closest(".mark-proposal-ready")) {
+      changeProposalStatus(proposal.dataset.proposalId, "ready");
+    } else if (event.target.closest(".archive-proposal")) {
+      changeProposalStatus(proposal.dataset.proposalId, "archived");
+    }
+  });
+  promptProposalList.addEventListener("submit", event => {
+    const form = event.target.closest(".proposal-comment-form");
+    if (!form) return;
+    event.preventDefault();
+    addProposalComment(form.closest(".prompt-proposal").dataset.proposalId, form);
+  });
+
   loginForm.addEventListener("submit", async event => {
     event.preventDefault();
     setStatus("Signing in…");
@@ -514,7 +1018,10 @@
     setStatus("");
   });
 
-  search.addEventListener("input", renderBoard);
+  search.addEventListener("input", () => {
+    state.unreviewedPage = 1;
+    renderBoard();
+  });
   bucketVisibility.addEventListener("change", () => {
     state.view.visibility = bucketVisibility.value;
     saveViewPreferences();

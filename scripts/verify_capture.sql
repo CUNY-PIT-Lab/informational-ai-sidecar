@@ -1,4 +1,5 @@
 \set ON_ERROR_STOP on
+-- Pass -v prompt_policy=<version reported by the deployed /health endpoint>.
 
 SELECT json_build_object(
     'schema_current', EXISTS (
@@ -7,7 +8,7 @@ SELECT json_build_object(
     ),
     'evaluation_schema_current', EXISTS (
         SELECT 1 FROM schema_migrations
-        WHERE version = '006_transcript_annotations'
+        WHERE version = '008_remove_handoff_bucket'
     ),
     'evaluation_slot_count', (
         SELECT COUNT(*) FROM evaluator_accounts
@@ -24,12 +25,17 @@ SELECT json_build_object(
         WHERE id = :'clear_turn'::uuid
           AND client_event_id = :'clear_event'::uuid
           AND status = 'complete'
-          AND review_state = 'ready'
+          AND review_state = 'pending'
+          AND EXISTS (
+              SELECT 1 FROM conversations c
+              WHERE c.id = conversation_turns.conversation_id
+                AND c.client_surface = 'benchmark'
+          )
           AND chat_stage = 'opening'
           AND request_kind = 'clarification'
           AND request_language = 'en'
           AND response_language = 'en'
-          AND prompt_policy_version = '2026-08-08-v2'
+          AND prompt_policy_version = :'prompt_policy'
     ),
     'clear_message_count', (
         SELECT COUNT(*) FROM conversation_messages

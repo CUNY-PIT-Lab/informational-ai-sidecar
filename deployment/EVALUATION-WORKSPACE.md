@@ -22,7 +22,17 @@ The command prints one fragment-based claim link. PostgreSQL stores only its key
 
 After the admin account is claimed, the administrator can open **Account** in the evaluator and create or replace an email-bound link for any unassigned editor slot. Each link opens the first-use registration form, expires after 24 hours, works once, and signs the tester in immediately after registration. Share links only through a private channel; do not paste them into issues, commits, deployment logs, or test reports.
 
-Returning testers sign in at `/evaluation` with the email and password they chose during registration. Their queue placements, buckets, conversation notes, and message annotations are stored in PostgreSQL by reviewer account and remain available after reload, sign-out, and a new browser session. Interface preferences are browser-local and reviewer-scoped.
+Returning testers sign in at `/evaluation` with the email and password they chose during registration. All four accounts open the same shared queue, buckets, placements, conversation notes, and message annotations. Changes persist in PostgreSQL after reload, sign-out, and a new browser session; audit records identify the evaluator who made each change. Interface preferences remain browser-local.
+
+If a claimed account must be reassigned, use the private operator command below. It revokes active sessions and clears only that slot's authentication fields; the shared workspace and audit history remain intact.
+
+```bash
+python3 scripts/reset_evaluator_invite.py admin \
+  --confirm-reset admin \
+  --base-url https://<staging-domain>
+```
+
+The replacement link follows the same single-use, 24-hour, private-delivery rules. Resetting a claimed account is destructive to its existing login and requires explicit owner authorization.
 
 ## Staging variables
 
@@ -39,7 +49,7 @@ FORTUNE_EVALUATOR_MIN_INACTIVE_SECONDS=60
 
 ## Data boundary
 
-Only a conversation satisfying every condition enters a reviewer's queue:
+Only a conversation satisfying every condition enters the shared review queue:
 
 - transcript capture mode;
 - `client_surface='synthetic'`;
@@ -47,7 +57,21 @@ Only a conversation satisfying every condition enters a reviewer's queue:
 - every turn complete, privacy-clear, and ready;
 - exactly one user and one assistant message for every turn.
 
-Mixed or privacy-held conversations are withheld in full. Reviewers receive their own placements, buckets, conversation notes, and message annotations. Annotation rows reference canonical message IDs and never copy transcript text. All evaluation records cascade away when the conversation expires.
+Mixed or privacy-held conversations are withheld in full. Every authenticated evaluator receives the same placements, buckets, conversation notes, and message annotations. Annotation rows reference canonical message IDs and never copy transcript text. Mutations retain evaluator attribution in the append-only audit log. All evaluation records cascade away when the conversation expires.
+
+Automated suites and capture verification use `client_surface='benchmark'`.
+Those rows remain available to aggregate audits but never satisfy the shared
+review-queue gate. Use `scripts/exclude_evaluation_runs.py` to reclassify only
+artifact-backed historical runs; it is dry-run by default, skips records with
+review history, and does not delete transcripts.
+
+The shared review taxonomy includes **Success**, **Needs work**, the virtual **Not yet reviewed** area, and custom buckets. Migration `008_remove_handoff_bucket.sql` returns old Handoff placements to Not yet reviewed and archives the old bucket rows without deleting their history.
+
+## Prompts boundary
+
+All authenticated evaluators share one Prompts workspace. Editors and the administrator can create or revise draft suggestions and add comments for four presentation modules only: style, clarification, page awareness, and follow-up behavior. The administrator can mark a proposal ready for code review or archive it.
+
+Prompts never edits the compiled system prompt and has no activation or publishing route. Grounding, approved source access, privacy, safety, response validation, language handling, and deployment remain code-controlled. A ready proposal becomes live only after a developer converts it into an allowlisted prompt version, reviews it through Git, and deploys that code.
 
 ## HTTP boundary
 
@@ -62,9 +86,10 @@ Mixed or privacy-held conversations are withheld in full. Reviewers receive thei
 
 1. Run `./run.sh test` and both snapshot checks.
 2. Apply migrations through Railway's pre-deploy command.
-3. Confirm `/health` reports evaluation schema `006_transcript_annotations`, four total slots, and the expected claimed/unassigned slot counts.
-4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
+3. Confirm `/health` reports evaluation schema `008_remove_handoff_bucket`, four total slots, and the expected claimed/unassigned slot counts.
+4. Confirm `/server.py`, `/.env.example`, `/migrations/003_evaluator_identity.sql`, `/migrations/008_remove_handoff_bucket.sql`, and `/scripts/issue_evaluator_invite.py` return `404`.
 5. Confirm `/evaluation` shows the login surface and no reviewer data without a session.
 6. Claim the admin account, create one editor link from **Account**, and verify first-use registration signs the editor in without exposing the token in an HTTP request path or server log.
-7. Reload, sign out and back in, then reopen a saved bucket, note, and annotation; confirm another reviewer cannot see those placements or edits.
-8. Confirm the same invitation cannot be claimed twice, then leave the remaining invitation fields null until Fortune names the recipients.
+7. Save a bucket placement, note, and annotation as one evaluator; sign in as another evaluator and confirm the same state is visible. Make a second change and confirm the first evaluator sees it after reload.
+8. Create, revise, and comment on one Prompts proposal as an editor; confirm another evaluator sees it, confirm an editor cannot change its status, and confirm the administrator can mark it ready without activating it.
+9. Confirm the same invitation cannot be claimed twice, then leave the remaining invitation fields null until Fortune names the recipients.

@@ -9,10 +9,10 @@
   const TAG_NAME = "fortune-digital-equity-guide";
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
-  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v1";
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:wix:v20";
   const STARTERS = Object.freeze([
     { label: "Page summary", prompt: "What is the main information here?" },
-    { label: "Next step", prompt: "Where should I go next?" }
+    { label: "Page options", prompt: "What can I do from this page?" }
   ]);
 
   if (customElements.get(TAG_NAME)) return;
@@ -342,18 +342,24 @@
           }
           .info p { margin: 0; color: var(--guide-muted); font-size: 11px; line-height: 1.45; }
           .info p + p { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--guide-line); }
+          .reset,
           .contact {
             min-height: 44px;
             display: inline-flex;
             align-items: center;
-            margin-left: auto;
             padding: 0 6px;
             color: var(--guide-ink);
+            border: 0;
+            background: transparent;
             font-size: 12px;
             font-weight: 700;
             text-decoration: none;
+            cursor: pointer;
           }
+          .reset:hover,
           .contact:hover { text-decoration: underline; text-underline-offset: 4px; }
+          .reset:disabled { color: var(--guide-muted); cursor: wait; }
+          .contact { margin-left: auto; }
           @media (max-width: 520px) {
             :host { inset: auto 8px 8px 8px; }
             .panel { width: 100%; max-height: calc(100dvh - 16px); }
@@ -403,6 +409,7 @@
                 <p class="model-status">Starting…</p>
               </div>
             </details>
+            <button class="reset" type="button" aria-label="Start a new conversation" hidden>Start over</button>
             <a class="contact" href="${CONTACT_URL}">Contact</a>
           </footer>
         </section>
@@ -423,6 +430,7 @@
       this.contextCount = root.querySelector(".context-count");
       this.modelStatus = root.querySelector(".model-status");
       this.status = root.querySelector(".status");
+      this.resetButton = root.querySelector(".reset");
       this.contactLink = root.querySelector(".contact");
 
       const configuredContact = this.getAttribute("contact-url") || CONTACT_URL;
@@ -435,6 +443,7 @@
       this.toggleButton.addEventListener("click", () => this.open());
       this.closeButton.addEventListener("click", () => this.close());
       this.cancelEditButton.addEventListener("click", () => this.cancelEdit());
+      this.resetButton.addEventListener("click", () => this.resetConversation());
       this.form.addEventListener("submit", (event) => {
         event.preventDefault();
         this.ask(this.input.value);
@@ -537,7 +546,8 @@
           : "site",
         choices,
         sources: safeRows(payload?.sources),
-        related: safeRows(payload?.related)
+        related: safeRows(payload?.related),
+        model_called: payload?.model_called === true
       };
     }
 
@@ -545,10 +555,12 @@
       const question = cleanText(value?.question).slice(0, 600);
       const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
       if (!question || !answer || personalInformationDetected(question)) return null;
+      const payload = this.storedPayload(value?.payload, answer);
+      if (!payload.model_called) return null;
       return {
         question,
         answer,
-        payload: this.storedPayload(value?.payload, answer),
+        payload,
         editable: true
       };
     }
@@ -667,7 +679,7 @@
           } else {
             this.captureNotice.textContent = "Up to 3 exchanges stay in this tab across pages.";
           }
-          this.modelStatus.textContent = payload.model_enabled ? "Starting…" : "Source only";
+          this.modelStatus.textContent = payload.model_enabled ? "Starting…" : "Unavailable";
           this.capturePolicyReady = true;
           return payload;
         })
@@ -689,6 +701,7 @@
       this.sendButton.disabled = value;
       this.input.readOnly = value;
       this.cancelEditButton.disabled = value;
+      this.resetButton.disabled = value;
       this.suggestions.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("button").forEach((button) => { button.disabled = value; });
       this.transcript.querySelectorAll("select").forEach((select) => { select.disabled = value; });
@@ -779,17 +792,27 @@
         if (!response.ok) {
           const error = new Error("Guide unavailable.");
           error.payload = payload;
+          error.status = response.status;
+          throw error;
+        }
+        if (payload.kind === "privacy") {
+          this.privacyHold(editing);
+          return;
+        }
+        if (
+          !["answer", "clarify", "handoff"].includes(payload.kind)
+          || payload.model_called !== true
+          || !cleanText(payload.message)
+        ) {
+          const error = new Error("The guide returned an invalid response.");
+          error.payload = payload;
+          error.status = response.status;
           throw error;
         }
 
         this.pendingClientEventId = "";
         this.pendingQuestion = "";
-        if (payload.kind === "privacy") {
-          this.privacyHold(editing);
-          return;
-        }
-
-        const answer = redactSixDigitValues(payload.message || "I couldn’t confirm that on Fortune’s public pages.");
+        const answer = redactSixDigitValues(payload.message);
         const turn = {
           question: safeQuestion,
           answer,
@@ -818,22 +841,35 @@
         this.persistConversation();
         this.revealResult();
       } catch (error) {
-        if (error?.payload?.idempotency_complete) {
+        const status = Number(error?.status || 0);
+        const retryInProgress = status === 409
+          && error?.payload?.idempotency_complete === false;
+        if (error && Object.prototype.hasOwnProperty.call(error, "payload") && !retryInProgress) {
           this.pendingClientEventId = "";
           this.pendingQuestion = "";
         }
-        this.modelStatus.textContent = "Unavailable";
+        if (![409, 429, 502].includes(status)) this.modelStatus.textContent = "Unavailable";
+        const failureMessage = status === 409 && error?.payload?.idempotency_complete === false
+          ? (editing ? "Still working. Try again or cancel." : "Still working. Try again.")
+          : error?.payload?.idempotency_complete === true
+            ? (editing ? "Try again or cancel." : "Try again.")
+            : status === 429
+              ? (editing ? "Guide busy. Try again shortly or cancel." : "Guide busy. Try again shortly.")
+              : status === 502
+                ? (editing ? "Try rephrasing or cancel." : "Try rephrasing.")
+                : editing && status && status !== 503
+                  ? "Couldn’t update. Try again or cancel."
+                  : editing
+                    ? "Guide unavailable. Try again or cancel."
+                    : "Guide unavailable. Try again.";
         if (editing) {
           this.input.value = safeQuestion;
           this.resizeQuestionField();
-          this.setEditStatus(error?.payload?.idempotency_complete
-            ? "Try again or cancel."
-            : "Couldn’t update. Try again or cancel.");
+          this.setEditStatus(failureMessage);
         } else {
           this.input.value = safeQuestion;
           this.resizeQuestionField();
-          this.renderError();
-          this.status.textContent = "";
+          this.status.textContent = failureMessage;
         }
       } finally {
         this.setBusy(false);
@@ -875,6 +911,32 @@
       this.renderConversation();
     }
 
+    resetConversation() {
+      if (this.answering) return;
+      this.editingQuestion = "";
+      this.pendingClientEventId = "";
+      this.pendingQuestion = "";
+      this.lastQuestion = "";
+      this.history = [];
+      this.turns = [];
+      this.conversationId = "";
+      this.conversationToken = "";
+      this.input.value = "";
+      this.resizeQuestionField();
+      this.sendButton.textContent = "Send";
+      this.form.classList.remove("is-editing");
+      this.cancelEditButton.hidden = true;
+      this.questionLabel.textContent = "Question";
+      this.setEditStatus();
+      this.status.textContent = "";
+      this.panel.classList.remove("expanded");
+      this.clearPersistedConversation();
+      this.renderConversation();
+      this.renderSuggestions();
+      this.updateContextCount();
+      this.input.focus({ preventScroll: true });
+    }
+
     warmModel() {
       if (this.warmupPromise) return this.warmupPromise;
       let warmupUrl;
@@ -893,11 +955,11 @@
         .then(async (response) => {
           if (!response.ok) throw new Error("Model warm-up failed.");
           const payload = await response.json();
-          this.modelStatus.textContent = payload.status === "ready" ? "Ready" : "Source only";
+          this.modelStatus.textContent = payload.status === "ready" ? "Ready" : "Unavailable";
           return payload;
         })
         .catch(() => {
-          this.modelStatus.textContent = "Source only";
+          this.modelStatus.textContent = "Unavailable";
           return null;
         })
         .finally(() => {
@@ -922,7 +984,7 @@
       const payload = turn.payload || {};
       const copy = document.createElement("p");
       copy.className = "copy";
-      copy.textContent = redactSixDigitValues(turn.answer || "I couldn’t confirm that on Fortune’s public pages.");
+      copy.textContent = redactSixDigitValues(turn.answer);
       container.append(copy);
 
       if (payload.kind === "clarify") {
@@ -961,6 +1023,7 @@
 
     renderConversation() {
       this.transcript.replaceChildren();
+      this.resetButton.hidden = !this.turns.length;
       const latestEditable = [...this.turns].reverse().find((turn) => turn.editable);
 
       this.turns.forEach((turn) => {
@@ -996,6 +1059,7 @@
 
         const assistant = document.createElement("article");
         assistant.className = "message assistant";
+        assistant.dataset.modelCalled = String(turn.payload?.model_called === true);
         const meta = document.createElement("div");
         meta.className = "message-meta";
         const speaker = document.createElement("p");
@@ -1018,18 +1082,6 @@
       });
     }
 
-    renderError() {
-      this.turns = this.turns.filter((turn) => !turn.transient).concat({
-        question: "",
-        answer: "Guide unavailable. Try again.",
-        payload: {},
-        editable: false,
-        transient: true
-      }).slice(-3);
-      this.panel.classList.add("expanded");
-      this.renderConversation();
-      this.revealResult();
-    }
   }
 
   customElements.define(TAG_NAME, FortuneDigitalEquityGuide);
