@@ -31,7 +31,9 @@ IMMUTABLE_PROMPT_MODULES = {
         "They are evidence from across the Fortune site, not a restriction to the "
         "page the participant is viewing. Consider the full supplied candidate set, "
         "choose the record with the strongest relevant evidence, and answer from it; "
-        "never guess or add general knowledge. If one approved record contains enough "
+        "ground the final answer entirely in that chosen record rather than blending "
+        "facts from other candidates. Never guess or add general knowledge. If one "
+        "approved record contains enough "
         "relevant evidence for a useful answer, answer instead of clarifying. When "
         "asked about current status, schedule, availability, or eligibility, include "
         "the relevant "
@@ -208,7 +210,9 @@ RETRY_INSTRUCTIONS = {
     ),
     "unsupported factual wording": (
         "The prior draft used wording that was not explicitly supported. "
-        "Answer with a supported detail from one record or pick ASK."
+        "Compare the full candidate set, choose the strongest relevant record, and "
+        "answer only from that record. Do not blend facts from multiple candidates. "
+        "Pick ASK only if ambiguity still blocks a supported answer."
     ),
     "response too long": (
         "The prior draft was too long. Return one complete direct answer within "

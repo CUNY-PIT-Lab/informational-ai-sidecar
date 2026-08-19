@@ -3,8 +3,8 @@
   "hash_kind": "sha256-of-artifact-bytes",
   "current_policy_id": "2026-08-18-v22",
   "current_policy_source": "../prompt_policy.py",
-  "current_policy_source_sha256": "c098851db7d8df23e38467f4a26ad8164b8bedd3835b88ea78602e98d3457e7b",
-  "current_compiled_prompt_sha256": "9c6d73f341b231285f35c7f60485847ad85682395b9b2be8f03b1729badd97ac",
+  "current_policy_source_sha256": "c18f5abb5d270b05a0024bf5ac8d16adacdfe1591f4d8dfcd90c899977814f55",
+  "current_compiled_prompt_sha256": "eadc5eaf624c8e21b04b9a981846eedd423cfcfbee3340bb000d98c9c6b99b27",
   "versions": [
     {
       "policy_id": "2026-07-24-v1-reconstructed",
@@ -230,9 +230,9 @@
       "source_date": "2026-08-18",
       "behavior_release": "infobot-sitewide-evidence-guide",
       "artifact": "versions/2026-08-18-v22.md",
-      "artifact_sha256": "e864a3aeb46db7af004299cb0d5563adcf1108bd4445b9f94e3a9f0607392db8",
+      "artifact_sha256": "a491cb21f2f6406c89dcfda34a60a1142eb88ca58dbb9828d9116cbd573666c9",
       "compiled_prompt_artifact": "current.md",
-      "compiled_prompt_artifact_sha256": "1e96956b2f9578057a4fadd9cdee7752821a15380e8e7ecee8314cc498c72896"
+      "compiled_prompt_artifact_sha256": "a18ac9c384be8278ad17d97565745f9009cc0a0b9a801028468971e86a9e8f4b"
     }
   ]
 }

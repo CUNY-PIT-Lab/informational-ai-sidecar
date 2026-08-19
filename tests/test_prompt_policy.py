@@ -45,6 +45,8 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertEqual(source_selector.SYSTEM_PROMPT, prompt_policy.SYSTEM_PROMPT)
         self.assertIn("full supplied candidate set", source_selector.SYSTEM_PROMPT)
         self.assertIn("strongest relevant evidence", source_selector.SYSTEM_PROMPT)
+        self.assertIn("entirely in that chosen record", source_selector.SYSTEM_PROMPT)
+        self.assertIn("rather than blending facts", source_selector.SYSTEM_PROMPT)
         self.assertIn("brief, natural follow-up", source_selector.SYSTEM_PROMPT)
         self.assertIn("Pick ASK only when ambiguity actually prevents", source_selector.SYSTEM_PROMPT)
         self.assertIn("do not append a fake invitation question", source_selector.SYSTEM_PROMPT)
@@ -72,6 +74,10 @@ class PromptPolicyTests(unittest.TestCase):
         self.assertIn(
             "State the affected service's negative status first",
             prompt_policy.RETRY_INSTRUCTIONS["status contradiction"],
+        )
+        self.assertIn(
+            "Do not blend facts from multiple candidates",
+            prompt_policy.RETRY_INSTRUCTIONS["unsupported factual wording"],
         )
         self.assertNotIn("conversation logs are recorded", source_selector.SYSTEM_PROMPT.lower())
         self.assertNotIn("988", source_selector.SYSTEM_PROMPT)
