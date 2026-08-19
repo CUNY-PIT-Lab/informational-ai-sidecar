@@ -7,14 +7,20 @@
   "use strict";
 
   const SITE_ORIGIN = "https://www.fortunedigitalequity.org";
+  const LEGACY_PATH_ALIASES = Object.freeze({
+    "/about/partners": "/about",
+    "/individual": "/support",
+    "/reserve": "/calendar",
+    "/trainings": "/workshops",
+  });
   const ROUTE_GROUPS = {
     directory: new Set([
-      "/trainings", "/certifications", "/grow", "/practice", "/projects",
-      "/opportunities", "/other", "/staff",
+      "/workshops", "/certifications", "/practice", "/projects",
+      "/opportunities", "/other",
     ]),
-    action: new Set(["/calendar", "/reserve", "/contact", "/assessments", "/deiqa", "/media"]),
-    program: new Set(["/", "/about", "/about/impact", "/about/partners"]),
-    support: new Set(["/devices", "/individual"]),
+    action: new Set(["/calendar", "/contact", "/deiqa"]),
+    program: new Set(["/", "/about", "/about/impact"]),
+    support: new Set(["/devices", "/support"]),
   };
   const STOPWORDS = new Set([
     "a", "about", "am", "an", "and", "are", "at", "be", "can", "do", "does",
@@ -24,11 +30,11 @@
   ]);
   const SUGGESTION_LABELS = Object.freeze({
     "What is the main information here?": "Page summary",
-    "Where should I go next?": "Next step",
+    "What can I do from this page?": "Page options",
     "What does this class cover?": "Class details",
     "What should I take before or after it?": "Related classes",
     "Help me choose an option": "Choose an option",
-    "What should I do next?": "Next step",
+    "What is available here?": "Available options",
     "I need information about getting a device": "Get a device",
     "I need help using a device": "Device help",
     "What individual support is available?": "Available support",
@@ -57,7 +63,8 @@
     try {
       const url = new URL(String(value || ""), SITE_ORIGIN);
       if (!/^(?:www\.)?fortunedigitalequity\.org$/i.test(url.hostname)) return "";
-      const path = url.pathname.replace(/\/+$/, "") || "/";
+      const originalPath = url.pathname.replace(/\/+$/, "") || "/";
+      const path = LEGACY_PATH_ALIASES[originalPath] || originalPath;
       return `${SITE_ORIGIN}${path}`;
     } catch {
       return "";
@@ -108,7 +115,7 @@
       family,
       heading: `Ask about ${title}`,
       placeholder: "What would you like to know about this page?",
-      suggestions: ["What is the main information here?", "Where should I go next?"],
+      suggestions: ["What is the main information here?", "What can I do from this page?"],
     };
 
     if (family === "service") return {
@@ -119,7 +126,7 @@
     if (family === "directory") return {
       ...common,
       placeholder: `What are you looking for in ${title}?`,
-      suggestions: ["Help me choose an option", "What should I do next?"],
+      suggestions: ["Help me choose an option", "What is available here?"],
     };
     if (family === "support" && path === "/devices") return {
       ...common,
@@ -135,11 +142,6 @@
       ...common,
       placeholder: "What current class information are you trying to find?",
       suggestions: ["Where and when are current classes?", "Which class should I look for?"],
-    };
-    if (family === "action" && path === "/reserve") return {
-      ...common,
-      placeholder: "What would you like to know about registration?",
-      suggestions: ["How does registration work?", "Where can I confirm current sessions?"],
     };
     if (family === "action" && path === "/contact") return {
       ...common,

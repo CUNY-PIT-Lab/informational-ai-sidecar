@@ -9,7 +9,7 @@ The shared backend also accepts `POST /api/warmup` from approved origins. The re
 - `wix/ROADMAP.md` describes a private Wix app that installs the guide across Fortune's site.
 - `wix/embedded.html.example` is the small fragment an embedded-script extension adds at the end of each page.
 - `wix/fortune-guide-element.example.js` is a retirement marker for the old portable example. Copy the maintained monochrome element from `../wix-app/site/fortune-guide-element.js` instead.
-- `wix/backend/ollama-proxy.example.mjs` shows the server boundary without relying on invented Wix extension IDs or package imports.
+- `wix/backend/ollama-proxy.example.mjs` is a thin Wix relay to the canonical Website Guide API. It does not call a second model or author participant responses.
 - `wix/copilot-studio-bridge/` is a deployable, sandboxed iframe and server-side Direct Line token broker for a public-information Copilot Studio pilot. It is a separate evaluation route, not an adapter for the shared source-bounded API contract below.
 - `github-pages/ROADMAP.md` describes a public static demonstration backed by the same external API.
 - `github-pages/config.example.js` contains public runtime settings only.
@@ -61,6 +61,6 @@ The server returns this response shape:
 }
 ```
 
-The first request omits `conversation_id` and `conversation_token`. The server issues both; subsequent turns return them unchanged. A client retains one random `client_event_id` until it receives a definitive result, making network retries idempotent. An ambiguous request returns `kind: "clarify"`, one short question in `message`, and two or three `{ "label", "prompt" }` choices. Factual answers include an approved source; clarification can omit sources when its validated buttons are the safer next step. The interface keeps the question form available and offers `handoff_url` when the guide cannot resolve the request.
+The first request omits `conversation_id` and `conversation_token`. The server issues both; subsequent turns return them unchanged. A client retains one random `client_event_id` until it receives a definitive result, making network retries idempotent. Every successful non-private new request returns `model_called: true`. An ambiguous request returns a model-authored `kind: "clarify"` response with one short question in `message` and, when useful, validated `{ "label", "prompt" }` choices. Factual answers include an approved source; a clarification can omit sources. The pre-model privacy hold is the sole successful zero-call exception. Provider, quota, or invalid-output failures return an error and never become a fabricated Guide turn.
 
 Conversation capture, Railway staging, retention, and the evaluator-dashboard sequence are defined in [CONVERSATION-CAPTURE.md](CONVERSATION-CAPTURE.md).

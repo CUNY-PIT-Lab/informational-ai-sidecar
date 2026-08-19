@@ -1,6 +1,112 @@
 # Website Guide — next steps
 
-## Bounded source selector — 2026-08-12
+## Infobot model-first release — 2026-08-18
+
+- [x] Remove the fixed conversational fallbacks that answered vague, frustrated,
+  unsupported, or staff-routed requests without calling the model.
+- [x] Require every successful non-private new turn to report
+  `model_called: true`; keep the pre-model privacy hold as the sole successful
+  zero-call exception.
+- [x] Make vague requests use a model-authored clarifying question and make
+  staff-bound requests use model-authored wording grounded in the current
+  Contact record.
+- [x] Reject malformed, unsupported, privacy-seeking, or twice-invalid model
+  output as an operational error instead of fabricating a Guide message in the
+  server, Pages client, or Wix element.
+- [x] Preserve `model_called` in browser session state and mark rendered Guide
+  turns with response provenance for Pages and Wix parity tests.
+- [x] Move automated runs to the evaluator-hidden `benchmark` surface and make
+  both release runners fail when any successful non-private turn skips the
+  model.
+- [x] Remove the forced clarification classifier and deterministic source
+  collapse; the live model now chooses among bounded approved site records.
+- [x] Incorporate the useful, fact-free guidance from the current team Infobot
+  notes and core-setup review into prompt v21; preserve compiled v20 for review
+  history and keep vendor-specific tooling, canned examples, unsupported crisis
+  facts, and unconditional logging claims out of runtime.
+- [x] Keep the visible shared dashboard tab and deployed catalog labeled
+  **Prompts**, with v21 shown as the current immutable runtime policy.
+- [x] Add a guarded staging transcript reset that preserves evaluator accounts,
+  sessions, buckets, invitations, and all Prompts proposals/history.
+- [x] Pass the complete local release suite: 297 Python, 28 browser-core, and 13
+  snapshot tests.
+- [x] Deploy the exact v21 commit to Railway staging and replay ordinary,
+  frustrated, broad, specific, Spanish, and multi-turn requests with
+  `model_called: true` on every non-private turn. The final ten-turn retrieval
+  run completed 10/10, and Return produced a live model response in the browser.
+- [x] Clear the existing staging transcript corpus in one guarded transaction,
+  preserve evaluator and Prompts state, and prove automated benchmark traffic
+  stays out of the reviewer queue. The reset removed 1,171 conversations,
+  1,999 turns, and 3,784 messages while preserving four evaluator accounts,
+  four bucket sets, 13 buckets, one active session, and the Prompts workspace.
+- [x] Verify the staging browser, hidden benchmark capture, prompt provenance,
+  aggregate privacy/integrity gate, and terminal deployment stability before
+  promotion. Staging deployment `ad436f9b-8df8-4d78-a71f-1515ea4d4b6c` is
+  terminal `SUCCESS`; the deployed runtime and prompt hashes match this tree;
+  Return, model provenance, and page-to-page conversation persistence passed.
+- [ ] Merge through GitHub, verify Pages, then deploy the exact merged tree to
+  Railway production with capture `none`, no database, and evaluation disabled.
+
+## Meeting 4 release — 2026-08-17
+
+- [x] Review Sasha's forwarded Meeting 4 summary and record bot, source,
+  evaluator, prompt-review, persistence, and Wix interventions without copying
+  private meeting credentials into the repository.
+- [x] Refresh the public corpus atomically at Wix revision 2063: 138/138 live
+  routes, 90 answer-authority pages, current `/workshops`, `/support`, device
+  guidance, class descriptions, and the four current homepage/contact FAQs.
+- [x] Archive the meaningful historical prompt releases, compile a dedicated
+  current prompt, and add a bounded shared Prompts workspace whose proposals cannot
+  activate runtime behavior.
+- [x] Preserve the existing shared staging evaluator, timestamps, newest-first
+  ordering, pagination, notes, annotations, buckets, and transcript integrity.
+- [x] Run the frozen v11 staging gate: 41 scattershot cases plus 12 conversations
+  and 50 turns. All 91 requests completed, all 51 factual answers called the
+  model, and capture integrity passed; promotion correctly blocked on excessive
+  one-choice clarification.
+- [x] Preserve the failed v11 run as credential-redacted evidence and version
+  the corrected evaluator overlay without changing its 41 cases, 12
+  conversations, substantive grounding gates, or release-blocking outcome.
+- [x] Redact continuation credentials from every tracked evaluation artifact,
+  make both runners redact future artifacts, and rotate the staging token
+  secret without deleting transcripts or evaluator records.
+- [x] Implement the general v12 repair without factual response templates:
+  exact-title and feature routing, FAQ/section evidence packing, relative-date
+  routing, one-source `ASK` retry, concise direct-answer guidance, status
+  caveats, and sentence-level repetition detection.
+- [x] Vet `Infobot Notes_Fortune Society Digital Equity` from Documents and
+  adopt only the added-value, fact-free prompt guidance: automated/non-staff
+  identity plus plain, respectful, nonjudgmental language. Keep program facts,
+  logging disclosures, unapproved crisis directions, and broad staff/language
+  promises out of the system prompt.
+- [x] Qualify the exact v16 commit on Railway staging: 41/41 scattershot cases,
+  12/12 conversations, 50/50 turns, and 28/28 context-dependent turns, with
+  every factual answer model-generated from an approved Fortune source.
+- [x] Push the v16 branch, merge its release PR, verify the GitHub Pages workflow
+  and public browser, then deploy that exact merged tree to Railway production
+  with capture `none`, no database, and evaluation disabled.
+- [x] Do not deploy or evaluate this guide on the CUNY PIT Lab website. PIT Lab
+  may link to the canonical zmuhls production URL only if requested.
+
+## Grounded generation and shared evaluation — 2026-08-17
+
+- [x] Add **Start over** to the Pages and Wix clients; clear only tab-local turns, continuation credentials, and session storage without deleting captured evaluation data.
+- [x] Replace the production model's page-ID-only contract with one reusable grounded-generation contract: one approved source ID plus a concise answer, or one clarifying question.
+- [x] Send only the resolved question, approved excerpts, and relevant prior guide answer; keep raw participant history and excluded pages out of the provider prompt.
+- [x] Reject unknown sources, invented numbers, external links, unsupported selections, malformed JSON, and answers without meaningful source overlap.
+- [x] Allow alternate natural phrasings grounded in the same source, and route **What does the program offer?** to live generation instead of a canned branch.
+- [x] Remove the remaining runtime factual fallback: without the live model, the guide abstains instead of extracting or serving a canned answer; source-mutation tests prove accepted factual output follows the approved record.
+- [x] Make the evaluator queue, buckets, placements, notes, and annotations shared across all four authenticated evaluator accounts while preserving actor attribution in the audit log.
+- [x] Keep existing captured conversations intact; the shared workspace uses the existing admin-owned bucket set and does not delete editor-specific legacy rows.
+- [x] Timestamp conversation cards, transcript headers, and individual messages; sort every bucket newest first before paginating **Not yet reviewed**.
+- [x] Serialize initial shared note, placement, and annotation writes so simultaneous evaluators receive a version conflict instead of silently overwriting one another.
+- [x] Deploy the v11 candidate to Railway staging and verify model-backed answers,
+  grounding rejection, browser reset, persistence after navigation, and the
+  shared evaluator boundary; the formal quality gate found a release-blocking
+  clarification defect now addressed by v12.
+- [x] Promote only after the staging evidence is green; keep public production capture disabled.
+
+## Superseded bounded source-selector baseline — 2026-08-12
 
 - [x] Replace the prose-generating model contract with one reusable decision: return one allowed page ID or `ASK`.
 - [x] Keep raw conversation history out of the provider request; send only the server-resolved question and bounded approved candidates.
@@ -33,7 +139,8 @@
 - [x] Merge the release PR, wait for GitHub Pages to finish, and verify the published asset hash.
 - [x] Capture successful live runs for clarification, navigation, procedure, retrieval, privacy, and sensitive requests.
 - [x] Re-run the immutable 41-case benchmark against production and attach its report to the release record.
-- [ ] Review and refresh the open PIT Lab mirror PR after the canonical release is accepted.
+- [x] Keep PIT Lab out of the deployment and evaluation path; use only the
+  canonical zmuhls release URL.
 
 ## Released baseline — 2026-08-09
 
@@ -61,7 +168,7 @@
 - [ ] Assign the Fortune representative and two student delegates only after Fortune names the three accounts.
 - [x] Make each invite single-use, account-bound, and valid for 24 hours; keep raw tokens out of request paths, commits, variables, and logs.
 - [ ] Deliver the named testers' links privately after Fortune supplies the account emails.
-- [ ] Re-run the staging acceptance pass: save, reopen, and remove one note and annotation; confirm reviewer isolation, a stale-version `409`, and `orphan_annotations=0`.
+- [ ] Re-run the staging acceptance pass: save, reopen, and remove one note and annotation; confirm shared visibility from two evaluator accounts, a stale-version `409`, and `orphan_annotations=0`.
 
 ## 4. Wix pilot — blocked on the site owner account
 

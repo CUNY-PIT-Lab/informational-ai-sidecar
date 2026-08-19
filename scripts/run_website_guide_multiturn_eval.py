@@ -114,10 +114,67 @@ def continuity_failures(
     return failures
 
 
-def advancement_failures(*, response: dict, history: list[dict]) -> list[str]:
-    """Reject a factual follow-up that merely reuses an earlier evidence sentence."""
+def explicit_prior_detail_request(question: str, prior_answer: str) -> bool:
+    """Recognize a bounded request to repeat a detail already in the latest answer."""
 
-    if response.get("kind") != "answer" or not history:
+    value = str(question or "").casefold().replace("’", "'").strip()
+    prior = str(prior_answer or "").casefold().replace("’", "'").strip()
+    if not value or not prior or re.search(
+        r"\b(?:what else|anything else|tell me more|what next|what more|"
+        r"more details?|go on|continue)\b",
+        value,
+    ):
+        return False
+
+    if re.search(
+        r"\b(?:how (?:do|can|could|would|will) (?:i|we) qualify|"
+        r"what (?:do|would) (?:i|we) need to (?:do )?(?:qualify|be eligible)|"
+        r"(?:am i|are we) eligible)\b",
+        value,
+    ):
+        return bool(re.search(r"\b(?:qualif\w*|eligib\w*|requirements?)\b", prior))
+
+    if re.search(
+        r"\b(?:what|which)(?: [a-z0-9'-]+){0,3} (?:does|do|did|will|would) "
+        r"(?:(?:that|this|the) (?:class|course|workshop|program|service|page|option)|"
+        r"it|they) (?:cover|include|teach|offer|mean|say)\b",
+        value,
+    ):
+        if not re.search(
+            r"\b(?:cover\w*|includ\w*|teach\w*|learn\w*|practic\w*|show\w*|"
+            r"topics?|skills?)\b",
+            prior,
+        ):
+            return False
+        generic = {
+            "what", "which", "does", "do", "did", "will", "would", "that",
+            "this", "the", "class", "course", "workshop", "program", "service",
+            "page", "option", "it", "they", "cover", "include", "teach", "offer",
+            "mean", "say", "technique", "techniques", "topic", "topics", "detail",
+            "details",
+        }
+        requested = set(re.findall(r"[a-z0-9]+", value)).difference(generic)
+        return not requested or bool(requested.intersection(re.findall(r"[a-z0-9]+", prior)))
+
+    if re.search(
+        r"\b(?:can|could|would) you (?:repeat|restate) (?:that|this|it)\b|"
+        r"\b(?:is that (?:right|correct)|did you say\b)",
+        value,
+    ):
+        return True
+    return False
+
+
+def advancement_failures(
+    *,
+    response: dict,
+    history: list[dict],
+    question: str = "",
+    required: bool = True,
+) -> list[str]:
+    """Reject a factual follow-up only when all substantive evidence is reused."""
+
+    if not required or response.get("kind") != "answer" or not history:
         return []
     current = str(response.get("message") or "")
     if current in {
@@ -125,17 +182,45 @@ def advancement_failures(*, response: dict, history: list[dict]) -> list[str]:
         "No pude confirmarlo en las páginas públicas de Fortune.",
     }:
         return []
-    prior = " ".join(
-        str(item.get("content") or "")
-        for item in history
-        if item.get("role") == "assistant"
+    def sentence_terms(value: str) -> list[set[str]]:
+        return [
+            set(terms)
+            for sentence in re.split(r"(?<=[.!?])\s+", value)
+            if len(terms := re.findall(r"[a-z0-9]+", sentence.casefold())) >= 6
+        ]
+
+    prior_sentences = sentence_terms(
+        " ".join(
+            str(item.get("content") or "")
+            for item in history
+            if item.get("role") == "assistant"
+        )
     )
-    normalize = lambda value: " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
-    prior_normalized = normalize(prior)
-    for sentence in re.split(r"(?<=[.!?])\s+", current):
-        normalized = normalize(sentence)
-        if len(normalized.split()) >= 6 and normalized in prior_normalized:
-            return ["continuity: answer repeats prior evidence instead of advancing"]
+    current_sentences = sentence_terms(current)
+    if not current_sentences or not prior_sentences:
+        return []
+    prior_answer = next(
+        (
+            str(item.get("content") or "")
+            for item in reversed(history)
+            if item.get("role") == "assistant"
+        ),
+        "",
+    )
+
+    def repeats_prior(current_terms: set[str]) -> bool:
+        return any(
+            len(current_terms.intersection(prior_terms))
+            / len(current_terms)
+            >= 0.85
+            for prior_terms in prior_sentences
+        )
+
+    if (
+        all(repeats_prior(sentence) for sentence in current_sentences)
+        and not explicit_prior_detail_request(question, prior_answer)
+    ):
+        return ["continuity: answer repeats prior evidence instead of advancing"]
     return []
 
 
@@ -169,6 +254,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
         if turn.get("transport_error") or turn.get("status") == 429 or turn.get("status", 0) >= 500
     ]
     model_calls = sum(bool(turn.get("response", {}).get("model_called")) for turn in turns)
+    model_gate = core.model_call_gate(turns)
     slices: dict[str, dict] = {}
     for episode in episodes:
         row = slices.setdefault(episode["slice"], {"episodes": 0, "passed": 0})
@@ -185,6 +271,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
         and not health_failures
         and not hard_failures
         and not infrastructure
+        and model_gate["passed"]
         and required_rate >= 0.90
         and contextual_rate >= 0.85
         and required_slices_pass
@@ -210,10 +297,11 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
             "contextual_rate": round(contextual_rate, 4),
         },
         "hard_gate": {
-            "passed": not hard_failures and not health_failures,
+            "passed": not hard_failures and not health_failures and model_gate["passed"],
             "failed_episodes": hard_failures,
             "health_failures": health_failures,
         },
+        "model_call_gate": model_gate,
         "slices": slices,
         "operational": {
             "latency_p50_ms": percentile(successful_latencies, 0.50),
@@ -225,7 +313,7 @@ def aggregate(episodes: list[dict], health_failures: list[str]) -> dict:
             ),
             "infrastructure_failures": len(infrastructure),
             "model_calls": model_calls,
-            "model_call_rate": round(model_calls / len(turns), 4) if turns else 0.0,
+            "model_call_rate": model_gate["call_rate"],
         },
     }
 
@@ -235,6 +323,11 @@ def run(args: argparse.Namespace) -> int:
     spec_path = pathlib.Path(args.spec).resolve()
     suite = core.load_json(cases_path)
     spec = core.load_json(spec_path)
+    try:
+        suite = core.apply_grader_overrides(suite, spec, unit_kind="turns")
+    except ValueError as error:
+        print(f"error: {error}")
+        return 2
     errors = validate_suite(suite)
     if errors:
         for error in errors:
@@ -286,7 +379,7 @@ def run(args: argparse.Namespace) -> int:
                 "page_context": page_context,
                 "history": list(history),
                 "client_event_id": event_id,
-                "client_surface": "synthetic",
+                "client_surface": "benchmark",
             }
             if conversation_id:
                 payload["conversation_id"] = conversation_id
@@ -322,7 +415,14 @@ def run(args: argparse.Namespace) -> int:
                 )
                 if turn_index:
                     failures.extend(
-                        advancement_failures(response=response, history=history)
+                        advancement_failures(
+                            response=response,
+                            history=history,
+                            question=turn["message"],
+                            required=turn.get("expect", {}).get(
+                                "advancement_required", True
+                            ),
+                        )
                     )
             row = {
                 "id": turn["id"],
@@ -337,7 +437,7 @@ def run(args: argparse.Namespace) -> int:
                 "transport_error": transport_error,
                 "passed": not failures,
                 "failures": failures,
-                "response": response,
+                "response": core.artifact_response(response),
             }
             turn_results.append(row)
             marker = "PASS" if row["passed"] else "FAIL"
@@ -405,6 +505,7 @@ def run(args: argparse.Namespace) -> int:
             "retry_transient": bool(args.retry_transient),
             "history_messages": MAX_HISTORY_MESSAGES,
             "capture_allowed": args.allow_capture,
+            "client_surface": "benchmark",
         },
         "aggregate": aggregate_result,
         "episodes": episode_results,
@@ -444,7 +545,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--allow-capture",
         action="store_true",
-        help="allow synthetic evaluation turns in an explicitly approved capture environment",
+        help="allow benchmark turns in an explicitly approved capture environment",
     )
     value.add_argument("--validate-only", action="store_true")
     return value

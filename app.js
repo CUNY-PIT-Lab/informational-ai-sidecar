@@ -18,11 +18,12 @@
   const modelStatus = document.querySelector("#model-status");
   const contextWindowText = document.querySelector("#context-window-text");
   const contextWindowCopy = document.querySelector("#context-window-copy");
+  const resetButton = document.querySelector("#guide-reset");
   const API_BASE = String(window.FORTUNE_GUIDE_CONFIG?.apiBaseUrl || "").replace(/\/$/, "");
   const CONTACT_URL = "https://www.fortunedigitalequity.org/contact";
   const MAX_CONTEXT_MESSAGES = 6;
   const MAX_CONTEXT_EXCHANGES = MAX_CONTEXT_MESSAGES / 2;
-  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:replica:v1";
+  const CONVERSATION_STORAGE_KEY = "fortune-website-guide:replica:v20";
 
   let history = [];
   let turns = [];
@@ -109,6 +110,7 @@
       choices,
       sources: safeRows(data?.sources),
       related: safeRows(data?.related),
+      model_called: data?.model_called === true,
     };
   }
 
@@ -116,7 +118,9 @@
     const question = cleanText(value?.question).slice(0, 600);
     const answer = redactSixDigitValues(cleanText(value?.answer)).slice(0, 4000);
     if (!question || !answer || personalInformationDetected(question)) return null;
-    return { question, answer, payload: storedPayload(value?.payload, answer) };
+    const payload = storedPayload(value?.payload, answer);
+    if (!payload.model_called) return null;
+    return { question, answer, payload };
   }
 
   function clearPersistedConversation() {
@@ -161,6 +165,7 @@
     panel.setAttribute("aria-hidden", "false");
     toggle.setAttribute("aria-expanded", "true");
     toggle.hidden = true;
+    if (modelReady) warmModel();
     if (options.moveFocus !== false) closeButton.focus({ preventScroll: true });
   }
 
@@ -197,6 +202,9 @@
     const body = document.createElement("p");
     body.className = "chat-copy";
     body.textContent = redactSixDigitValues(cleanText(message));
+    if (role === "assistant" && typeof options.modelCalled === "boolean") {
+      article.dataset.modelCalled = String(options.modelCalled);
+    }
     meta.append(label);
 
     if (role === "user" && options.editable) {
@@ -274,6 +282,7 @@
       choices: payload.choices,
       destination,
       scope: payload.retrieval_scope,
+      modelCalled: payload.model_called,
     });
     return { question: turn.question, answer: turn.answer, userArticle, assistantArticle };
   }
@@ -288,6 +297,7 @@
     if (turns.length) panel.classList.add("is-expanded");
     else panel.classList.remove("is-expanded");
     if (turns.length) suggestions.replaceChildren();
+    resetButton.hidden = !turns.length;
   }
 
   function restoreConversation() {
@@ -346,6 +356,23 @@
     else renderSuggestions(starter);
   }
 
+  function resetConversation() {
+    if (answering) return;
+    endEditing({ clearInput: true });
+    history = [];
+    turns = [];
+    latestTurn = null;
+    pendingClientEventId = "";
+    pendingQuestion = "";
+    conversationId = "";
+    conversationToken = "";
+    clearPersistedConversation();
+    renderConversation();
+    renderSuggestions(window.FortuneMockSite.getStarter(currentPage()));
+    updateContextWindow();
+    questionField.focus({ preventScroll: true });
+  }
+
   function setEditStatus(message = "") {
     editStatus.textContent = message;
     editStatus.hidden = !message;
@@ -357,6 +384,7 @@
     submitButton.disabled = value;
     questionField.readOnly = value;
     editCancel.disabled = value;
+    resetButton.disabled = value;
     transcript.querySelectorAll(".chat-edit-button").forEach(button => { button.disabled = value; });
     transcript.querySelectorAll(".answer-choice-select").forEach(select => { select.disabled = value; });
     panel.setAttribute("aria-busy", String(value));
@@ -445,28 +473,45 @@
     if (!response.ok || data.error) {
       const error = new Error(data.error || "The live model could not answer.");
       error.payload = data;
+      error.status = response.status;
+      throw error;
+    }
+    if (data.kind !== "privacy" && (
+      !["answer", "clarify", "handoff"].includes(data.kind)
+      || data.model_called !== true
+      || !cleanText(data.message)
+    )) {
+      const error = new Error("The guide returned an invalid response.");
+      error.payload = data;
+      error.status = response.status;
       throw error;
     }
     return data;
   }
 
-  async function warmModel() {
-    try {
-      const response = await fetch(apiUrl("/api/warmup"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!response.ok) throw new Error("Model warm-up failed");
-      const data = await response.json();
-      if (data.status !== "ready") throw new Error("Model warm-up unavailable");
-      modelStatus.textContent = "Ready";
-      modelStatus.classList.add("model-ready");
-      return data;
-    } catch {
-      modelStatus.textContent = modelReady ? "Ready" : "Source only";
-      return null;
-    }
+  function warmModel() {
+    if (warmupPromise) return warmupPromise;
+    warmupPromise = (async () => {
+      try {
+        const response = await fetch(apiUrl("/api/warmup"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!response.ok) throw new Error("Model warm-up failed");
+        const data = await response.json();
+        if (data.status !== "ready") throw new Error("Model warm-up unavailable");
+        modelStatus.textContent = "Ready";
+        modelStatus.classList.add("model-ready");
+        return data;
+      } catch {
+        modelStatus.textContent = modelReady ? "Ready" : "Unavailable";
+        return null;
+      } finally {
+        warmupPromise = null;
+      }
+    })();
+    return warmupPromise;
   }
 
   function showAnswer(data) {
@@ -474,24 +519,35 @@
     const destination = Array.isArray(data?.choices) && data.choices.length
       ? null
       : distinctDestination(data);
-    return appendMessage("assistant", data.message || "I couldn’t confirm that on Fortune’s public pages.", {
+    return appendMessage("assistant", data.message, {
       choices: data.choices,
       destination,
       scope: data.retrieval_scope || (data.sources?.some(source => source.url === currentPage()?.url) ? "page" : "site"),
+      modelCalled: data.model_called === true,
       revealStart: true,
     });
   }
 
   function showUnavailable(message = "Guide unavailable. Try again.") {
-    showAnswer({
-      kind: "handoff",
-      message,
-      reason: "",
-      sources: [],
-      related: [{ title: "Contact", url: CONTACT_URL }],
-      retrieval_scope: "staff",
-      model_called: false,
-    });
+    setEditStatus(message);
+  }
+
+  function requestFailureMessage(error, editing = false) {
+    const status = Number(error?.status || 0);
+    if (status === 409 && error?.payload?.idempotency_complete === false) {
+      return editing ? "Still working. Try again or cancel." : "Still working. Try again.";
+    }
+    if (error?.payload?.idempotency_complete === true) {
+      return editing ? "Try again or cancel." : "Try again.";
+    }
+    if (status === 429) {
+      return editing ? "Guide busy. Try again shortly or cancel." : "Guide busy. Try again shortly.";
+    }
+    if (status === 502) {
+      return editing ? "Try rephrasing or cancel." : "Try rephrasing.";
+    }
+    if (editing && status && status !== 503) return "Couldn’t update. Try again or cancel.";
+    return editing ? "Guide unavailable. Try again or cancel." : "Guide unavailable. Try again.";
   }
 
   async function ask(question, options = {}) {
@@ -545,32 +601,34 @@
       const turn = { question: safeQuestion, answer, payload: storedPayload(data, answer) };
       turns = (editing ? turns.slice(0, -1).concat(turn) : turns.concat(turn))
         .slice(-MAX_CONTEXT_EXCHANGES);
+      resetButton.hidden = false;
       latestTurn = { question: safeQuestion, answer, userArticle, assistantArticle };
       conversationId = String(data.conversation_id || (editing ? "" : conversationId));
       conversationToken = String(data.conversation_token || (editing ? "" : conversationToken));
       updateContextWindow();
       pendingClientEventId = "";
       pendingQuestion = "";
+      setEditStatus();
       persistConversation();
     } catch (error) {
       questionField.value = value;
       resizeQuestionField();
-      if (error?.payload?.idempotency_complete) {
+      const retryInProgress = Number(error?.status || 0) === 409
+        && error?.payload?.idempotency_complete === false;
+      if (error?.payload && !retryInProgress) {
         pendingClientEventId = "";
         pendingQuestion = "";
       }
-      apiReady = false;
-      modelReady = false;
-      modelStatus.textContent = "Unavailable";
-      modelStatus.classList.remove("model-ready");
+      if (![409, 429, 502].includes(Number(error?.status || 0))) {
+        apiReady = false;
+        modelReady = false;
+        modelStatus.textContent = "Unavailable";
+        modelStatus.classList.remove("model-ready");
+      }
       if (editing) {
-        setEditStatus(error?.payload?.idempotency_complete
-          ? "Try again or cancel."
-          : "Couldn’t update. Try again or cancel.");
+        setEditStatus(requestFailureMessage(error, true));
       } else {
-        showUnavailable(error?.payload?.idempotency_complete
-          ? "Try again."
-          : undefined);
+        showUnavailable(requestFailureMessage(error));
       }
     } finally {
       setBusy(false);
@@ -593,14 +651,14 @@
         : captureMode === "metadata"
           ? "This review build stores IDs and response data. Chat stays in this tab across pages."
           : "Up to 3 exchanges stay in this tab across pages.";
-      modelStatus.textContent = modelReady ? "Starting…" : "Source only";
+      modelStatus.textContent = modelReady ? "Starting…" : "Unavailable";
       modelStatus.classList.toggle("model-ready", modelReady);
-      if (modelReady) warmupPromise = warmModel();
+      if (modelReady) warmModel();
     } catch {
       apiReady = false;
       modelReady = false;
       captureMode = "none";
-      modelStatus.textContent = "Source only";
+      modelStatus.textContent = "Unavailable";
       modelStatus.classList.remove("model-ready");
     }
   }
@@ -643,6 +701,7 @@
     pendingQuestion = "";
     endEditing({ clearInput: true });
   });
+  resetButton.addEventListener("click", resetConversation);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && !panel.hidden) closeGuide();
   });
@@ -663,6 +722,7 @@
     ask,
     open: openGuide,
     close: closeGuide,
+    reset: resetConversation,
     privacyDetected: personalInformationDetected,
     state: () => ({
       apiReady,

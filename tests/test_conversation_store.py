@@ -90,6 +90,11 @@ def recording_recorder(mode):
 
 
 class ConversationStoreTests(unittest.TestCase):
+    def test_benchmark_surface_is_distinct_from_reviewer_synthetic(self):
+        self.assertEqual(conversation_store.sanitized_surface("benchmark"), "benchmark")
+        self.assertEqual(conversation_store.sanitized_surface("synthetic"), "synthetic")
+        self.assertEqual(conversation_store.sanitized_surface("not-allowed"), "unknown")
+
     def test_capture_is_disabled_by_default_and_needs_no_database(self):
         recorder = conversation_store.ConversationRecorder(
             database_url="",
@@ -207,9 +212,42 @@ class ConversationStoreTests(unittest.TestCase):
             "SYNTHETIC ANSWER",
         ])
 
+    def test_failed_sensitive_turn_closes_without_storing_messages(self):
+        recorder = recording_recorder("transcript")
+        recorder.fail_turn(
+            persisted_reservation("transcript", "replica"),
+            latency_ms=19,
+            error_code="model_response_rejected",
+            model="test-model",
+            model_called=True,
+            retrieval_scope="staff",
+            privacy_state="sensitive_handoff",
+            interaction_context={
+                "chat_stage": "opening",
+                "request_kind": "sensitive",
+                "request_language": "en",
+                "prompt_policy_version": "test-policy",
+            },
+        )
+        cursor = recorder._pool.cursor
+        self.assertEqual(cursor.many, [])
+        query, params = cursor.calls[0]
+        self.assertIn("status = 'failed'", query)
+        self.assertIn("review_state = 'excluded'", query)
+        self.assertEqual(params[0], "sensitive_handoff")
+        self.assertEqual(params[1], "staff")
+        self.assertTrue(params[3])
+        self.assertEqual(params[5], "model_response_rejected")
+
+    def test_failed_idempotent_turn_is_terminal_not_in_progress(self):
+        source = (DEMO / "conversation_store.py").read_text(encoding="utf-8")
+        self.assertIn('if existing["status"] == "failed":', source)
+        self.assertIn('"This turn already failed. Send it again as a new turn."', source)
+
     def test_only_clear_synthetic_turns_are_review_ready(self):
         cases = (
             ("synthetic", "clear", "ready"),
+            ("benchmark", "clear", "pending"),
             ("replica", "clear", "pending"),
             ("synthetic", "blocked", "excluded"),
         )
